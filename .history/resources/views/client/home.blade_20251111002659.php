@@ -60,7 +60,7 @@
 
 
 {{-- 🎓 HERO + FEATURED EVENTS --}}
-<section class="relative bg-gradient-to-br from-blue-50 via-white to-cyan-50 overflow-hidden px-[100px] py-20 md:py-28">
+<section class="relative bg-gradient-to-br from-blue-50 via-white to-cyan-50 overflow-hidden px-[80px] py-20 md:py-28">
     <div class="container mx-auto relative z-10">
         <div class="grid lg:grid-cols-2 gap-12 items-start">
 
@@ -73,9 +73,9 @@
                 </div>
 
                 {{-- Heading --}}
-                <h1 class=" font-black text-gray-900 leading-tight">
-                    <span class="block text-5xl md:text-6xl xl:text-7xl mb-2 text-blue-700">Cuộc thi Học thuật</span>
-                    <span class="block text-3xl md:text-5xl xl:text-5xl text-gray-800">Dành cho sinh viên CNTT</span>
+                <h1 class="text-5xl md:text-6xl xl:text-7xl font-black text-gray-900 leading-tight">
+                    <span class="block mb-2 text-blue-700">Cuộc thi Học thuật</span>
+                    <span class="block text-gray-800">Dành cho sinh viên CNTT</span>
                 </h1>
 
                 <p class="text-lg text-gray-600 leading-relaxed">

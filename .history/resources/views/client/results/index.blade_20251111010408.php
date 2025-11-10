@@ -2,38 +2,6 @@
 @section('title', 'Kết quả Cuộc thi Học thuật')
 
 @section('content')
-@php
-use Illuminate\Pagination\LengthAwarePaginator;
-use Illuminate\Support\Collection;
-
-// Tạo dữ liệu giả cho 27 kết quả
-$fakeResults = collect(range(1, 27))->map(function ($i) {
-return (object)[
-'id' => $i,
-'title' => "Database Design Challenge #$i",
-'date' => now()->subDays($i)->format('d/m/Y'),
-'winner' => 'Nguyễn Văn A',
-'image' => "https://source.unsplash.com/600x400/?trophy,competition,$i",
-];
-});
-
-// Lấy trang hiện tại
-$page = request()->get('page', 1);
-$perPage = 6;
-
-// Cắt dữ liệu theo trang
-$itemsForCurrentPage = $fakeResults->slice(($page - 1) * $perPage, $perPage)->values();
-
-// Tạo paginator giả
-$results = new LengthAwarePaginator(
-$itemsForCurrentPage,
-$fakeResults->count(),
-$perPage,
-$page,
-['path' => request()->url(), 'query' => request()->query()]
-);
-@endphp
-
 
 {{-- 🏆 HERO SECTION --}}
 <section class="relative bg-gradient-to-br from-blue-700 via-blue-600 to-cyan-500 text-white py-24 overflow-hidden">
@@ -119,82 +87,68 @@ $page,
 {{-- 🏆 RESULTS GRID --}}
 <section class="container mx-auto px-6 py-16">
     <div class="grid lg:grid-cols-3 md:grid-cols-2 grid-cols-1 gap-8">
-        @foreach ($results as $item)
-        <article class="group bg-white rounded-2xl shadow-md hover:shadow-2xl border border-gray-100 overflow-hidden transition-all duration-500 hover:-translate-y-3">
-            <div class="relative overflow-hidden h-56">
-                <img src="{{asset('images/home/banner1.png')}}" alt="Kết quả {{ $item->id }}"
-                    class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700">
-                <div class="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent opacity-60 group-hover:opacity-80 transition-opacity"></div>
-                <div class="absolute top-4 left-4">
-                    <span class="bg-gradient-to-r from-yellow-400 to-amber-500 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg flex items-center gap-1.5">
-                        <i class="fas fa-trophy"></i> Giải thưởng
-                    </span>
-                </div>
-            </div>
+        @for ($i = 1; $i <= 6; $i++)
+            <article class="group bg-white rounded-2xl shadow-md hover:shadow-2xl border border-gray-100 overflow-hidden transition-all duration-500 hover:-translate-y-3">
+                <div class="relative overflow-hidden h-56">
+                    <img src="{{asset('images/home/banner1.png')}}"
+                        alt="Kết quả {{ $i }}"
+                        class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700">
+                    <div class="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent opacity-60 group-hover:opacity-80 transition-opacity"></div>
 
-            <div class="p-6">
-                <h3 class="font-bold text-xl text-gray-800 group-hover:text-blue-600 transition mb-3 line-clamp-2">
-                    {{ $item->title }}
-                </h3>
-
-                <p class="text-gray-600 text-sm mb-4 line-clamp-3">
-                    Cuộc thi học thuật về thiết kế cơ sở dữ liệu – nơi sinh viên thể hiện tư duy và sáng tạo trong lĩnh vực công nghệ thông tin.
-                </p>
-
-                <div class="flex items-center justify-between text-sm text-gray-600 mb-4">
-                    <div class="flex items-center gap-2">
-                        <i class="fa-regular fa-calendar text-blue-500"></i>
-                        <span>{{ $item->date }}</span>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <i class="fa-solid fa-crown text-yellow-500"></i>
-                        <span>{{ $item->winner }}</span>
+                    <div class="absolute top-4 left-4">
+                        <span class="bg-gradient-to-r from-yellow-400 to-amber-500 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg flex items-center gap-1.5">
+                            <i class="fas fa-trophy"></i> Giải thưởng
+                        </span>
                     </div>
                 </div>
 
-                <div class="border-t border-gray-100 pt-4 flex items-center justify-between">
-                    <div class="flex items-center gap-2">
-                        <div class="w-8 h-8 bg-gradient-to-br from-yellow-400 to-amber-500 rounded-full flex items-center justify-center text-white text-xs font-bold">IT</div>
-                        <span class="text-xs text-gray-600 font-medium">Khoa CNTT</span>
+                <div class="p-6">
+                    <h3 class="font-bold text-xl text-gray-800 group-hover:text-blue-600 transition mb-3 line-clamp-2">
+                        Database Design Challenge {{ 2025 - $i }}
+                    </h3>
+
+                    <p class="text-gray-600 text-sm mb-4 line-clamp-3">
+                        Cuộc thi học thuật về thiết kế cơ sở dữ liệu – nơi sinh viên thể hiện tư duy và sáng tạo trong lĩnh vực công nghệ thông tin.
+                    </p>
+
+                    <div class="flex items-center justify-between text-sm text-gray-600 mb-4">
+                        <div class="flex items-center gap-2">
+                            <i class="fa-regular fa-calendar text-blue-500"></i>
+                            <span>{{ rand(1,28) }}/12/{{ 2025 - $i }}</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <i class="fa-solid fa-crown text-yellow-500"></i>
+                            <span>Nguyễn Văn A</span>
+                        </div>
                     </div>
 
-                    <a href="{{ route('client.results.show', $item->id) }}"
-                        class="bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-700 hover:to-cyan-600 text-white px-5 py-2.5 rounded-xl text-sm font-semibold shadow-md hover:shadow-xl transition-all inline-flex items-center gap-2">
-                        <span>Xem chi tiết</span>
-                        <i class="fas fa-arrow-right"></i>
-                    </a>
+                    <div class="border-t border-gray-100 pt-4 flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <div class="w-8 h-8 bg-gradient-to-br from-yellow-400 to-amber-500 rounded-full flex items-center justify-center text-white text-xs font-bold">IT</div>
+                            <span class="text-xs text-gray-600 font-medium">Khoa CNTT</span>
+                        </div>
+
+                        <a href="{{ route('client.results.show', 4) }}"
+                            class="bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-700 hover:to-cyan-600 text-white px-5 py-2.5 rounded-xl text-sm font-semibold shadow-md hover:shadow-xl transition-all inline-flex items-center gap-2">
+                            <span>Xem chi tiết</span>
+                            <i class="fas fa-arrow-right"></i>
+                        </a>
+                    </div>
                 </div>
-            </div>
-        </article>
-        @endforeach
+            </article>
+        @endfor
     </div>
 
     {{-- 📄 PAGINATION --}}
-    @if($results->hasPages())
-    <div class="mt-16 mx-5">
-        {!! $results->appends(request()->query())->links('pagination.custom') !!}
+    <div class="mt-16 mx-5 text-center">
+        <nav class="inline-flex items-center gap-2">
+            <a href="#" class="px-4 py-2 rounded-lg bg-blue-600 text-white font-semibold">1</a>
+            <a href="#" class="px-4 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-600">2</a>
+            <a href="#" class="px-4 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-600">3</a>
+            <span class="px-4 py-2 text-gray-400">...</span>
+            <a href="#" class="px-4 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-600">Tiếp</a>
+        </nav>
     </div>
-    @else
-    {{-- EMPTY STATE --}}
-    <div class="bg-gradient-to-br from-gray-50 to-blue-50 rounded-2xl shadow-sm border border-gray-200 p-16 text-center">
-        <div class="max-w-md mx-auto">
-            <div class="mb-6 relative">
-                <div class="absolute inset-0 bg-blue-100 rounded-full blur-2xl opacity-50"></div>
-                <i class="fas fa-trophy text-8xl text-gray-300 relative"></i>
-            </div>
-            <h4 class="text-2xl font-bold text-gray-700 mb-3">Không có kết quả nào</h4>
-            <p class="text-gray-500 mb-8 leading-relaxed">
-                Hiện tại chưa có cuộc thi nào được công bố kết quả.<br>
-                Hãy quay lại sau hoặc theo dõi fanpage của khoa.
-            </p>
-            <a href="{{ route('client.results.index') }}"
-                class="inline-flex items-center bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-700 hover:to-cyan-600 text-white px-6 py-3 rounded-xl font-semibold shadow-md hover:shadow-lg transition">
-                <i class="fas fa-rotate-right mr-2"></i>Làm mới trang
-            </a>
-        </div>
-    </div>
-    @endif
-
 </section>
 
 

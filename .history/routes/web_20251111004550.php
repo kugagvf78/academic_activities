@@ -139,7 +139,7 @@ Route::prefix('/ket-qua')->name('client.results.')->group(function () {
 
 
 // 📰 Tin tức
-Route::view('/tin-tuc', 'client.news.index')->name('client.news.index');
+Route::view('/tin-tuc', 'client.news')->name('client.news');
 
 // 📞 Liên hệ
 Route::view('/lien-he', 'client.contact')->name('client.contact');
@@ -174,5 +174,3 @@ Route::middleware('auth')->group(function () {
 
     Route::view('/hoi-thao-cua-toi', 'user.my-events')->name('user.myEvents');
 });
-
-Route::view('/ho-so', 'client.profile')->name('client.profile');

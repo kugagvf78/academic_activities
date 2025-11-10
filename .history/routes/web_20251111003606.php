@@ -59,32 +59,6 @@ Route::prefix('/hoi-thao')->name('client.events.')->group(function () {
 
         return view('client.events.show', compact('event'));
     })->name('show');
-
-    Route::get('/dang-ky-hoi-thao/{id}', function ($id) {
-        return view('client.events.register', [
-            'id' => $id,
-            'event' => 'Database Design Challenge 2025'
-        ]);
-    })->name('register');
-
-    Route::get('/{slug}/dang-ky', function ($slug) {
-        return view('client.events.register', compact('slug'));
-    })->name('register');
-
-    // 👉 Đăng ký cổ vũ (sinh viên tham dự)
-    Route::get('/{slug}/co-vu', function ($slug) {
-        return view('client.events.cheer', compact('slug'));
-    })->name('cheer');
-
-    Route::get('/{slug}/ho-tro', function ($slug) {
-        return view('client.events.support', compact('slug'));
-    })->name('support');
-
-    // 👉 Phân bổ cổ vũ (chức năng cho lớp trưởng / admin)
-    Route::get('/phan-bo-co-vu', function () {
-        return view('client.events.assign');
-    })->name('assign');
-
 });
 
 Route::prefix('/ket-qua')->name('client.results.')->group(function () {
@@ -135,11 +109,18 @@ Route::prefix('/ket-qua')->name('client.results.')->group(function () {
         ];
         return view('client.results.show', compact('result'));
     })->name('show');
+
+    Route::get('/dang-ky-hoi-thao/{id}', function ($id) {
+    return view('client.events.register', [
+        'id' => $id,
+        'event' => 'Database Design Challenge 2025'
+    ]);
+})->name('register');
 });
 
 
 // 📰 Tin tức
-Route::view('/tin-tuc', 'client.news.index')->name('client.news.index');
+Route::view('/tin-tuc', 'client.news')->name('client.news');
 
 // 📞 Liên hệ
 Route::view('/lien-he', 'client.contact')->name('client.contact');
@@ -174,5 +155,3 @@ Route::middleware('auth')->group(function () {
 
     Route::view('/hoi-thao-cua-toi', 'user.my-events')->name('user.myEvents');
 });
-
-Route::view('/ho-so', 'client.profile')->name('client.profile');

@@ -75,7 +75,7 @@
                 {{-- Heading --}}
                 <h1 class=" font-black text-gray-900 leading-tight">
                     <span class="block text-5xl md:text-6xl xl:text-7xl mb-2 text-blue-700">Cuộc thi Học thuật</span>
-                    <span class="block text-3xl md:text-5xl xl:text-5xl text-gray-800">Dành cho sinh viên CNTT</span>
+                    <span class="block text-3xl text-gray-800">Dành cho sinh viên CNTT</span>
                 </h1>
 
                 <p class="text-lg text-gray-600 leading-relaxed">

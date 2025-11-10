@@ -21,7 +21,7 @@
         stop() { clearInterval(this.interval); }
     }"
     x-init="start()"
-    class="relative w-full h-[87vh] overflow-hidden"
+    class="relative w-full h-[85vh] overflow-hidden"
     @mouseenter="stop()"
     @mouseleave="start()">
     <template x-for="(slide, index) in slides" :key="index">
@@ -73,9 +73,9 @@
                 </div>
 
                 {{-- Heading --}}
-                <h1 class=" font-black text-gray-900 leading-tight">
-                    <span class="block text-5xl md:text-6xl xl:text-7xl mb-2 text-blue-700">Cuộc thi Học thuật</span>
-                    <span class="block text-3xl md:text-5xl xl:text-5xl text-gray-800">Dành cho sinh viên CNTT</span>
+                <h1 class="text-5xl md:text-6xl xl:text-7xl font-black text-gray-900 leading-tight">
+                    <span class="block mb-2 text-blue-700">Cuộc thi Học thuật</span>
+                    <span class="block text-gray-800">Dành cho sinh viên CNTT</span>
                 </h1>
 
                 <p class="text-lg text-gray-600 leading-relaxed">

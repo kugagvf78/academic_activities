@@ -50,28 +50,11 @@
 
             {{-- Action buttons --}}
             <div class="flex flex-wrap gap-4">
-                <div class="flex flex-wrap gap-4">
-                    {{-- Đăng ký dự thi --}}
-                    <a href="{{ route('client.events.register', $event->slug) }}"
-                        class="bg-white text-blue-900 px-8 py-3.5 rounded-lg font-semibold shadow-lg hover:shadow-xl hover:bg-blue-50 transition inline-flex items-center gap-2">
-                        <i class="fas fa-user-plus"></i>
-                        <span>Đăng ký dự thi</span>
-                    </a>
-
-                    {{-- Đăng ký cổ vũ --}}
-                    <a href="{{ route('client.events.cheer', $event->slug) }}"
-                        class="bg-white text-blue-900 px-8 py-3.5 rounded-lg font-semibold shadow-lg hover:shadow-xl hover:bg-blue-50 transition inline-flex items-center gap-2">
-                        <i class="fas fa-hands-clapping"></i>
-                        <span>Đăng ký cổ vũ</span>
-                    </a>
-
-                    {{-- Đăng ký hỗ trợ --}}
-                    <a href="{{ route('client.events.support', $event->slug) }}"
-                        class="bg-white text-blue-900 px-8 py-3.5 rounded-lg font-semibold shadow-lg hover:shadow-xl hover:bg-blue-50 transition inline-flex items-center gap-2">
-                        <i class="fas fa-people-carry-box"></i>
-                        <span>Đăng ký hỗ trợ</span>
-                    </a>
-                </div>
+                <a href="{{ route('client.events.register', $event->slug ?? $event->id) }}"
+                    class="bg-white text-blue-900 px-8 py-3.5 rounded-lg font-semibold shadow-lg hover:shadow-xl hover:bg-blue-50 transition inline-flex items-center gap-2">
+                    <i class="fas fa-user-plus"></i>
+                    <span>Đăng ký tham gia</span>
+                </a>
                 <a href="#" class="bg-white/10 backdrop-blur-sm border border-white/20 text-white px-8 py-3.5 rounded-lg font-semibold hover:bg-white/20 transition inline-flex items-center gap-2">
                     <i class="fas fa-download"></i>
                     <span>Tải thông báo</span>

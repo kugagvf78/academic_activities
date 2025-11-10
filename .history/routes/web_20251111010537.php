@@ -139,7 +139,7 @@ Route::prefix('/ket-qua')->name('client.results.')->group(function () {
 
 
 // 📰 Tin tức
-Route::view('/tin-tuc', 'client.news.index')->name('client.news.index');
+Route::view('/tin-tuc', 'client.news')->name('client.news');
 
 // 📞 Liên hệ
 Route::view('/lien-he', 'client.contact')->name('client.contact');

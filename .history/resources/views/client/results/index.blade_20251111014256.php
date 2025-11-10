@@ -122,7 +122,7 @@ $page,
         @foreach ($results as $item)
         <article class="group bg-white rounded-2xl shadow-md hover:shadow-2xl border border-gray-100 overflow-hidden transition-all duration-500 hover:-translate-y-3">
             <div class="relative overflow-hidden h-56">
-                <img src="{{asset('images/home/banner1.png')}}" alt="Kết quả {{ $item->id }}"
+                <img src="{{ $item->image }}" alt="Kết quả {{ $item->id }}"
                     class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700">
                 <div class="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent opacity-60 group-hover:opacity-80 transition-opacity"></div>
                 <div class="absolute top-4 left-4">

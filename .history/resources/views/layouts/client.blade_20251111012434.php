@@ -106,7 +106,7 @@
                     Kết quả
                 </a>
                 <a href="{{ route('client.news.index') }}"
-                    class="nav-link hover:text-blue-600 {{ request()->routeIs('client.news.index') ? 'active text-blue-600 font-semibold' : '' }}">
+                    class="nav-link hover:text-blue-600 {{ request()->is('news*') ? 'active text-blue-600 font-semibold' : '' }}">
                     Tin tức
                 </a>
                 <a href="{{ route('client.home') }}#contact" class="nav-link hover:text-blue-600">Liên hệ</a>

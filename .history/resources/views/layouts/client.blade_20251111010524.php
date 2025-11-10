@@ -105,8 +105,8 @@
                     class="nav-link hover:text-blue-600 {{ request()->routeIs('client.results.index') ? 'active text-blue-600 font-semibold' : '' }}">
                     Kết quả
                 </a>
-                <a href="{{ route('client.news.index') }}"
-                    class="nav-link hover:text-blue-600 {{ request()->routeIs('client.news.index') ? 'active text-blue-600 font-semibold' : '' }}">
+                <a href="#"
+                    class="nav-link hover:text-blue-600 {{ request()->is('news*') ? 'active text-blue-600 font-semibold' : '' }}">
                     Tin tức
                 </a>
                 <a href="{{ route('client.home') }}#contact" class="nav-link hover:text-blue-600">Liên hệ</a>
@@ -190,7 +190,7 @@
                         class="hover:text-blue-600 {{ request()->is('results*') ? 'font-bold text-blue-600' : '' }}">
                         Kết quả
                     </a>
-                    <a href="{{ route('client.news.index') }}"
+                    <a href="#"
                         class="hover:text-blue-600 {{ request()->is('news*') ? 'font-bold text-blue-600' : '' }}">
                         Tin tức
                     </a>

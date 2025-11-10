@@ -122,7 +122,7 @@ $page,
         @foreach ($results as $item)
         <article class="group bg-white rounded-2xl shadow-md hover:shadow-2xl border border-gray-100 overflow-hidden transition-all duration-500 hover:-translate-y-3">
             <div class="relative overflow-hidden h-56">
-                <img src="{{asset('images/home/banner1.png')}}" alt="Kết quả {{ $item->id }}"
+                <img src="{{ $item->image }}" alt="Kết quả {{ $item->id }}"
                     class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700">
                 <div class="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent opacity-60 group-hover:opacity-80 transition-opacity"></div>
                 <div class="absolute top-4 left-4">
@@ -170,31 +170,15 @@ $page,
     </div>
 
     {{-- 📄 PAGINATION --}}
-    @if($results->hasPages())
-    <div class="mt-16 mx-5">
-        {!! $results->appends(request()->query())->links('pagination.custom') !!}
+    <div class="mt-16 mx-5 text-center">
+        <nav class="inline-flex items-center gap-2">
+            <a href="#" class="px-4 py-2 rounded-lg bg-blue-600 text-white font-semibold">1</a>
+            <a href="#" class="px-4 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-600">2</a>
+            <a href="#" class="px-4 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-600">3</a>
+            <span class="px-4 py-2 text-gray-400">...</span>
+            <a href="#" class="px-4 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-600">Tiếp</a>
+        </nav>
     </div>
-    @else
-    {{-- EMPTY STATE --}}
-    <div class="bg-gradient-to-br from-gray-50 to-blue-50 rounded-2xl shadow-sm border border-gray-200 p-16 text-center">
-        <div class="max-w-md mx-auto">
-            <div class="mb-6 relative">
-                <div class="absolute inset-0 bg-blue-100 rounded-full blur-2xl opacity-50"></div>
-                <i class="fas fa-trophy text-8xl text-gray-300 relative"></i>
-            </div>
-            <h4 class="text-2xl font-bold text-gray-700 mb-3">Không có kết quả nào</h4>
-            <p class="text-gray-500 mb-8 leading-relaxed">
-                Hiện tại chưa có cuộc thi nào được công bố kết quả.<br>
-                Hãy quay lại sau hoặc theo dõi fanpage của khoa.
-            </p>
-            <a href="{{ route('client.results.index') }}"
-                class="inline-flex items-center bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-700 hover:to-cyan-600 text-white px-6 py-3 rounded-xl font-semibold shadow-md hover:shadow-lg transition">
-                <i class="fas fa-rotate-right mr-2"></i>Làm mới trang
-            </a>
-        </div>
-    </div>
-    @endif
-
 </section>
 
 

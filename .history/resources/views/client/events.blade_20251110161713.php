@@ -64,55 +64,67 @@
 {{-- 🔍 FILTER BAR --}}
 <section class="container mx-auto px-6 -mt-8 relative z-20">
     <div class="bg-white rounded-2xl shadow-xl border border-blue-100 p-6">
-        <form method="GET" action="{{ route('client.events') }}" class="grid grid-cols-5 gap-6 items-end">
+        <form class="grid lg:grid-cols-4 md:grid-cols-3 grid-cols-1 gap-4 items-end">
 
-            {{-- Search --}}
+            {{-- 🔍 Ô tìm kiếm --}}
             <div class="col-span-2 relative">
                 <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
-                <input type="text" name="search" value="{{ request('search') }}"
-                    placeholder="Tìm kiếm cuộc thi..."
-                    class="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition">
+                <input type="text" placeholder="Tìm kiếm cuộc thi..."
+                    class="w-full pl-12 pr-4 pb-3 pt-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition">
             </div>
 
-            {{-- Status --}}
-            <div class="relative">
-                <select name="status"
-                    class="appearance-none w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition bg-white pr-10">
-                    <option value="">Tất cả trạng thái</option>
-                    <option value="upcoming" {{ request('status') == 'upcoming' ? 'selected' : '' }}>Sắp diễn ra</option>
-                    <option value="ongoing" {{ request('status') == 'ongoing' ? 'selected' : '' }}>Đang diễn ra</option>
-                    <option value="ended" {{ request('status') == 'ended' ? 'selected' : '' }}>Đã kết thúc</option>
-                </select>
-                <i class="fa-solid fa-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"></i>
-            </div>
+            {{-- Trạng thái --}}
+            <x-form.select
+                name="status"
+                :options="[
+            'upcoming' => 'Sắp diễn ra',
+            'ongoing' => 'Đang diễn ra',
+            'ended' => 'Đã kết thúc',
+        ]"
+                selected="{{ request('status') }}"
+                placeholder="Tất cả trạng thái" />
 
-            {{-- Category --}}
-            <div class="relative">
-                <select name="category"
-                    class="appearance-none w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition bg-white pr-10">
-                    <option value="">Tất cả lĩnh vực</option>
-                    <option value="programming" {{ request('category') == 'programming' ? 'selected' : '' }}>Lập trình</option>
-                    <option value="ai" {{ request('category') == 'ai' ? 'selected' : '' }}>AI & ML</option>
-                    <option value="security" {{ request('category') == 'security' ? 'selected' : '' }}>An toàn thông tin</option>
-                    <option value="web" {{ request('category') == 'web' ? 'selected' : '' }}>Web Development</option>
-                </select>
-                <i class="fa-solid fa-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"></i>
-            </div>
+            {{-- Lĩnh vực --}}
+            <x-form.select
+                name="category"
+                :options="[
+            'programming' => 'Lập trình',
+            'ai' => 'AI & ML',
+            'security' => 'An toàn thông tin',
+            'web' => 'Web Development',
+        ]"
+                selected="{{ request('category') }}"
+                placeholder="Tất cả lĩnh vực" />
 
-            {{-- Buttons --}}
-            <div class="flex gap-3">
-                <button type="submit" class="flex-1 bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-700 hover:to-cyan-600 text-white px-6 py-3 rounded-xl font-semibold shadow-md hover:shadow-lg transition">
-                    <i class="fas fa-filter mr-2"></i>Lọc
-                </button>
-                @if(request()->hasAny(['search', 'status', 'category']))
-                <a href="{{ route('client.events') }}" class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-3 rounded-xl font-semibold transition">
-                    <i class="fas fa-times mr-2"></i>Xóa
-                </a>
-                @endif
+
+            {{-- Ngày --}}
+            <x-form.input type="date" name="from_date" label="Từ ngày" />
+            <x-form.input type="date" name="to_date" label="Đến ngày" />
+
+            {{-- 🧩 Nút lọc & xóa --}}
+            <div>
+                
             </div>
+            {{-- Nút lọc --}}
+            <x-ui.button
+                type="submit"
+                label="Lọc"
+                icon="fa-filter"
+                color="blue" />
+
+            {{-- Nút xóa bộ lọc --}}
+            @if(request()->hasAny(['search', 'status', 'category']))
+            <x-ui.button
+                href="{{ route('client.events') }}"
+                label="Xóa"
+                icon="fa-times"
+                color="gray"
+                outline="true" />
+            @endif
         </form>
     </div>
 </section>
+
 
 {{-- 🎯 EVENTS GRID --}}
 <section class="container mx-auto px-6 py-16">
@@ -120,7 +132,7 @@
         @for ($i = 1; $i <= 6; $i++)
             <article class="group bg-white rounded-2xl shadow-md hover:shadow-2xl border border-gray-100 overflow-hidden transition-all duration-500 hover:-translate-y-3">
             <div class="relative overflow-hidden h-56">
-                <img src="https://source.unsplash.com/800x600/?coding,technology,competition,{{ $i }}"
+                <img src="{{asset('images/home/banner1.png')}}?coding,technology,competition,{{ $i }}"
                     alt="Cuộc thi {{ $i }}"
                     class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700">
                 <div class="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent opacity-60 group-hover:opacity-80 transition-opacity"></div>

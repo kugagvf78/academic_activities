@@ -12,18 +12,11 @@
 
     @vite(['resources/css/app.css'])
     @vite(['resources/js/app.js'])
-    {{-- Base Animations --}}
+    
     <style>
         @keyframes float {
-
-            0%,
-            100% {
-                transform: translateY(0);
-            }
-
-            50% {
-                transform: translateY(-20px);
-            }
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-20px); }
         }
 
         .animate-float {
@@ -35,7 +28,6 @@
             display: inline-block;
             padding-bottom: 6px;
             font-size: 18px;
-            /* tạo khoảng cách giữa chữ và gạch */
         }
 
         .nav-link::before {
@@ -43,7 +35,6 @@
             position: absolute;
             left: 50%;
             bottom: 0;
-            /* đường kẻ nằm thấp hơn chữ */
             width: 0;
             height: 3px;
             background: linear-gradient(90deg, #3b82f6, #0ea5e9);
@@ -55,9 +46,21 @@
         .nav-link:hover::before,
         .nav-link.active::before {
             width: 90%;
-            /* tăng độ dài gạch dưới */
         }
-        [x-cloak] { display: none !important; }
+        
+        [x-cloak] { 
+            display: none !important; 
+        }
+
+        /* Avatar animation */
+        .user-avatar {
+            transition: all 0.3s ease;
+        }
+
+        .user-avatar:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+        }
     </style>
 
     @stack('styles')
@@ -72,8 +75,10 @@
         <p class="text-blue-700 font-semibold text-sm">Đang xử lý...</p>
     </div>
 
+    {{-- ✅ HEADER CẢI TIẾN --}}
     <header class="bg-white backdrop-blur-md shadow sticky top-0 z-50 border-b border-gray-100">
-        <div x-data="{ openMenu: false }" class="container mx-auto flex justify-between items-center py-4 px-6">
+        <div class="container mx-auto flex justify-between items-center py-4 px-6">
+            
             {{-- 🧩 Logo & Title --}}
             <a href="{{ route('client.home') }}" class="flex items-center space-x-4 group">
                 <img src="{{ asset('images/logo/logo.png') }}" alt="Logo HUIT"
@@ -85,8 +90,10 @@
                 </div>
             </a>
 
-            {{-- 🔘 Nút hamburger (mobile) --}}
-            <button @click.stop="openMenu = true"
+            {{-- 📱 Nút hamburger (mobile) --}}
+            <button 
+                x-data 
+                @click="$dispatch('toggle-mobile-menu')"
                 class="lg:hidden text-gray-700 hover:text-blue-600 focus:outline-none transition">
                 <i class="fa-solid fa-bars text-2xl"></i>
             </button>
@@ -112,116 +119,257 @@
                 <a href="{{ route('client.home') }}#contact" class="nav-link hover:text-blue-600">Liên hệ</a>
             </nav>
 
-            {{-- 👤 User desktop --}}
+            @php
+                // ✅ SỬA: Dùng guard 'api' thay vì guard 'web'
+                try {
+                    if (request()->cookie('jwt_token')) {
+                        Auth::guard('api')->setToken(request()->cookie('jwt_token'));
+                        $user = Auth::guard('api')->check() ? Auth::guard('api')->user() : null;
+                    } else {
+                        $user = null;
+                    }
+                } catch (\Exception $e) {
+                    $user = null;
+                }
+            @endphp
+
+            {{-- Desktop User Section --}}
             <div class="hidden lg:flex items-center space-x-4">
-                @auth
-                {{-- Tách phạm vi riêng, không liên quan đến openMenu --}}
-                <div x-data="{ open: false }" class="relative">
-                    <button @click="open = !open" class="flex items-center space-x-2">
-                        <div
-                            class="w-9 h-9 bg-gradient-to-tr from-blue-600 to-cyan-500 text-white rounded-full flex items-center justify-center font-bold uppercase">
-                            {{ strtoupper(Str::substr(Auth::user()->TenDangNhap, 0, 1)) }}
-                        </div>
-                        <span class="font-semibold text-gray-700">{{ Auth::user()->TenDangNhap }}</span>
-                        <i class="fa-solid fa-chevron-down text-gray-400 text-xs"></i>
-                    </button>
+                @if($user)
+                    <div x-data="{ userDropdown: false }" class="relative">
+                        <button 
+                            @click="userDropdown = !userDropdown" 
+                            class="flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-gray-50 transition group">
+                            
+                            {{-- Avatar --}}
+                            <div class="user-avatar w-10 h-10 bg-gradient-to-tr from-blue-600 to-cyan-500 text-white rounded-full flex items-center justify-center font-bold uppercase shadow-md">
+                                {{ strtoupper(substr($user->ho_ten ?? $user->ten_dang_nhap, 0, 1)) }}
+                            </div>
+                            
+                            {{-- Tên + Icon --}}
+                            <div class="flex items-center gap-2">
+                                <div class="text-left">
+                                    <p class="font-semibold text-gray-800 text-sm leading-tight">
+                                        {{ Str::limit($user->ho_ten ?? $user->ten_dang_nhap, 20) }}
+                                    </p>
+                                    <p class="text-xs text-gray-500">{{ '@' . $user->ten_dang_nhap }}</p>
+                                </div>
+                                <i class="fa-solid fa-chevron-down text-gray-400 text-xs transition-transform duration-200" 
+                                :class="userDropdown ? 'rotate-180' : ''"></i>
+                            </div>
+                        </button>
 
-                    {{-- dropdown user --}}
-                    <div x-show="open" x-cloak
-                        x-transition.origin.top.right
-                        @click.away="open = false"
-                        class="absolute right-0 mt-3 w-52 bg-white border border-gray-200 rounded-xl overflow-hidden shadow-lg">
-                        <a href="{{ route('client.profile') }}"
-                            class="flex items-center gap-2 px-4 py-3 text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition">
-                            <i class="fa-solid fa-user text-sm"></i>
-                            <span>Hồ sơ cá nhân</span>
-                        </a>
-                        <form action="{{ route('logout') }}" method="POST">
-                            @csrf
-                            <button type="submit"
-                                class="flex items-center gap-2 w-full text-left px-4 py-3 text-red-600 hover:bg-red-50 font-semibold transition">
-                                <i class="fa-solid fa-right-from-bracket text-sm"></i>
-                                <span>Đăng xuất</span>
-                            </button>
-                        </form>
+                        {{-- Dropdown Menu --}}
+                        <div 
+                            x-show="userDropdown" 
+                            x-cloak
+                            x-transition:enter="transition ease-out duration-200"
+                            x-transition:enter-start="opacity-0 scale-95 -translate-y-2"
+                            x-transition:enter-end="opacity-100 scale-100 translate-y-0"
+                            x-transition:leave="transition ease-in duration-150"
+                            x-transition:leave-start="opacity-100 scale-100"
+                            x-transition:leave-end="opacity-0 scale-95"
+                            @click.away="userDropdown = false"
+                            class="absolute right-0 mt-2 w-56 bg-white border border-gray-200 rounded-xl overflow-hidden shadow-xl">
+                            
+                            {{-- User Info Header --}}
+                            <div class="px-4 py-3 bg-gradient-to-r from-blue-50 to-cyan-50 border-b border-gray-200">
+                                <p class="font-bold text-gray-800 text-sm">{{ $user->ho_ten ?? $user->ten_dang_nhap }}</p>
+                                <p class="text-xs text-gray-600">{{ $user->email ?? 'Chưa có email' }}</p>
+                            </div>
+
+                            {{-- Menu Items --}}
+                            <div class="py-2">
+                                <a href="{{ route('client.profile') }}"
+                                    class="flex items-center gap-3 px-4 py-2.5 text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition">
+                                    <i class="fa-solid fa-user w-4"></i>
+                                    <span class="text-sm font-medium">Hồ sơ cá nhân</span>
+                                </a>
+                                
+                                <a href="{{ route('password.change') }}"
+                                    class="flex items-center gap-3 px-4 py-2.5 text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition">
+                                    <i class="fa-solid fa-key w-4"></i>
+                                    <span class="text-sm font-medium">Đổi mật khẩu</span>
+                                </a>
+                            </div>
+
+                            {{-- Logout --}}
+                            <div class="border-t border-gray-200">
+                                <form action="{{ route('logout') }}" method="POST">
+                                    @csrf
+                                    <button type="submit"
+                                        class="flex items-center gap-3 w-full text-left px-4 py-2.5 text-red-600 hover:bg-red-50 font-semibold transition">
+                                        <i class="fa-solid fa-right-from-bracket w-4"></i>
+                                        <span class="text-sm">Đăng xuất</span>
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
                     </div>
-                </div>
                 @else
-                <a href="{{ route('login') }}"
-                    class="px-5 py-2 rounded-lg bg-blue-600 text-white font-semibold text-sm hover:bg-blue-700 transition">
-                    <i class="fas fa-sign-in-alt mr-2"></i>Đăng nhập
-                </a>
-                @endauth
-            </div>
-        </div>
-
-        {{-- 📱 OFFCANVAS MENU (mobile) --}}
-        <div x-data="{ openMenu: false }" x-show="openMenu"
-            x-transition:enter="transition ease-out duration-300"
-            x-transition:enter-start="translate-x-full opacity-0"
-            x-transition:enter-end="translate-x-0 opacity-100"
-            x-transition:leave="transition ease-in duration-200"
-            x-transition:leave-start="translate-x-0 opacity-100"
-            x-transition:leave-end="translate-x-full opacity-0"
-            class="fixed inset-0 z-[999] flex justify-end lg:hidden"
-            @click.self="openMenu = false">
-
-            {{-- Overlay --}}
-            <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" @click="openMenu = false"></div>
-
-            {{-- Panel --}}
-            <div class="relative bg-white w-4/5 sm:w-2/5 h-full shadow-xl p-6 flex flex-col">
-                {{-- Close --}}
-                <button @click.stop="openMenu = false" class="absolute top-4 right-4 text-gray-700 hover:text-blue-600">
-                    <i class="fa-solid fa-xmark text-2xl"></i>
-                </button>
-
-                {{-- Nav links --}}
-                <nav class="mt-12 flex flex-col space-y-5 text-lg font-medium text-gray-700">
-                    <a href="{{ route('client.home') }}"
-                        class="hover:text-blue-600 {{ request()->routeIs('client.home') ? 'font-bold text-blue-600' : '' }}">
-                        Trang chủ
-                    </a>
-                    <a href="{{ route('client.events.index') }}"
-                        class="hover:text-blue-600 {{ request()->routeIs('client.events.index') ? 'font-bold text-blue-600' : '' }}">
-                        Cuộc thi
-                    </a>
-                    <a href="{{ route('client.results.index') }}"
-                        class="hover:text-blue-600 {{ request()->is('results*') ? 'font-bold text-blue-600' : '' }}">
-                        Kết quả
-                    </a>
-                    <a href="{{ route('client.news.index') }}"
-                        class="hover:text-blue-600 {{ request()->is('news*') ? 'font-bold text-blue-600' : '' }}">
-                        Tin tức
-                    </a>
-                    <a href="#contact" class="hover:text-blue-600">Liên hệ</a>
-                </nav>
-
-                {{-- User mobile --}}
-                <div class="mt-auto pt-6 border-t border-gray-200">
-                    @auth
-                    <div class="flex items-center gap-3 mb-4">
-                        <div
-                            class="w-10 h-10 bg-gradient-to-tr from-blue-600 to-cyan-500 text-white rounded-full flex items-center justify-center font-bold uppercase">
-                            {{ strtoupper(Str::substr(Auth::user()->TenDangNhap, 0, 1)) }}
-                        </div>
-                        <span class="font-semibold text-gray-700">{{ Auth::user()->TenDangNhap }}</span>
+                    {{-- Chưa đăng nhập --}}
+                    <div class="flex items-center gap-3">
+                        <a href="{{ route('login') }}"
+                            class="px-5 py-2.5 rounded-lg border-2 border-blue-600 text-blue-600 font-semibold text-sm hover:bg-blue-50 transition">
+                            Đăng nhập
+                        </a>
+                        <a href="{{ route('register') }}"
+                            class="px-5 py-2.5 rounded-lg bg-blue-600 text-white font-semibold text-sm hover:bg-blue-700 transition shadow-md hover:shadow-lg">
+                            Đăng ký
+                        </a>
                     </div>
-                    <a href="{{ route('client.profile') }}" class="block mb-3 text-gray-700 hover:text-blue-600">Hồ sơ cá nhân</a>
-                    <form action="{{ route('logout') }}" method="POST">
-                        @csrf
-                        <button type="submit"
-                            class="text-left text-red-600 font-semibold hover:underline">Đăng xuất</button>
-                    </form>
-                    @else
-                    <a href="{{ route('login') }}"
-                        class="block text-blue-600 font-semibold hover:underline mt-2">Đăng nhập</a>
-                    @endauth
-                </div>
+                @endif
             </div>
         </div>
     </header>
 
+    {{-- 📱 MOBILE MENU --}}
+    <div 
+        x-data="{ mobileMenuOpen: false }" 
+        @toggle-mobile-menu.window="mobileMenuOpen = !mobileMenuOpen"
+        x-show="mobileMenuOpen"
+        x-cloak
+        class="fixed inset-0 z-[999] lg:hidden"
+        @click.self="mobileMenuOpen = false">
+
+        {{-- Overlay --}}
+        <div 
+            x-show="mobileMenuOpen"
+            x-transition:enter="transition-opacity ease-out duration-300"
+            x-transition:enter-start="opacity-0"
+            x-transition:enter-end="opacity-100"
+            x-transition:leave="transition-opacity ease-in duration-200"
+            x-transition:leave-start="opacity-100"
+            x-transition:leave-end="opacity-0"
+            class="absolute inset-0 bg-black/50 backdrop-blur-sm" 
+            @click="mobileMenuOpen = false">
+        </div>
+
+        {{-- Slide Panel --}}
+        <div 
+            x-show="mobileMenuOpen"
+            x-transition:enter="transition ease-out duration-300"
+            x-transition:enter-start="translate-x-full"
+            x-transition:enter-end="translate-x-0"
+            x-transition:leave="transition ease-in duration-200"
+            x-transition:leave-start="translate-x-0"
+            x-transition:leave-end="translate-x-full"
+            class="absolute right-0 top-0 h-full w-4/5 max-w-sm bg-white shadow-2xl flex flex-col">
+            
+            {{-- Close Button --}}
+            <div class="flex justify-between items-center p-6 border-b border-gray-200">
+                <h3 class="font-bold text-lg text-gray-800">Menu</h3>
+                <button 
+                    @click="mobileMenuOpen = false" 
+                    class="w-10 h-10 flex items-center justify-center rounded-lg text-gray-700 hover:bg-gray-100 transition">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
+            </div>
+
+            {{-- User Info Mobile --}}
+            @if($user)
+                <div class="p-6 bg-gradient-to-r from-blue-50 to-cyan-50 border-b border-gray-200">
+                    <div class="flex items-center gap-3">
+                        <div class="w-12 h-12 bg-gradient-to-tr from-blue-600 to-cyan-500 text-white rounded-full flex items-center justify-center font-bold uppercase shadow-md">
+                            {{ strtoupper(substr($user->ho_ten ?? $user->ten_dang_nhap, 0, 1)) }}
+                        </div>
+                        <div>
+                            <p class="font-bold text-gray-800 text-sm">{{ $user->ho_ten ?? $user->ten_dang_nhap }}</p>
+                            <p class="text-xs text-gray-600">{{ '@' . $user->ten_dang_nhap }}</p>
+                        </div>
+                    </div>
+                </div>
+            @endif
+
+            {{-- Navigation Links --}}
+            <nav class="flex-1 overflow-y-auto p-6">
+                <div class="space-y-2">
+                    <a href="{{ route('client.home') }}"
+                        @click="mobileMenuOpen = false"
+                        class="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-blue-50 transition {{ request()->routeIs('client.home') ? 'bg-blue-50 text-blue-600 font-semibold' : 'text-gray-700' }}">
+                        <i class="fa-solid fa-house w-5"></i>
+                        <span>Trang chủ</span>
+                    </a>
+                    
+                    <a href="{{ route('client.events.index') }}"
+                        @click="mobileMenuOpen = false"
+                        class="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-blue-50 transition {{ request()->routeIs('client.events.index') ? 'bg-blue-50 text-blue-600 font-semibold' : 'text-gray-700' }}">
+                        <i class="fa-solid fa-calendar-days w-5"></i>
+                        <span>Cuộc thi</span>
+                    </a>
+                    
+                    <a href="{{ route('client.results.index') }}"
+                        @click="mobileMenuOpen = false"
+                        class="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-blue-50 transition {{ request()->routeIs('client.results.index') ? 'bg-blue-50 text-blue-600 font-semibold' : 'text-gray-700' }}">
+                        <i class="fa-solid fa-trophy w-5"></i>
+                        <span>Kết quả</span>
+                    </a>
+                    
+                    <a href="{{ route('client.news.index') }}"
+                        @click="mobileMenuOpen = false"
+                        class="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-blue-50 transition {{ request()->routeIs('client.news.index') ? 'bg-blue-50 text-blue-600 font-semibold' : 'text-gray-700' }}">
+                        <i class="fa-solid fa-newspaper w-5"></i>
+                        <span>Tin tức</span>
+                    </a>
+                    
+                    <a href="{{ route('client.home') }}#contact"
+                        @click="mobileMenuOpen = false"
+                        class="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-blue-50 transition text-gray-700">
+                        <i class="fa-solid fa-envelope w-5"></i>
+                        <span>Liên hệ</span>
+                    </a>
+                </div>
+
+                @if($user)
+                    <div class="mt-6 pt-6 border-t border-gray-200 space-y-2">
+                        <a href="{{ route('client.profile') }}"
+                            @click="mobileMenuOpen = false"
+                            class="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-blue-50 transition text-gray-700">
+                            <i class="fa-solid fa-user w-5"></i>
+                            <span>Hồ sơ cá nhân</span>
+                        </a>
+                        
+                        <a href="{{ route('password.change') }}"
+                            @click="mobileMenuOpen = false"
+                            class="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-blue-50 transition text-gray-700">
+                            <i class="fa-solid fa-key w-5"></i>
+                            <span>Đổi mật khẩu</span>
+                        </a>
+                    </div>
+                @endif
+            </nav>
+
+            {{-- Bottom Action --}}
+            <div class="p-6 border-t border-gray-200">
+                @if($user)
+                    <form action="{{ route('logout') }}" method="POST">
+                        @csrf
+                        <button type="submit"
+                            class="flex items-center justify-center gap-2 w-full px-4 py-3 rounded-lg bg-red-50 text-red-600 font-semibold hover:bg-red-100 transition">
+                            <i class="fa-solid fa-right-from-bracket"></i>
+                            <span>Đăng xuất</span>
+                        </button>
+                    </form>
+                @else
+                    <div class="space-y-3">
+                        <a href="{{ route('login') }}"
+                            @click="mobileMenuOpen = false"
+                            class="flex items-center justify-center gap-2 w-full px-4 py-3 rounded-lg border-2 border-blue-600 text-blue-600 font-semibold hover:bg-blue-50 transition">
+                            <i class="fas fa-sign-in-alt"></i>
+                            <span>Đăng nhập</span>
+                        </a>
+                        
+                        <a href="{{ route('register') }}"
+                            @click="mobileMenuOpen = false"
+                            class="flex items-center justify-center gap-2 w-full px-4 py-3 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition">
+                            <i class="fas fa-user-plus"></i>
+                            <span>Đăng ký</span>
+                        </a>
+                    </div>
+                @endif
+            </div>
+        </div>
+    </div>
 
     {{-- MAIN CONTENT --}}
     <main class="flex-1">
@@ -313,7 +461,6 @@
             </div>
         </div>
     </footer>
-
 
     {{-- Truyền session toast cho JS --}}
     @if(session('toast'))

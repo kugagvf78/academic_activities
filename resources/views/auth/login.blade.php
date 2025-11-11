@@ -82,7 +82,7 @@
                         class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 focus:ring-2 accent-blue-600">
                     <span>Ghi nhớ đăng nhập</span>
                 </label>
-                <a href="#" class="text-blue-600 hover:underline font-medium">Quên mật khẩu?</a>
+                <a href="{{ route('password.request') }}" class="text-blue-600 hover:underline font-medium">Quên mật khẩu?</a>
             </div>
 
             {{-- Submit --}}
@@ -94,7 +94,7 @@
             {{-- Register link --}}
             <p class="text-center text-sm text-gray-600 mt-6">
                 Chưa có tài khoản?
-                <a href="#" class="text-blue-600 font-semibold hover:underline">Đăng ký ngay</a>
+                <a href="{{ route('register') }}" class="text-blue-600 font-semibold hover:underline">Đăng ký ngay</a>
             </p>
         </form>
     </div>

@@ -3,23 +3,38 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use Illuminate\Pagination\LengthAwarePaginator;
-use Illuminate\Support\Collection;
 
 /*
 |--------------------------------------------------------------------------
-| Public Routes (ai cũng xem được)
+| Auth Routes
+|--------------------------------------------------------------------------
+*/
+// Thêm vào phần Auth Routes trong web.php
+Route::controller(AuthController::class)->group(function () {
+    Route::get('/login', 'showLogin')->name('login');
+    Route::post('/login', 'webLogin')->name('login.post');
+    
+    // Routes đăng ký
+    Route::get('/register', 'showRegister')->name('register');
+    Route::post('/register', 'webRegister')->name('register.post');
+
+    // Middleware jwt.web
+    Route::middleware('jwt.web')->group(function () {
+        Route::get('/change-password', 'showChangePassword')->name('password.change');
+        Route::post('/change-password', 'changePassword')->name('password.update');
+        Route::post('/logout', 'logout')->name('logout');
+    });
+});
+/*
+|--------------------------------------------------------------------------
+| Public Routes
 |--------------------------------------------------------------------------
 */
 
-// 🏠 Trang chủ
 Route::view('/', 'client.home')->name('client.home');
 
-// 🎓 Danh sách & Chi tiết hội thảo / cuộc thi
 Route::prefix('/hoi-thao')->name('client.events.')->group(function () {
-
-    // 👉 Trang danh sách cuộc thi
     Route::get('/', function () {
-        // Fake dữ liệu 18 cuộc thi
         $items = collect(range(1, 18))->map(function ($i) {
             return (object) [
                 'id' => $i,
@@ -31,7 +46,6 @@ Route::prefix('/hoi-thao')->name('client.events.')->group(function () {
             ];
         });
 
-        // Tạo paginator thủ công
         $perPage = 6;
         $page = request()->get('page', 1);
         $paged = $items->forPage($page, $perPage);
@@ -43,9 +57,7 @@ Route::prefix('/hoi-thao')->name('client.events.')->group(function () {
         return view('client.events.index', compact('events'));
     })->name('index');
 
-    // 👉 Trang chi tiết cuộc thi
     Route::get('/{slug}', function ($slug) {
-        // Giả lập dữ liệu 1 cuộc thi (sẽ thay bằng DB sau)
         $event = (object) [
             'title' => 'Database Design Challenge 2025',
             'slug' => $slug,
@@ -60,37 +72,28 @@ Route::prefix('/hoi-thao')->name('client.events.')->group(function () {
         return view('client.events.show', compact('event'));
     })->name('show');
 
-    Route::get('/dang-ky-hoi-thao/{id}', function ($id) {
-        return view('client.events.register', [
-            'id' => $id,
-            'event' => 'Database Design Challenge 2025'
-        ]);
-    })->name('register');
+    // Dùng middleware jwt.web
+    Route::middleware('jwt.web')->group(function () {
+        Route::get('/{slug}/dang-ky', function ($slug) {
+            return view('client.events.register', compact('slug'));
+        })->name('register');
 
-    Route::get('/{slug}/dang-ky', function ($slug) {
-        return view('client.events.register', compact('slug'));
-    })->name('register');
+        Route::get('/{slug}/co-vu', function ($slug) {
+            return view('client.events.cheer', compact('slug'));
+        })->name('cheer');
 
-    // 👉 Đăng ký cổ vũ (sinh viên tham dự)
-    Route::get('/{slug}/co-vu', function ($slug) {
-        return view('client.events.cheer', compact('slug'));
-    })->name('cheer');
+        Route::get('/{slug}/ho-tro', function ($slug) {
+            return view('client.events.support', compact('slug'));
+        })->name('support');
 
-    Route::get('/{slug}/ho-tro', function ($slug) {
-        return view('client.events.support', compact('slug'));
-    })->name('support');
-
-    // 👉 Phân bổ cổ vũ (chức năng cho lớp trưởng / admin)
-    Route::get('/phan-bo-co-vu', function () {
-        return view('client.events.assign');
-    })->name('assign');
-
+        Route::get('/phan-bo-co-vu', function () {
+            return view('client.events.assign');
+        })->name('assign');
+    });
 });
 
 Route::prefix('/ket-qua')->name('client.results.')->group(function () {
-    // Danh sách kết quả
     Route::get('/', function () {
-        // Fake dữ liệu
         $results = collect(range(1, 9))->map(fn($i) => (object) [
             'id' => $i,
             'title' => "Database Design Challenge #$i",
@@ -102,7 +105,6 @@ Route::prefix('/ket-qua')->name('client.results.')->group(function () {
         return view('client.results.index', compact('results'));
     })->name('index');
 
-    // Chi tiết kết quả
     Route::get('/{id}', function ($id) {
         $result = (object) [
             'id' => $id,
@@ -113,66 +115,49 @@ Route::prefix('/ket-qua')->name('client.results.')->group(function () {
                 ['name' => 'Vòng Chung kết', 'winner' => 'Team SQL Pro'],
             ],
             'top3' => [
-                [
-                    'name' => 'Nguyễn Văn A',
-                    'rank' => 'Giải Nhất',
-                    'score' => 98,
-                    'prize' => '1.000.000đ + Giấy khen'
-                ],
-                [
-                    'name' => 'Trần Thị B',
-                    'rank' => 'Giải Nhì',
-                    'score' => 93,
-                    'prize' => '700.000đ + Giấy khen'
-                ],
-                [
-                    'name' => 'Team SQL Pro',
-                    'rank' => 'Giải Ba',
-                    'score' => 88,
-                    'prize' => '500.000đ + Giấy khen'
-                ],
+                ['name' => 'Nguyễn Văn A', 'rank' => 'Giải Nhất', 'score' => 98, 'prize' => '1.000.000đ + Giấy khen'],
+                ['name' => 'Trần Thị B', 'rank' => 'Giải Nhì', 'score' => 93, 'prize' => '700.000đ + Giấy khen'],
+                ['name' => 'Team SQL Pro', 'rank' => 'Giải Ba', 'score' => 88, 'prize' => '500.000đ + Giấy khen'],
             ]
         ];
         return view('client.results.show', compact('result'));
     })->name('show');
 });
 
-
-// 📰 Tin tức
 Route::view('/tin-tuc', 'client.news.index')->name('client.news.index');
-
-// 📞 Liên hệ
 Route::view('/lien-he', 'client.contact')->name('client.contact');
 
-
 /*
 |--------------------------------------------------------------------------
-| Auth Routes (đăng nhập / đổi mật khẩu / đăng xuất)
+| User Routes (JWT Auth)
 |--------------------------------------------------------------------------
 */
-Route::controller(AuthController::class)->group(function () {
-    Route::get('/login', 'showLogin')->name('login');
-    Route::post('/login', 'login')->name('login.post');
-
-    Route::middleware('auth')->group(function () {
-        Route::get('/change-password', 'showChangePassword')->name('password.change');
-        Route::post('/change-password', 'changePassword')->name('password.update');
-        Route::post('/logout', 'logout')->name('logout');
-    });
+Route::middleware('jwt.web')->group(function () {
+    // Route::view('/hoi-thao-cua-toi', 'user.my-events')->name('user.myEvents');
+    Route::view('/ho-so', 'client.profile')->name('client.profile');
 });
 
 /*
 |--------------------------------------------------------------------------
-| User Routes (yêu cầu đăng nhập)
+| Test Route (có thể xóa sau khi test xong)
 |--------------------------------------------------------------------------
 */
-Route::middleware('auth')->group(function () {
-    Route::get('/dang-ky-hoi-thao/{id}', function ($id) {
-        // Tạm thời hiển thị trang đăng ký hội thảo (sẽ làm controller sau)
-        return "Trang đăng ký hội thảo ID: {$id}";
-    })->name('user.register.event');
-
-    Route::view('/hoi-thao-cua-toi', 'user.my-events')->name('user.myEvents');
+Route::get('/test-jwt', function () {
+    return [
+        'jwt_check' => jwt_check(),
+        'jwt_user' => jwt_user(),
+        'jwt_guest' => jwt_guest(),
+    ];
 });
 
-Route::view('/ho-so', 'client.profile')->name('client.profile');
+Route::get('/quen-mat-khau', [AuthController::class, 'showForgotPassword'])
+    ->name('password.request');
+
+Route::post('/quen-mat-khau', [AuthController::class, 'sendResetLink'])
+    ->name('password.email');
+
+Route::get('/dat-lai-mat-khau/{token}', [AuthController::class, 'showResetPassword'])
+    ->name('password.reset');
+
+Route::post('/dat-lai-mat-khau', [AuthController::class, 'resetPassword'])
+    ->name('password.update');

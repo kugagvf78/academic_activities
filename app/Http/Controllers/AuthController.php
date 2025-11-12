@@ -5,44 +5,73 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\DB;
 use Tymon\JWTAuth\Facades\JWTAuth;
 use Tymon\JWTAuth\Exceptions\JWTException;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
 use Illuminate\Auth\Events\PasswordReset;
 use App\Models\NguoiDung;
+use App\Models\SinhVien;
+use App\Models\GiangVien;
 
 class AuthController extends Controller
 {
-    // Đăng ký người dùng mới
+    // Đăng ký người dùng mới (API)
     public function register(Request $request)
     {
         $request->validate([
-            'ten_dang_nhap' => 'required|string|unique:nguoi_dung',
-            'mat_khau' => 'required|string|min:6',
-            'email' => 'nullable|email|unique:nguoi_dung',
-            'ho_ten' => 'nullable|string|max:150',
-            'so_dien_thoai' => 'nullable|string|max:20',
+            'TenDangNhap' => 'required|string|unique:nguoidung,tendangnhap',
+            'MatKhau' => 'required|string|min:6',
+            'Email' => 'nullable|email|unique:nguoidung,email',
+            'HoTen' => 'nullable|string|max:150',
+            'SoDienThoai' => 'nullable|string|max:20',
         ]);
 
-        $user = NguoiDung::create([
-            'ten_dang_nhap' => $request->ten_dang_nhap,
-            'mat_khau' => Hash::make($request->mat_khau),
-            'email' => $request->email,
-            'ho_ten' => $request->ho_ten,
-            'so_dien_thoai' => $request->so_dien_thoai,
-            'trang_thai' => true,
-        ]);
+        // Tạo mã người dùng tự động
+        $maNguoiDung = 'ND' . str_pad(NguoiDung::count() + 1, 6, '0', STR_PAD_LEFT);
 
-        return response()->json([
-            'message' => 'Đăng ký thành công',
-            'user' => $user
-        ], 201);
+        try {
+            DB::beginTransaction();
+
+            // ✅ Sử dụng tên cột thực trong database (snake_case)
+            $user = NguoiDung::create([
+                'manguoidung' => $maNguoiDung,
+                'tendangnhap' => $request->TenDangNhap,
+                'matkhau' => Hash::make($request->MatKhau),
+                'email' => $request->Email,
+                'hoten' => $request->HoTen,
+                'sodienthoai' => $request->SoDienThoai,
+                'vaitro' => 'SinhVien',
+                'trangthai' => 'Active',
+            ]);
+
+            // ✅ Tạo bản ghi SinhVien
+            SinhVien::create([
+                'masinhvien' => $maNguoiDung,
+                'manguoidung' => $maNguoiDung,
+                'trangthai' => 'Active',
+            ]);
+
+            DB::commit();
+
+            return response()->json([
+                'message' => 'Đăng ký thành công',
+                'user' => $user
+            ], 201);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            
+            return response()->json([
+                'error' => 'Có lỗi xảy ra: ' . $e->getMessage()
+            ], 500);
+        }
     }
+
     // Hiển thị form đăng ký
     public function showRegister(Request $request)
     {
-        // Nếu đã đăng nhập → chuyển về trangTrang chủ
         if ($request->cookie('jwt_token')) {
             try {
                 Auth::guard('api')->setToken($request->cookie('jwt_token'));
@@ -61,11 +90,12 @@ class AuthController extends Controller
     public function webRegister(Request $request)
     {
         $request->validate([
-            'TenDangNhap' => 'required|string|unique:nguoi_dung,ten_dang_nhap',
+            'TenDangNhap' => 'required|string|unique:nguoidung,tendangnhap',
             'MatKhau' => 'required|string|min:6|confirmed',
             'HoTen' => 'nullable|string|max:150',
-            'Email' => 'required|email|unique:nguoi_dung,email',
+            'Email' => 'required|email|unique:nguoidung,email',
             'SoDienThoai' => 'nullable|string|max:20',
+            'VaiTro' => 'required|in:SinhVien,GiangVien',
         ], [
             'TenDangNhap.required' => 'Vui lòng nhập tên đăng nhập',
             'TenDangNhap.unique' => 'Tên đăng nhập đã tồn tại',
@@ -75,32 +105,67 @@ class AuthController extends Controller
             'Email.required' => 'Vui lòng nhập email',
             'Email.email' => 'Email không hợp lệ',
             'Email.unique' => 'Email đã được sử dụng',
+            'VaiTro.required' => 'Vui lòng chọn vai trò',
+            'VaiTro.in' => 'Vai trò không hợp lệ',
         ]);
 
-        $user = NguoiDung::create([
-            'ten_dang_nhap' => $request->TenDangNhap,
-            'mat_khau' => Hash::make($request->MatKhau),
-            'ho_ten' => $request->HoTen,
-            'email' => $request->Email,
-            'so_dien_thoai' => $request->SoDienThoai,
-            'trang_thai' => true,
-            'ngay_tao' => now(),
-            'ngay_cap_nhat' => now(),
-        ]);
+        // Tạo mã người dùng tự động dựa trên vai trò
+        $prefix = $request->VaiTro === 'SinhVien' ? 'SV' : 'GV';
+        $count = NguoiDung::where('vaitro', $request->VaiTro)->count() + 1;
+        $maNguoiDung = $prefix . str_pad($count, 6, '0', STR_PAD_LEFT);
 
-        // Đăng nhập luôn sau khi đăng ký
-        $token = Auth::guard('api')->login($user);
-        $cookie = cookie('jwt_token', $token, 60 * 24, '/', null, false, true);
+        // ✅ Sử dụng transaction để đảm bảo tính toàn vẹn dữ liệu
+        try {
+            DB::beginTransaction();
 
-        return redirect()->route('client.home')
-            ->with('success', 'Đăng ký thành công! Chào mừng bạn.')
-            ->cookie($cookie);
+            // Tạo NguoiDung
+            $user = NguoiDung::create([
+                'manguoidung' => $maNguoiDung,
+                'tendangnhap' => $request->TenDangNhap,
+                'matkhau' => Hash::make($request->MatKhau),
+                'hoten' => $request->HoTen,
+                'email' => $request->Email,
+                'sodienthoai' => $request->SoDienThoai,
+                'vaitro' => $request->VaiTro,
+                'trangthai' => 'Active',
+            ]);
+
+            // ✅ Tạo bản ghi tương ứng trong SinhVien hoặc GiangVien
+            if ($request->VaiTro === 'SinhVien') {
+                SinhVien::create([
+                    'masinhvien' => $maNguoiDung,
+                    'manguoidung' => $maNguoiDung,
+                    'trangthai' => 'Active',
+                ]);
+            } else {
+                GiangVien::create([
+                    'magiangvien' => $maNguoiDung,
+                    'manguoidung' => $maNguoiDung,
+                ]);
+            }
+
+            DB::commit();
+
+            // Đăng nhập luôn sau khi đăng ký
+            $token = Auth::guard('api')->login($user);
+            $cookie = cookie('jwt_token', $token, 60 * 24, '/', null, false, true);
+
+            return redirect()->route('client.home')
+                ->with('success', 'Đăng ký thành công! Chào mừng bạn.')
+                ->cookie($cookie);
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            
+            return back()->withErrors([
+                'error' => 'Có lỗi xảy ra trong quá trình đăng ký: ' . $e->getMessage()
+            ])->withInput();
+        }
     }
 
     // Hiển thị form đăng nhập
-    public function showLogin(Request $request) // SỬA: Thêm Request $request
+    public function showLogin(Request $request)
     {
-        // Kiểm tra JWT token trong cookie
         if ($request->cookie('jwt_token')) {
             try {
                 Auth::guard('api')->setToken($request->cookie('jwt_token'));
@@ -117,61 +182,74 @@ class AuthController extends Controller
     // Đăng nhập API (JWT)
     public function login(Request $request)
     {
-        $credentials = $request->only('ten_dang_nhap', 'mat_khau');
+        $request->validate([
+            'TenDangNhap' => 'required|string',
+            'MatKhau' => 'required|string',
+        ]);
 
-        if (!$token = Auth::guard('api')->attempt([
-            'ten_dang_nhap' => $credentials['ten_dang_nhap'],
-            'password' => $credentials['mat_khau']
-        ])) {
+        $user = NguoiDung::where('tendangnhap', $request->TenDangNhap)->first();
+
+        if (!$user || !Hash::check($request->MatKhau, $user->matkhau)) {
             return response()->json(['error' => 'Sai tên đăng nhập hoặc mật khẩu'], 401);
         }
+
+        if ($user->trangthai !== 'Active') {
+            return response()->json(['error' => 'Tài khoản của bạn đã bị khóa'], 403);
+        }
+
+        $token = Auth::guard('api')->login($user);
 
         return $this->respondWithToken($token);
     }
 
-    // Đăng nhập WEB (JWT thuần túy + tạo session cho Blade)
+    // Đăng nhập WEB
     public function webLogin(Request $request)
     {
         $request->validate([
             'TenDangNhap' => 'required|string',
             'MatKhau' => 'required|string',
+            'VaiTro' => 'required|in:SinhVien,GiangVien',
         ], [
             'TenDangNhap.required' => 'Vui lòng nhập tên đăng nhập',
             'MatKhau.required' => 'Vui lòng nhập mật khẩu',
+            'VaiTro.required' => 'Vui lòng chọn vai trò',
+            'VaiTro.in' => 'Vai trò không hợp lệ',
         ]);
 
-        $user = NguoiDung::where('ten_dang_nhap', $request->TenDangNhap)->first();
+        $user = NguoiDung::where('tendangnhap', $request->TenDangNhap)->first();
 
-        if (!$user || !Hash::check($request->MatKhau, $user->mat_khau)) {
+        if (!$user || !Hash::check($request->MatKhau, $user->matkhau)) {
             return back()->withErrors([
                 'TenDangNhap' => 'Tên đăng nhập hoặc mật khẩu không đúng.'
-            ])->withInput($request->only('TenDangNhap'));
+            ])->withInput($request->only('TenDangNhap', 'VaiTro'));
         }
 
-        if (!$user->trang_thai) {
+        // Kiểm tra vai trò
+        if ($user->vaitro !== $request->VaiTro) {
+            return back()->withErrors([
+                'TenDangNhap' => 'Tài khoản không thuộc vai trò ' . ($request->VaiTro === 'SinhVien' ? 'Sinh viên' : 'Giảng viên') . '.'
+            ])->withInput($request->only('TenDangNhap', 'VaiTro'));
+        }
+
+        if ($user->trangthai !== 'Active') {
             return back()->withErrors([
                 'TenDangNhap' => 'Tài khoản của bạn đã bị khóa.'
-            ])->withInput($request->only('TenDangNhap'));
+            ])->withInput($request->only('TenDangNhap', 'VaiTro'));
         }
 
-        // ✅ Tạo JWT token cho API
+        // Tạo JWT token
         $token = Auth::guard('api')->login($user);
-
-        // ✅ Đồng thời đăng nhập vào guard 'web' để Blade hiển thị user
         Auth::guard('web')->login($user);
 
-        // ✅ Tạo cookie chứa token (tùy chọn – cho API sử dụng)
         $cookie = cookie('jwt_token', $token, 60 * 24, '/', null, false, true);
 
-        // ✅ Chuyển hướng về trang chủ với thông báo
         return redirect()->route('client.home')
             ->with('toast', [
                 'type' => 'success',
-                'message' => 'Đăng nhập thành công! Chào mừng ' . ($user->ho_ten ?? $user->ten_dang_nhap)
+                'message' => 'Đăng nhập thành công! Chào mừng ' . ($user->hoten ?? $user->tendangnhap)
             ])
             ->cookie($cookie);
     }
-
 
     // Lấy thông tin người dùng hiện tại
     public function me()
@@ -184,6 +262,7 @@ class AuthController extends Controller
     {
         try {
             Auth::guard('api')->logout();
+            Auth::guard('web')->logout();
         } catch (\Exception $e) {
             // Ignore
         }
@@ -201,7 +280,7 @@ class AuthController extends Controller
     // Làm mới token
     public function refresh()
     {
-        $token = Auth::guard('api')->refresh(); // Gán vào biến
+        $token = Auth::guard('api')->refresh();
         return $this->respondWithToken($token);
     }
 
@@ -212,7 +291,7 @@ class AuthController extends Controller
     }
 
     // Đổi mật khẩu
-    public function changePassword(Request $request) // SỬA: Thêm Request $request
+    public function changePassword(Request $request)
     {
         $request->validate([
             'MatKhauCu' => 'required|string',
@@ -230,21 +309,22 @@ class AuthController extends Controller
             return back()->withErrors(['MatKhauCu' => 'Không tìm thấy người dùng']);
         }
 
-        if (!Hash::check($request->MatKhauCu, $user->mat_khau)) {
+        if (!Hash::check($request->MatKhauCu, $user->matkhau)) {
             return back()->withErrors([
                 'MatKhauCu' => 'Mật khẩu hiện tại không đúng'
             ]);
         }
 
+        // ✅ Sử dụng update với tên cột thực
         $user->update([
-            'mat_khau' => Hash::make($request->MatKhauMoi)
+            'matkhau' => Hash::make($request->MatKhauMoi)
         ]);
 
         return back()->with('success', 'Đổi mật khẩu thành công!');
     }
 
     // Trả về token
-    protected function respondWithToken($token) // SỬA: Thêm tham số $token
+    protected function respondWithToken($token)
     {
         return response()->json([
             'access_token' => $token,
@@ -263,15 +343,21 @@ class AuthController extends Controller
     // Gửi link reset
     public function sendResetLink(Request $request)
     {
-        $request->validate(['email' => 'required|email']);
+        $request->validate(['Email' => 'required|email']);
+
+        $user = NguoiDung::where('email', $request->Email)->first();
+
+        if (!$user) {
+            return back()->withErrors(['Email' => 'Email không tồn tại trong hệ thống']);
+        }
 
         $status = Password::broker('users')->sendResetLink(
-            $request->only('email')
+            ['email' => $request->Email]
         );
 
         return $status === Password::RESET_LINK_SENT
-            ? back()->with(['status' => __($status)])
-            : back()->withErrors(['email' => __($status)]);
+            ? back()->with(['status' => 'Link đặt lại mật khẩu đã được gửi đến email của bạn'])
+            : back()->withErrors(['Email' => 'Không thể gửi link đặt lại mật khẩu']);
     }
 
     // Hiển thị form đặt lại mật khẩu
@@ -285,15 +371,27 @@ class AuthController extends Controller
     {
         $request->validate([
             'token' => 'required',
-            'email' => 'required|email',
-            'password' => 'required|min:6|confirmed',
+            'Email' => 'required|email',
+            'MatKhau' => 'required|min:6|confirmed',
+        ], [
+            'Email.required' => 'Vui lòng nhập email',
+            'Email.email' => 'Email không hợp lệ',
+            'MatKhau.required' => 'Vui lòng nhập mật khẩu mới',
+            'MatKhau.min' => 'Mật khẩu phải có ít nhất 6 ký tự',
+            'MatKhau.confirmed' => 'Xác nhận mật khẩu không khớp',
         ]);
 
         $status = Password::broker('users')->reset(
-            $request->only('email', 'password', 'password_confirmation', 'token'),
+            [
+                'email' => $request->Email,
+                'password' => $request->MatKhau,
+                'password_confirmation' => $request->MatKhau_confirmation,
+                'token' => $request->token
+            ],
             function ($user, $password) {
+                // ✅ Sử dụng forceFill với tên cột thực
                 $user->forceFill([
-                    'mat_khau' => Hash::make($password)
+                    'matkhau' => Hash::make($password)
                 ])->setRememberToken(Str::random(60));
 
                 $user->save();
@@ -304,6 +402,6 @@ class AuthController extends Controller
 
         return $status === Password::PASSWORD_RESET
             ? redirect()->route('login')->with('status', 'Đặt lại mật khẩu thành công!')
-            : back()->withErrors(['email' => [__($status)]]);
+            : back()->withErrors(['Email' => 'Không thể đặt lại mật khẩu. Vui lòng thử lại.']);
     }
 }

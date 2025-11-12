@@ -13,6 +13,22 @@
             <p class="mt-2 text-sm text-gray-600">Tạo tài khoản mới để tham gia hội thảo</p>
         </div>
 
+        {{-- Role Selection Tabs --}}
+        <div class="mb-6">
+            <div class="grid grid-cols-2 gap-3">
+                <button type="button" id="tabSinhVien" onclick="switchRole('SinhVien')"
+                    class="role-tab active px-4 py-3 rounded-lg font-semibold text-sm transition-all duration-200 border-2 border-blue-500 bg-blue-50 text-blue-700">
+                    <i class="fa-solid fa-user-graduate mr-2"></i>
+                    Sinh viên
+                </button>
+                <button type="button" id="tabGiangVien" onclick="switchRole('GiangVien')"
+                    class="role-tab px-4 py-3 rounded-lg font-semibold text-sm transition-all duration-200 border-2 border-gray-300 bg-white text-gray-600 hover:border-blue-400 hover:bg-blue-50">
+                    <i class="fa-solid fa-chalkboard-user mr-2"></i>
+                    Giảng viên
+                </button>
+            </div>
+        </div>
+
         {{-- Success message --}}
         @if(session('success'))
         <div class="bg-green-50 text-green-700 border border-green-200 px-4 py-3 rounded-lg mb-4 text-sm">
@@ -34,6 +50,9 @@
         {{-- FORM --}}
         <form method="POST" action="{{ route('register.post') }}" class="space-y-4" novalidate>
             @csrf
+
+            {{-- Hidden Role Field --}}
+            <input type="hidden" id="VaiTro" name="VaiTro" value="{{ old('VaiTro', 'SinhVien') }}">
 
             {{-- Họ tên --}}
             <div>
@@ -162,6 +181,31 @@
 
 {{-- Script --}}
 <script>
+    // Switch role tabs
+    function switchRole(role) {
+        const vaiTroInput = document.getElementById('VaiTro');
+        const tabSinhVien = document.getElementById('tabSinhVien');
+        const tabGiangVien = document.getElementById('tabGiangVien');
+
+        vaiTroInput.value = role;
+
+        // Remove active class from all tabs
+        tabSinhVien.classList.remove('active', 'border-blue-500', 'bg-blue-50', 'text-blue-700');
+        tabSinhVien.classList.add('border-gray-300', 'bg-white', 'text-gray-600');
+        
+        tabGiangVien.classList.remove('active', 'border-blue-500', 'bg-blue-50', 'text-blue-700');
+        tabGiangVien.classList.add('border-gray-300', 'bg-white', 'text-gray-600');
+
+        // Add active class to selected tab
+        if (role === 'SinhVien') {
+            tabSinhVien.classList.add('active', 'border-blue-500', 'bg-blue-50', 'text-blue-700');
+            tabSinhVien.classList.remove('border-gray-300', 'bg-white', 'text-gray-600');
+        } else {
+            tabGiangVien.classList.add('active', 'border-blue-500', 'bg-blue-50', 'text-blue-700');
+            tabGiangVien.classList.remove('border-gray-300', 'bg-white', 'text-gray-600');
+        }
+    }
+
     document.addEventListener('DOMContentLoaded', function() {
         const form = document.querySelector('form');
         const registerBtn = document.getElementById('registerBtn');
@@ -178,6 +222,12 @@
         const togglePasswordConfirm = document.getElementById('togglePasswordConfirm');
         const eyeIconConfirm = document.getElementById('eyeIconConfirm');
         const eyeSlashIconConfirm = document.getElementById('eyeSlashIconConfirm');
+
+        // Initialize role from old input if exists
+        const oldRole = document.getElementById('VaiTro').value;
+        if (oldRole) {
+            switchRole(oldRole);
+        }
 
         // Form submit
         form.addEventListener('submit', function(e) {
@@ -220,4 +270,18 @@
         }
     });
 </script>
+
+<style>
+    .role-tab {
+        transition: all 0.2s ease-in-out;
+    }
+    
+    .role-tab:hover {
+        transform: translateY(-2px);
+    }
+    
+    .role-tab.active {
+        box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.3);
+    }
+</style>
 @endsection

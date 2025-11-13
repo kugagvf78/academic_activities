@@ -22,15 +22,15 @@ class EventController extends Controller
                 'ct.tencuocthi',
                 'ct.loaicuocthi',
                 'ct.mota',
-                'ct.mucDich',
+                'ct.mucdich',
                 'ct.doituongthamgia',
                 'ct.thoigianbatdau',
                 'ct.thoigianketthuc',
                 'ct.diadiem',
                 'ct.soluongthanhvien',
-                'ct.hinhthuchthamgia',
+                'ct.hinhthucthamgia',
                 'ct.trangthai',
-                'ct.dutrukinphi',
+                'ct.dutrukinhphi',
                 'bm.tenbomon',
                 DB::raw('(SELECT COUNT(*) FROM dangkyduthi WHERE macuocthi = ct.macuocthi) as soluongdangky')
             );
@@ -101,7 +101,7 @@ class EventController extends Controller
             $event->status_color = $this->getStatusColor($event);
             $event->slug = $this->generateSlug($event->tencuocthi, $event->macuocthi);
             $event->days_remaining = $this->getDaysRemaining($event);
-            $event->prize_display = $this->formatPrize($event->dutrukinphi);
+            $event->prize_display = $this->formatPrize($event->dutrukinhphi);
             
             return $event;
         });
@@ -158,7 +158,7 @@ class EventController extends Controller
 
         // Lấy danh sách ban tổ chức
         $bantochuc = DB::table('ban as b')
-            ->leftJoin('phanconggiang as pc', 'b.maban', '=', 'pc.maban')
+            ->leftJoin('phanconggiangvien as pc', 'b.maban', '=', 'pc.maban')
             ->leftJoin('giangvien as gv', 'pc.magiangvien', '=', 'gv.magiangvien')
             ->leftJoin('nguoidung as nd', 'gv.manguoidung', '=', 'nd.manguoidung')
             ->where('b.macuocthi', $macuocthi)
@@ -175,7 +175,7 @@ class EventController extends Controller
         $event->status_color = $this->getStatusColor($event);
         $event->slug = $slug;
         $event->days_remaining = $this->getDaysRemaining($event);
-        $event->prize_display = $this->formatPrize($event->dutrukinphi);
+        $event->prize_display = $this->formatPrize($event->dutrukinhphi);
         $event->can_register = $this->canRegister($event);
 
         return view('client.events.show', compact('event', 'vongthi', 'kehoach', 'bantochuc'));

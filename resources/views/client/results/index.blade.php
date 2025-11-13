@@ -2,38 +2,6 @@
 @section('title', 'Kết quả Cuộc thi Học thuật')
 
 @section('content')
-@php
-use Illuminate\Pagination\LengthAwarePaginator;
-use Illuminate\Support\Collection;
-
-// Tạo dữ liệu giả cho 27 kết quả
-$fakeResults = collect(range(1, 27))->map(function ($i) {
-return (object)[
-'id' => $i,
-'title' => "Database Design Challenge #$i",
-'date' => now()->subDays($i)->format('d/m/Y'),
-'winner' => 'Nguyễn Văn A',
-'image' => "https://source.unsplash.com/600x400/?trophy,competition,$i",
-];
-});
-
-// Lấy trang hiện tại
-$page = request()->get('page', 1);
-$perPage = 6;
-
-// Cắt dữ liệu theo trang
-$itemsForCurrentPage = $fakeResults->slice(($page - 1) * $perPage, $perPage)->values();
-
-// Tạo paginator giả
-$results = new LengthAwarePaginator(
-$itemsForCurrentPage,
-$fakeResults->count(),
-$perPage,
-$page,
-['path' => request()->url(), 'query' => request()->query()]
-);
-@endphp
-
 
 {{-- 🏆 HERO SECTION --}}
 <section class="relative bg-gradient-to-br from-blue-700 via-blue-600 to-cyan-500 text-white py-24 overflow-hidden">
@@ -81,36 +49,53 @@ $page,
 {{-- 🔍 FILTER BAR --}}
 <section class="container mx-auto px-6 -mt-8 relative z-20">
     <div class="bg-white rounded-2xl shadow-xl border border-blue-100 p-6">
-        <form class="grid lg:grid-cols-4 md:grid-cols-3 grid-cols-1 gap-4 items-end">
+        <form method="GET" action="{{ route('client.results.index') }}" class="grid lg:grid-cols-4 md:grid-cols-3 grid-cols-1 gap-4 items-end">
 
             {{-- Tên cuộc thi --}}
-            <div class="col-span-2 relative">
+            <div class="lg:col-span-2 relative">
                 <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
-                <input type="text" placeholder="Tìm kiếm theo tên cuộc thi..."
+                <input type="text" name="search" value="{{ request('search') }}" placeholder="Tìm kiếm theo tên cuộc thi..."
                     class="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition">
             </div>
 
             {{-- Năm tổ chức --}}
-            <x-form.select
-                name="year"
-                :options="[
-                    '2025' => 'Năm 2025',
-                    '2024' => 'Năm 2024',
-                    '2023' => 'Năm 2023',
-                ]"
-                placeholder="Tất cả năm" />
+            <div>
+                <select name="year" class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition">
+                    <option value="">Tất cả năm</option>
+                    @if(isset($years))
+                        @foreach($years as $year)
+                            <option value="{{ $year }}" {{ request('year') == $year ? 'selected' : '' }}>
+                                Năm {{ $year }}
+                            </option>
+                        @endforeach
+                    @endif
+                </select>
+            </div>
 
-            {{-- Trạng thái --}}
-            <x-form.select
-                name="type"
-                :options="[
-                    'individual' => 'Thi cá nhân',
-                    'team' => 'Thi nhóm',
-                ]"
-                placeholder="Hình thức thi" />
+            {{-- Hình thức --}}
+            <div>
+                <select name="type" class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition">
+                    <option value="">Hình thức thi</option>
+                    <option value="individual" {{ request('type') == 'individual' ? 'selected' : '' }}>Thi cá nhân</option>
+                    <option value="team" {{ request('type') == 'team' ? 'selected' : '' }}>Thi nhóm</option>
+                </select>
+            </div>
 
-            {{-- Nút lọc --}}
-            <x-ui.button type="submit" label="Lọc" icon="fa-filter" color="blue" />
+            {{-- Nút lọc & reset --}}
+            <div class="flex items-center gap-3">
+                <button type="submit" class="flex-1 bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-700 hover:to-cyan-600 text-white px-6 py-3 rounded-xl font-semibold transition-all inline-flex items-center justify-center gap-2">
+                    <i class="fas fa-filter"></i>
+                    <span>Lọc</span>
+                </button>
+
+                @if(request()->hasAny(['search', 'year', 'type']))
+                <a href="{{ route('client.results.index') }}"
+                    class="text-blue-600 text-lg hover:text-blue-700 font-medium">
+                    <i class="fa-solid fa-rotate"></i>
+                </a>
+                @endif
+            </div>
+
         </form>
     </div>
 </section>
@@ -118,27 +103,38 @@ $page,
 
 {{-- 🏆 RESULTS GRID --}}
 <section class="container mx-auto px-6 py-16">
+    @if($results->count() > 0)
     <div class="grid lg:grid-cols-3 md:grid-cols-2 grid-cols-1 gap-8">
         @foreach ($results as $item)
         <article class="group bg-white rounded-2xl shadow-md hover:shadow-2xl border border-gray-100 overflow-hidden transition-all duration-500 hover:-translate-y-3">
             <div class="relative overflow-hidden h-56">
-                <img src="{{asset('images/home/banner1.png')}}" alt="Kết quả {{ $item->id }}"
+                <img src="{{asset('images/home/banner1.png')}}" alt="Kết quả {{ $item->tencuocthi }}"
                     class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700">
                 <div class="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent opacity-60 group-hover:opacity-80 transition-opacity"></div>
                 <div class="absolute top-4 left-4">
                     <span class="bg-gradient-to-r from-yellow-400 to-amber-500 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg flex items-center gap-1.5">
-                        <i class="fas fa-trophy"></i> Giải thưởng
+                        <i class="fas fa-trophy"></i> 
+                        {{ $item->soluonggiai ?? 0 }} giải thưởng
                     </span>
                 </div>
+                
+                {{-- Loại cuộc thi --}}
+                @if($item->loaicuocthi)
+                <div class="absolute top-4 right-4">
+                    <span class="bg-white/90 backdrop-blur-sm text-blue-700 text-xs font-semibold px-3 py-1 rounded-full">
+                        {{ $item->loaicuocthi }}
+                    </span>
+                </div>
+                @endif
             </div>
 
             <div class="p-6">
                 <h3 class="font-bold text-xl text-gray-800 group-hover:text-blue-600 transition mb-3 line-clamp-2">
-                    {{ $item->title }}
+                    {{ $item->tencuocthi }}
                 </h3>
 
                 <p class="text-gray-600 text-sm mb-4 line-clamp-3">
-                    Cuộc thi học thuật về thiết kế cơ sở dữ liệu – nơi sinh viên thể hiện tư duy và sáng tạo trong lĩnh vực công nghệ thông tin.
+                    Cuộc thi học thuật về {{ strtolower($item->loaicuocthi ?? 'công nghệ thông tin') }} — nơi sinh viên thể hiện tư duy và sáng tạo trong lĩnh vực công nghệ.
                 </p>
 
                 <div class="flex items-center justify-between text-sm text-gray-600 mb-4">
@@ -147,18 +143,33 @@ $page,
                         <span>{{ $item->date }}</span>
                     </div>
                     <div class="flex items-center gap-2">
-                        <i class="fa-solid fa-crown text-yellow-500"></i>
-                        <span>{{ $item->winner }}</span>
+                        <i class="fa-solid fa-users text-purple-500"></i>
+                        <span>{{ $item->soluongthamgia ?? 0 }}+ thí sinh</span>
                     </div>
                 </div>
 
+                {{-- Winner info --}}
+                @if($item->winner && $item->winner !== 'Chưa công bố')
+                <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-crown text-yellow-500"></i>
+                        <div class="flex-1">
+                            <p class="text-xs text-gray-600">Giải Nhất</p>
+                            <p class="font-semibold text-gray-800 text-sm line-clamp-1">{{ $item->winner }}</p>
+                        </div>
+                    </div>
+                </div>
+                @endif
+
                 <div class="border-t border-gray-100 pt-4 flex items-center justify-between">
                     <div class="flex items-center gap-2">
-                        <div class="w-8 h-8 bg-gradient-to-br from-yellow-400 to-amber-500 rounded-full flex items-center justify-center text-white text-xs font-bold">IT</div>
-                        <span class="text-xs text-gray-600 font-medium">Khoa CNTT</span>
+                        <div class="w-8 h-8 bg-gradient-to-br from-yellow-400 to-amber-500 rounded-full flex items-center justify-center text-white text-xs font-bold">
+                            {{ substr($item->tenbomon ?? 'IT', 0, 2) }}
+                        </div>
+                        <span class="text-xs text-gray-600 font-medium line-clamp-1">{{ $item->tenbomon ?? 'Khoa CNTT' }}</span>
                     </div>
 
-                    <a href="{{ route('client.results.show', $item->id) }}"
+                    <a href="{{ route('client.results.show', $item->macuocthi) }}"
                         class="bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-700 hover:to-cyan-600 text-white px-5 py-2.5 rounded-xl text-sm font-semibold shadow-md hover:shadow-xl transition-all inline-flex items-center gap-2">
                         <span>Xem chi tiết</span>
                         <i class="fas fa-arrow-right"></i>
@@ -171,9 +182,11 @@ $page,
 
     {{-- 📄 PAGINATION --}}
     @if($results->hasPages())
-    <div class="mt-16 mx-5">
-        {!! $results->appends(request()->query())->links('pagination.custom') !!}
+    <div class="mt-16">
+        {{ $results->links() }}
     </div>
+    @endif
+
     @else
     {{-- EMPTY STATE --}}
     <div class="bg-gradient-to-br from-gray-50 to-blue-50 rounded-2xl shadow-sm border border-gray-200 p-16 text-center">
@@ -184,13 +197,24 @@ $page,
             </div>
             <h4 class="text-2xl font-bold text-gray-700 mb-3">Không có kết quả nào</h4>
             <p class="text-gray-500 mb-8 leading-relaxed">
+                @if(request('search') || request('year') || request('type'))
+                Không có cuộc thi nào phù hợp với bộ lọc của bạn.<br>
+                Hãy thử điều chỉnh tiêu chí tìm kiếm.
+                @else
                 Hiện tại chưa có cuộc thi nào được công bố kết quả.<br>
                 Hãy quay lại sau hoặc theo dõi fanpage của khoa.
+                @endif
             </p>
-            <a href="{{ route('client.results.index') }}"
-                class="inline-flex items-center bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-700 hover:to-cyan-600 text-white px-6 py-3 rounded-xl font-semibold shadow-md hover:shadow-lg transition">
-                <i class="fas fa-rotate-right mr-2"></i>Làm mới trang
-            </a>
+            <div class="flex flex-wrap gap-3 justify-center">
+                <a href="{{ route('client.results.index') }}"
+                    class="inline-flex items-center bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-700 hover:to-cyan-600 text-white px-6 py-3 rounded-xl font-semibold shadow-md hover:shadow-lg transition">
+                    <i class="fas fa-rotate-right mr-2"></i>Làm mới trang
+                </a>
+                <a href="{{ route('client.events.index') }}"
+                    class="inline-flex items-center bg-white hover:bg-gray-50 text-gray-700 px-6 py-3 rounded-xl font-semibold shadow-md hover:shadow-lg transition border border-gray-200">
+                    <i class="fas fa-calendar mr-2"></i>Xem cuộc thi
+                </a>
+            </div>
         </div>
     </div>
     @endif
@@ -207,8 +231,8 @@ $page,
             <a href="{{ route('client.events.index') }}" class="bg-white text-blue-700 px-8 py-4 rounded-xl font-bold shadow-lg hover:shadow-xl transition inline-flex items-center gap-2">
                 <i class="fas fa-rocket"></i> <span>Khám phá cuộc thi</span>
             </a>
-            <a href="#" class="bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white px-8 py-4 rounded-xl font-bold shadow-lg hover:shadow-xl transition inline-flex items-center gap-2 border border-white/30">
-                <i class="fas fa-bell"></i> <span>Nhận thông báo kết quả</span>
+            <a href="{{ route('client.home') }}" class="bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white px-8 py-4 rounded-xl font-bold shadow-lg hover:shadow-xl transition inline-flex items-center gap-2 border border-white/30">
+                <i class="fas fa-home"></i> <span>Về trang chủ</span>
             </a>
         </div>
     </div>

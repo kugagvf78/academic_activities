@@ -2,38 +2,6 @@
 @section('title', 'Tin tức & Thông báo')
 
 @section('content')
-@php
-use Illuminate\Pagination\LengthAwarePaginator;
-use Illuminate\Support\Collection;
-
-// Tạo 18 bài viết giả (để có 2 trang)
-$fakeItems = collect(range(1, 18))->map(function ($i) {
-    return [
-        'id' => $i,
-        'title' => "Bài viết số $i - Tin tức học thuật",
-        'category' => ['Cuộc thi', 'Thông báo', 'Hội thảo'][$i % 3],
-        'date' => now()->subDays($i)->format('d/m/Y'),
-        'image' => "https://picsum.photos/600/400?random=$i",
-        'desc' => 'Đây là mô tả ngắn gọn cho bài viết thử nghiệm.',
-    ];
-});
-
-// Lấy trang hiện tại
-$page = request()->get('page', 1);
-$perPage = 9;
-
-// Cắt dữ liệu theo trang
-$itemsForCurrentPage = $fakeItems->slice(($page - 1) * $perPage, $perPage)->values();
-
-// Tạo paginator giả
-$news = new LengthAwarePaginator(
-    $itemsForCurrentPage,
-    $fakeItems->count(),
-    $perPage,
-    $page,
-    ['path' => request()->url(), 'query' => request()->query()]
-);
-@endphp
 
 {{-- 🌟 HEADER SECTION - Modern Style --}}
 <section class="relative bg-gradient-to-br from-blue-700 via-blue-600 to-cyan-500 text-white pt-28 pb-32 overflow-hidden">
@@ -67,76 +35,130 @@ $news = new LengthAwarePaginator(
             <p class="text-blue-100 text-lg max-w-2xl mx-auto">
                 Nơi cập nhật những thông tin, hoạt động và sự kiện học thuật mới nhất của Khoa Công nghệ Thông tin.
             </p>
+            
+            {{-- Stats --}}
+            @if(isset($stats))
+            <div class="flex justify-center gap-8 mt-8">
+                <div class="text-center">
+                    <div class="text-3xl font-bold">{{ $stats['total'] }}</div>
+                    <div class="text-blue-100 text-sm">Tổng tin tức</div>
+                </div>
+                <div class="text-center">
+                    <div class="text-3xl font-bold">{{ $stats['this_month'] }}</div>
+                    <div class="text-blue-100 text-sm">Tháng này</div>
+                </div>
+            </div>
+            @endif
         </div>
     </div>
 </section>
 
 {{-- 🗞️ MAIN CONTENT --}}
-<section class="container mx-auto px-6 py-16 ">
+<section class="container mx-auto px-6 py-16">
 
     {{-- 🗞️ FILTER BAR --}}
-    <div class="flex flex-wrap items-center justify-between mb-10 gap-4">
+    <div class="bg-white rounded-2xl shadow-md border border-gray-100 p-6 mb-10">
+        <form method="GET" action="{{ route('client.news.index') }}" class="grid lg:grid-cols-4 md:grid-cols-2 gap-4 items-end">
+            
+            {{-- Tìm kiếm --}}
+            <div class="lg:col-span-2 relative">
+                <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                <input type="text" name="search" value="{{ request('search') }}" 
+                    placeholder="Tìm kiếm tin tức..."
+                    class="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition">
+            </div>
 
-        <div class="flex items-center gap-3">
-            <label class="text-gray-600 font-medium">Danh mục:</label>
-            <x-form.select
-                name="sort"
-                placeholder="Chọn thứ tự"
-                :options="[
-            'newest' => 'Mới nhất',
-            'oldest' => 'Cũ nhất',
-            'featured' => 'Nổi bật'
-        ]"
-                selected="newest"
-                class="w-48" />
-        </div>
+            {{-- Danh mục --}}
+            <div>
+                <select name="category" class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition">
+                    <option value="all">Tất cả danh mục</option>
+                    <option value="contest" {{ request('category') == 'contest' ? 'selected' : '' }}>Cuộc thi học thuật</option>
+                    <option value="announcement" {{ request('category') == 'announcement' ? 'selected' : '' }}>Thông báo chung</option>
+                    <option value="seminar" {{ request('category') == 'seminar' ? 'selected' : '' }}>Hội thảo & Sự kiện</option>
+                </select>
+            </div>
 
+            {{-- Sắp xếp --}}
+            <div>
+                <select name="sort" class="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition">
+                    <option value="newest" {{ request('sort') == 'newest' ? 'selected' : '' }}>Mới nhất</option>
+                    <option value="oldest" {{ request('sort') == 'oldest' ? 'selected' : '' }}>Cũ nhất</option>
+                    <option value="popular" {{ request('sort') == 'popular' ? 'selected' : '' }}>Xem nhiều</option>
+                </select>
+            </div>
 
-        <div class="flex items-center gap-3">
-            <label class="text-gray-600 font-medium">Danh mục:</label>
-            <x-form.select
-                name="category"
-                placeholder="Chọn loại tin"
-                :options="[
-            'all' => 'Tất cả',
-            'contest' => 'Cuộc thi học thuật',
-            'seminar' => 'Hội thảo',
-            'announcement' => 'Thông báo chung'
-        ]"
-                selected="all"
-                class="w-56" />
-
-        </div>
+            {{-- Nút lọc --}}
+            <div class="lg:col-span-4 flex justify-end gap-3">
+                <button type="submit" class="bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-700 hover:to-cyan-600 text-white px-6 py-3 rounded-xl font-semibold transition inline-flex items-center gap-2">
+                    <i class="fas fa-filter"></i>
+                    <span>Lọc</span>
+                </button>
+                
+                @if(request()->hasAny(['search', 'category', 'sort']))
+                <a href="{{ route('client.news.index') }}" class="text-blue-600 hover:text-blue-700 px-4 py-3 rounded-xl font-medium transition">
+                    <i class="fas fa-rotate mr-2"></i>Đặt lại
+                </a>
+                @endif
+            </div>
+        </form>
     </div>
 
-
+    @if($news->count() > 0)
     {{-- NEWS GRID --}}
     <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-        @foreach (range(1,6) as $i)
+        @foreach ($news as $item)
         <article class="bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md hover:-translate-y-1 transition overflow-hidden group">
             <div class="relative overflow-hidden">
-                <img src="https://picsum.photos/600/400?random={{ $i }}" alt="News image"
+                <img src="{{ asset('images/home/banner1.png') }}" alt="{{ $item->tieude }}"
                     class="w-full h-52 object-cover group-hover:scale-105 transition-transform duration-500">
-                <div class="absolute top-4 left-4 bg-blue-600 text-white text-xs font-semibold px-3 py-1 rounded-full shadow">
-                    {{ ['Cuộc thi','Thông báo','Hội thảo'][($i % 3)] }}
+                <div class="absolute top-4 left-4 bg-{{ $item->category_color }}-600 text-white text-xs font-semibold px-3 py-1 rounded-full shadow">
+                    {{ $item->category }}
                 </div>
+                
+                {{-- Lượt xem --}}
+                @if($item->luotxem > 0)
+                <div class="absolute top-4 right-4 bg-white/90 backdrop-blur-sm text-gray-700 text-xs font-semibold px-3 py-1 rounded-full flex items-center gap-1">
+                    <i class="fas fa-eye"></i>
+                    {{ $item->luotxem }}
+                </div>
+                @endif
             </div>
 
             <div class="p-6">
-                <h2 class="text-lg font-bold text-gray-800 mb-2 group-hover:text-blue-600 transition">
-                    {{ ['AI Innovation Contest 2025','Lịch họp Ban Học Thuật','Web Development Challenge','Hội thảo Blockchain Ứng dụng','Thông báo đăng ký thi học kỳ','Seminar AI & Data Science'][$i-1] ?? 'Tin tức học thuật' }}
+                <h2 class="text-lg font-bold text-gray-800 mb-2 group-hover:text-blue-600 transition line-clamp-2">
+                    {{ $item->tieude }}
                 </h2>
+                
                 <p class="text-gray-600 text-sm mb-4 line-clamp-3">
-                    Đây là đoạn mô tả ngắn gọn về nội dung bài viết. Cập nhật nhanh thông tin mới nhất từ khoa CNTT, bao gồm lịch trình, quy định và kết quả các hoạt động.
+                    {{ $item->excerpt }}
                 </p>
 
-                <div class="flex items-center justify-between text-sm text-gray-500">
+                <div class="flex items-center justify-between text-sm text-gray-500 mb-3">
                     <div class="flex items-center gap-2">
                         <i class="far fa-calendar text-blue-500"></i>
-                        <span>{{ now()->subDays($i)->format('d/m/Y') }}</span>
+                        <span>{{ $item->date }}</span>
                     </div>
-                    <a href="#"
-                        class="text-blue-600 hover:text-blue-800 font-semibold inline-flex items-center gap-1">
+                    @if($item->tacgia)
+                    <div class="flex items-center gap-2">
+                        <i class="far fa-user text-gray-400"></i>
+                        <span class="line-clamp-1">{{ $item->tacgia }}</span>
+                    </div>
+                    @endif
+                </div>
+
+                {{-- Cuộc thi liên quan --}}
+                @if($item->tencuocthi)
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-2 mb-3">
+                    <p class="text-xs text-blue-700 line-clamp-1">
+                        <i class="fas fa-link mr-1"></i>{{ $item->tencuocthi }}
+                    </p>
+                </div>
+                @endif
+
+                <div class="flex items-center justify-between border-t border-gray-100 pt-4">
+                    <span class="text-xs text-gray-500">{{ $item->time_ago }}</span>
+                    <a href="{{ route('client.news.show', $item->slug) }}"
+                        class="text-blue-600 hover:text-blue-800 font-semibold inline-flex items-center gap-1 text-sm">
                         Xem thêm <i class="fas fa-arrow-right text-xs"></i>
                     </a>
                 </div>
@@ -147,9 +169,11 @@ $news = new LengthAwarePaginator(
 
     {{-- 📄 PAGINATION --}}
     @if($news->hasPages())
-    <div class="mt-16 mx-5">
-        {!! $news->appends(request()->query())->links('pagination.custom') !!}
+    <div class="mt-16">
+        {{ $news->links() }}
     </div>
+    @endif
+
     @else
     {{-- 🔸 EMPTY STATE --}}
     <div class="bg-gradient-to-br from-gray-50 to-blue-50 rounded-2xl shadow-sm border border-gray-200 p-16 text-center">
@@ -161,7 +185,7 @@ $news = new LengthAwarePaginator(
             </div>
 
             {{-- Message --}}
-            <h4 class="text-2xl font-bold text-gray-700 mb-3">Không tìm thấy bài viết</h4>
+            <h4 class="text-2xl font-bold text-gray-700 mb-3">Không tìm thấy tin tức</h4>
             <p class="text-gray-500 mb-8 leading-relaxed">
                 @if(request('search') || request('category') || request('sort'))
                 Không có tin tức hoặc thông báo nào phù hợp với tiêu chí tìm kiếm.<br>
@@ -179,16 +203,15 @@ $news = new LengthAwarePaginator(
                     <i class="fas fa-rotate-right mr-2"></i>
                     Làm mới trang
                 </a>
-                <a href="#"
+                <a href="{{ route('client.home') }}"
                     class="inline-flex items-center bg-white hover:bg-gray-50 text-gray-700 px-6 py-3 rounded-xl font-semibold shadow-md hover:shadow-lg transition border border-gray-200">
-                    <i class="fas fa-bell mr-2"></i>
-                    Nhận thông báo
+                    <i class="fas fa-home mr-2"></i>
+                    Về trang chủ
                 </a>
             </div>
         </div>
     </div>
     @endif
-
 
 </section>
 

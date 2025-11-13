@@ -391,20 +391,30 @@ class EventController extends Controller
     {
         $macuocthi = $this->getMaCuocThiFromSlug($slug);
 
-        $event = DB::table('cuocthi')
+        $cuocthi = DB::table('cuocthi')
             ->where('macuocthi', $macuocthi)
             ->first();
 
-        if (!$event) {
+        if (!$cuocthi) {
             abort(404, 'Không tìm thấy cuộc thi');
         }
 
-        // Lấy danh sách hoạt động hỗ trợ
-        $hoatdong = DB::table('hoatdonghotro')
+        // Kiểm tra trạng thái và thời gian
+        if (!$this->canRegister($cuocthi)) {
+            return redirect()
+                ->route('client.events.show', $slug)
+                ->with('error', 'Cuộc thi này hiện không nhận đăng ký');
+        }
+
+        // LẤY CẢ 2 LOẠI: ToChuc VÀ HoTroKyThuat
+        $hoatdongs = DB::table('hoatdonghotro')
             ->where('macuocthi', $macuocthi)
-            ->whereIn('loaihoatdong', ['HoTroKyThuat', 'ToChuc'])
+            ->where('loaihoatdong', 'HoTroKyThuat')  // ← SỬA DÒNG NÀY
+            ->where('thoigianketthuc', '>=', now())
+            ->orderBy('loaihoatdong', 'asc')  // Sắp xếp theo loại
+            ->orderBy('thoigianbatdau', 'asc')  // Rồi theo thời gian
             ->get();
 
-        return view('client.events.support', compact('event', 'slug', 'hoatdong'));
+        return view('client.events.support', compact('cuocthi', 'hoatdongs', 'slug'));
     }
 }

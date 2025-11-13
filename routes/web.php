@@ -9,6 +9,7 @@ use App\Http\Controllers\Web\Client\ResultController;
 use App\Http\Controllers\Web\Client\NewsController;
 use App\Http\Controllers\Web\Client\ContestRegistrationController;
 use App\Http\Controllers\Web\Client\CheerRegistrationController;
+use App\Http\Controllers\Web\Client\SupportController;
 
 /*
 |--------------------------------------------------------------------------
@@ -76,15 +77,21 @@ Route::prefix('/hoi-thao')->name('client.events.')->group(function () {
         Route::post('/{slug}/co-vu', [CheerRegistrationController::class, 'registerCheer'])
             ->name('cheer.submit');
         
-        // Đăng ký hỗ trợ
-        Route::get('/{slug}/ho-tro', [EventController::class, 'showSupportForm'])
+        // Đăng ký hỗ trợ Ban tổ chức - FORM
+        Route::get('/{slug}/ho-tro', [SupportController::class, 'showSupportForm'])
             ->name('support');
+        
+        // Đăng ký hỗ trợ Ban tổ chức - SUBMIT
+        Route::post('/{slug}/ho-tro', [SupportController::class, 'registerSupport'])
+            ->name('support.submit');
+
     });
     
     // API kiểm tra mã sinh viên (không cần middleware vì chỉ check data)
     Route::post('/check-student-code', [ContestRegistrationController::class, 'checkStudentCode'])
         ->name('check.student');
 });
+
 /*
 |--------------------------------------------------------------------------
 | Result Routes (Kết quả)
@@ -136,15 +143,13 @@ Route::middleware('jwt.web')->group(function () {
         
         // Xuất điểm rèn luyện PDF
         Route::get('/diem-ren-luyen/export', 'exportDiemRenLuyenPDF')->name('diem.export');
+        
+        // **MỚI: Đăng ký cổ vũ**
+        Route::get('/dang-ky-co-vu', 'myCheerRegistrations')->name('cheer.list');
+        
+        Route::delete('/activity/cancel/{madangkyhoatdong}', [ProfileController::class, 'cancelActivityRegistration'])
+            ->name('activity.cancel'); 
     });
-    
-    // Route xem danh sách đăng ký của tôi
-    Route::get('/hoat-dong-cua-toi', [CheerRegistrationController::class, 'myRegistrations'])
-        ->name('my.registrations');
-    
-    // Route hủy đăng ký
-    Route::delete('/hoat-dong/{madangkyhoatdong}/huy', [CheerRegistrationController::class, 'cancelRegistration'])
-        ->name('registration.cancel');
 });
 
 /*

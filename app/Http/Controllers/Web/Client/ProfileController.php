@@ -51,6 +51,76 @@ class ProfileController extends Controller
             
             // Lấy điểm rèn luyện chi tiết
             $diemRenLuyen = $this->getDiemRenLuyenDetail($profile);
+
+            // Lấy danh sách đăng ký cổ vũ VÀ hỗ trợ
+            $registrations = DB::table('dangkyhoatdong as dkhd')
+                ->join('hoatdonghotro as hd', 'dkhd.mahoatdong', '=', 'hd.mahoatdong')
+                ->join('cuocthi as ct', 'hd.macuocthi', '=', 'ct.macuocthi')
+                ->where('dkhd.masinhvien', $profile->masinhvien)
+                ->whereIn('hd.loaihoatdong', ['CoVu', 'ToChuc', 'HoTroKyThuat']) // Thêm ToChuc và HoTroKyThuat
+                ->select(
+                    'dkhd.madangkyhoatdong',
+                    'dkhd.ngaydangky',
+                    'dkhd.trangthai',
+                    'dkhd.diemdanhqr',
+                    'dkhd.thoigiandiemdanh',
+                    'hd.tenhoatdong',
+                    'hd.loaihoatdong', // Thêm loaihoatdong để phân biệt
+                    'hd.thoigianbatdau',
+                    'hd.thoigianketthuc',
+                    'hd.diadiem',
+                    'hd.diemrenluyen',
+                    'ct.tencuocthi',
+                    'ct.macuocthi'
+                )
+                ->orderBy('hd.thoigianbatdau', 'desc')
+                ->get();
+
+            // Transform data
+            $registrations = $registrations->map(function($reg) {
+                $now = now();
+                $start = \Carbon\Carbon::parse($reg->thoigianbatdau);
+                $end = \Carbon\Carbon::parse($reg->thoigianketthuc);
+
+                // Xác định trạng thái
+                if ($end->lt($now)) {
+                    $status = 'ended';
+                    $statusLabel = 'Đã kết thúc';
+                    $statusColor = 'gray';
+                } elseif ($start->lte($now) && $end->gte($now)) {
+                    $status = 'ongoing';
+                    $statusLabel = 'Đang diễn ra';
+                    $statusColor = 'green';
+                } else {
+                    $status = 'upcoming';
+                    $statusLabel = 'Sắp diễn ra';
+                    $statusColor = 'blue';
+                }
+
+                // Có thể hủy không (chỉ hủy được nếu chưa điểm danh và còn >24h)
+                $canCancel = !$reg->diemdanhqr && 
+                             $start->gt($now) && 
+                             $now->diffInHours($start, false) >= 24;
+
+                return (object)[
+                    'madangkyhoatdong' => $reg->madangkyhoatdong,
+                    'tencuocthi' => $reg->tencuocthi,
+                    'tenhoatdong' => $reg->tenhoatdong,
+                    'loaihoatdong' => $reg->loaihoatdong, // Thêm dòng này
+                    'thoigianbatdau' => $start,
+                    'thoigianketthuc' => $end,
+                    'diadiem' => $reg->diadiem,
+                    'diemrenluyen' => $reg->diemrenluyen,
+                    'ngaydangky' => \Carbon\Carbon::parse($reg->ngaydangky),
+                    'trangthai' => $reg->trangthai,
+                    'diemdanhqr' => $reg->diemdanhqr,
+                    'thoigiandiemdanh' => $reg->thoigiandiemdanh ? \Carbon\Carbon::parse($reg->thoigiandiemdanh) : null,
+                    'status' => $status,
+                    'statusLabel' => $statusLabel,
+                    'statusColor' => $statusColor,
+                    'canCancel' => $canCancel,
+                ];
+            });
             
         } else if ($user->vaitro === 'GiangVien') {
             $profile = $user->giangVien()
@@ -60,12 +130,14 @@ class ProfileController extends Controller
             $certificates = [];
             $danhSachLop = [];
             $diemRenLuyen = [];
+            $registrations = collect([]);
         } else {
             $profile = null;
             $activities = [];
             $certificates = [];
             $danhSachLop = [];
             $diemRenLuyen = [];
+            $registrations = collect([]);
         }
 
         return view('client.profile.profile', compact(
@@ -74,7 +146,8 @@ class ProfileController extends Controller
             'activities', 
             'certificates', 
             'danhSachLop',
-            'diemRenLuyen'
+            'diemRenLuyen',
+            'registrations'
         ));
     }
 
@@ -475,4 +548,142 @@ class ProfileController extends Controller
         
         return back()->with('info', 'Chức năng xuất PDF đang được phát triển');
     }
+
+    /**
+     * Hủy đăng ký hoạt động (cổ vũ hoặc hỗ trợ)
+     */
+    public function cancelActivityRegistration($madangkyhoatdong)
+    {
+        $user = Auth::guard('api')->user();
+        
+        if (!$user || $user->vaitro !== 'SinhVien') {
+            return back()->with('error', 'Vui lòng đăng nhập với tài khoản sinh viên');
+        }
+
+        $sinhVien = $user->sinhVien;
+        
+        if (!$sinhVien) {
+            return back()->with('error', 'Không tìm thấy thông tin sinh viên');
+        }
+
+        try {
+            // Lấy thông tin đăng ký
+            $registration = DB::table('dangkyhoatdong as dkhd')
+                ->join('hoatdonghotro as hd', 'dkhd.mahoatdong', '=', 'hd.mahoatdong')
+                ->where('dkhd.madangkyhoatdong', $madangkyhoatdong)
+                ->where('dkhd.masinhvien', $sinhVien->masinhvien)
+                ->whereIn('hd.loaihoatdong', ['CoVu', 'ToChuc', 'HoTroKyThuat']) // Cho phép cả 3 loại
+                ->select('dkhd.*', 'hd.thoigianbatdau', 'hd.tenhoatdong', 'hd.loaihoatdong')
+                ->first();
+
+            if (!$registration) {
+                return back()->with('error', 'Không tìm thấy đăng ký');
+            }
+
+            // Kiểm tra đã điểm danh chưa
+            if ($registration->diemdanhqr) {
+                return back()->with('error', 'Không thể hủy đăng ký đã điểm danh!');
+            }
+
+            // Kiểm tra thời gian hủy (phải còn ít nhất 24h)
+            $hoursUntilStart = now()->diffInHours(\Carbon\Carbon::parse($registration->thoigianbatdau), false);
+            
+            if ($hoursUntilStart < 24) {
+                return back()->with('error', 'Không thể hủy đăng ký trong vòng 24 giờ trước sự kiện');
+            }
+
+            // Xóa đăng ký
+            DB::table('dangkyhoatdong')
+                ->where('madangkyhoatdong', $madangkyhoatdong)
+                ->delete();
+
+            return back()->with('success', 'Đã hủy đăng ký thành công');
+
+        } catch (\Exception $e) {
+            Log::error('Error canceling activity registration: ' . $e->getMessage());
+            return back()->with('error', 'Có lỗi xảy ra: ' . $e->getMessage());
+        }
+    }
+
+    // public function cancelCompetitionRegistration($madangky)
+    // {
+    //     $user = Auth::guard('api')->user();
+    //     if (!$user || $user->vaitro !== 'SinhVien') {
+    //         return back()->with('error', 'Chỉ sinh viên mới được hủy đăng ký dự thi');
+    //     }
+
+    //     $sinhVien = $user->sinhVien;
+    //     if (!$sinhVien) {
+    //         return back()->with('error', 'Không tìm thấy thông tin sinh viên');
+    //     }
+
+    //     try {
+    //         DB::beginTransaction();
+
+    //         $registration = DB::table('dangkyduthi as dk')
+    //             ->join('cuocthi as ct', 'dk.macuocthi', '=', 'ct.macuocthi')
+    //             ->where('dk.madangky', $madangky)
+    //             ->where('dk.masinhvien', $sinhVien->masinhvien)
+    //             ->select('dk.*', 'ct.thoigianbatdau', 'ct.tencuocthi')
+    //             ->first();
+
+    //         if (!$registration) {
+    //             DB::rollBack();
+    //             return back()->with('error', 'Không tìm thấy đăng ký dự thi');
+    //         }
+
+    //         $startTime = \Carbon\Carbon::parse($registration->thoigianbatdau);
+
+    //         // Kiểm tra thời gian
+    //         if ($startTime->lt(now())) {
+    //             DB::rollBack();
+    //             return back()->with('error', 'Không thể hủy khi cuộc thi đã bắt đầu');
+    //         }
+    //         if ($startTime->diffInHours(now()) < 24) {
+    //             DB::rollBack();
+    //             return back()->with('error', 'Chỉ được hủy trước 24 giờ bắt đầu cuộc thi');
+    //         }
+
+    //         // Nếu là đội
+    //         if ($registration->madoithi) {
+    //             $teamMembers = DB::table('thanhviendoithi')
+    //                 ->where('madoithi', $registration->madoithi)
+    //                 ->count();
+
+    //             $isLeader = DB::table('thanhviendoithi')
+    //                 ->where('madoithi', $registration->madoithi)
+    //                 ->where('masinhvien', $sinhVien->masinhvien)
+    //                 ->where('vaitro', 'TruongDoi')
+    //                 ->exists();
+
+    //             if ($isLeader && $teamMembers > 1) {
+    //                 DB::rollBack();
+    //                 return back()->with('error', 'Trưởng đội không được rời khi còn thành viên. Vui lòng chuyển quyền!');
+    //             }
+
+    //             // Xóa khỏi đội
+    //             DB::table('thanhviendoithi')
+    //                 ->where('madoithi', $registration->madoithi)
+    //                 ->where('masinhvien', $sinhVien->masinhvien)
+    //                 ->delete();
+
+    //             // Nếu là đội 1 người → xóa luôn đội
+    //             if ($isLeader && $teamMembers === 1) {
+    //                 DB::table('doithi')->where('madoithi', $registration->madoithi)->delete();
+    //             }
+    //         }
+
+    //         // Xóa đăng ký dự thi
+    //         DB::table('dangkyduthi')->where('madangky', $madangky)->delete();
+
+    //         DB::commit();
+    //         return back()->with('success', 'Hủy đăng ký dự thi thành công!');
+
+    //     } catch (\Exception $e) {
+    //         DB::rollBack();
+    //         Log::error('Lỗi hủy đăng ký dự thi: ' . $e->getMessage());
+    //         return back()->with('error', 'Có lỗi xảy ra, vui lòng thử lại');
+    //     }
+    // }
 }
+    

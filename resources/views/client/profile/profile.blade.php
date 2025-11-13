@@ -103,6 +103,22 @@
                             <span>Điểm rèn luyện</span>
                         </button>
 
+                        <button 
+                            @click="tab = 'competition'"
+                            :class="tab === 'competition' ? 'bg-blue-50 text-blue-700 border-l-4 border-blue-600' : 'text-gray-700 hover:bg-gray-50'"
+                            class="w-full px-6 py-4 flex items-center gap-3 font-medium transition border-t border-gray-100 cursor-pointer">
+                            <i class="fas fa-trophy w-5" :class="tab === 'competition' ? 'text-blue-600' : 'text-gray-500'"></i>
+                            <span>Đăng ký dự thi</span>
+                        </button>
+
+                        <button
+                            @click="tab = 'activity'"
+                            :class="tab === 'activity' ? 'bg-blue-50 text-blue-700 border-l-4 border-blue-600' : 'text-gray-700 hover:bg-gray-50'"
+                            class="w-full px-6 py-4 flex items-center gap-3 font-medium transition border-t border-gray-100 cursor-pointer">
+                            <i class="fas fa-hands-clapping w-5" :class="tab === 'activity' ? 'text-blue-600' : 'text-gray-500'"></i>
+                            <span>Đăng ký cổ vũ - hỗ trợ</span>
+                        </button>
+
                         <button @click="tab='certs'"
                             :class="tab==='certs' ? 'bg-blue-50 text-blue-700 border-l-4 border-blue-600' : 'text-gray-700 hover:bg-gray-50'"
                             class="w-full px-6 py-4 flex items-center gap-3 font-medium transition border-t border-gray-100">
@@ -450,6 +466,163 @@
                             <i class="fas fa-certificate text-6xl text-gray-300 mb-4"></i>
                             <p class="text-gray-500 text-lg">Chưa có chứng nhận nào</p>
                             <p class="text-gray-400 text-sm mt-2">Hãy cố gắng đạt giải trong các cuộc thi!</p>
+                        </div>
+                    @endif
+                </div>
+            </div>
+            @endif
+
+            {{-- CỔ VŨ - HỖ TRỢ --}}
+            @if($user->vaitro === 'SinhVien')
+            <div x-show="tab === 'activity'" x-transition>
+                <div class="bg-white rounded-2xl shadow-md border border-gray-100 p-8">
+
+                    {{-- Header --}}
+                    <div class="flex items-center justify-between mb-6 pb-4 border-b border-gray-100">
+                        <h3 class="text-2xl font-bold text-gray-800">Đăng ký cổ vũ - hỗ trợ của tôi</h3>
+                        <a href="{{ route('client.events.index') }}" 
+                        class="px-4 py-2 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white rounded-lg font-medium transition text-sm inline-flex items-center gap-2">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                            Khám phá sự kiện
+                        </a>
+                    </div>
+
+                    @if($registrations->isEmpty())
+                        {{-- Empty State --}}
+                        <div class="text-center py-16">
+                            <div class="bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl shadow-inner p-12 border border-purple-100 max-w-2xl mx-auto">
+                                <i class="fa-solid fa-hands-clapping text-6xl text-purple-300 mb-6"></i>
+                                <h3 class="text-2xl font-bold text-gray-800 mb-3">Chưa có đăng ký nào</h3>
+                                <p class="text-gray-600 mb-6">Hãy tham gia cổ vũ hoặc hỗ trợ các cuộc thi để nhận điểm rèn luyện!</p>
+                                <a href="{{ route('client.events.index') }}" 
+                                class="inline-flex items-center gap-2 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-semibold px-6 py-3 rounded-xl shadow-md hover:shadow-xl transition">
+                                    <i class="fa-solid fa-magnifying-glass"></i>
+                                    Tìm sự kiện
+                                </a>
+                            </div>
+                        </div>
+                    @else
+                        {{-- List of Registrations --}}
+                        <div class="space-y-4">
+                            @foreach($registrations as $reg)
+                            <div class="bg-gradient-to-r 
+                                @if($reg->loaihoatdong === 'CoVu') from-purple-50 to-pink-50 border-purple-100 
+                                @elseif($reg->loaihoatdong === 'ToChuc') from-blue-50 to-indigo-50 border-blue-100
+                                @else from-green-50 to-teal-50 border-green-100 @endif
+                                rounded-xl shadow-md hover:shadow-lg transition border overflow-hidden">
+                                <div class="p-6">
+                                    {{-- Header --}}
+                                    <div class="flex items-start justify-between mb-4">
+                                        <div class="flex-1">
+                                            <div class="flex items-center gap-2 mb-2">
+                                                <h3 class="text-xl font-bold 
+                                                    @if($reg->loaihoatdong === 'CoVu') text-purple-800
+                                                    @elseif($reg->loaihoatdong === 'ToChuc') text-blue-800
+                                                    @else text-green-800 @endif">
+                                                    {{ $reg->tenhoatdong }}
+                                                </h3>
+                                                {{-- Badge loại hoạt động --}}
+                                                <span class="px-2.5 py-1 rounded-full text-xs font-semibold
+                                                    @if($reg->loaihoatdong === 'CoVu') bg-purple-200 text-purple-800
+                                                    @elseif($reg->loaihoatdong === 'ToChuc') bg-blue-200 text-blue-800
+                                                    @else bg-green-200 text-green-800 @endif">
+                                                    @if($reg->loaihoatdong === 'CoVu') Cổ vũ
+                                                    @elseif($reg->loaihoatdong === 'ToChuc') Tổ chức
+                                                    @else Hỗ trợ kỹ thuật
+                                                    @endif
+                                                </span>
+                                            </div>
+                                            <p class="
+                                                @if($reg->loaihoatdong === 'CoVu') text-purple-600
+                                                @elseif($reg->loaihoatdong === 'ToChuc') text-blue-600
+                                                @else text-green-600 @endif text-sm mb-2">
+                                                <i class="fa-solid fa-trophy mr-2"></i>
+                                                {{ $reg->tencuocthi }}
+                                            </p>
+                                        </div>
+
+                                        {{-- Status Badge --}}
+                                        <span class="px-4 py-2 rounded-full text-sm font-semibold
+                                            {{ $reg->statusColor === 'green' ? 'bg-green-100 text-green-700' : '' }}
+                                            {{ $reg->statusColor === 'blue' ? 'bg-blue-100 text-blue-700' : '' }}
+                                            {{ $reg->statusColor === 'gray' ? 'bg-gray-100 text-gray-700' : '' }}">
+                                            {{ $reg->statusLabel }}
+                                        </span>
+                                    </div>
+
+                                    {{-- Details - giữ nguyên như cũ --}}
+                                    <div class="grid md:grid-cols-2 gap-4 mb-4">
+                                        {{-- ... phần details giữ nguyên ... --}}
+                                    </div>
+
+                                    {{-- Attendance & Cancel --}}
+                                    <div class="border-t 
+                                        @if($reg->loaihoatdong === 'CoVu') border-purple-100
+                                        @elseif($reg->loaihoatdong === 'ToChuc') border-blue-100
+                                        @else border-green-100 @endif pt-4 mt-4">
+                                        @if($reg->diemdanhqr)
+                                            <div class="flex items-center gap-2 text-green-600">
+                                                <i class="fa-solid fa-circle-check text-xl"></i>
+                                                <span class="font-semibold">Đã điểm danh</span>
+                                                <span class="text-sm text-gray-500 ml-2">
+                                                    ({{ $reg->thoigiandiemdanh->format('d/m/Y H:i') }})
+                                                </span>
+                                            </div>
+                                        @else
+                                            <div class="flex items-center justify-between">
+                                                <div class="flex items-center gap-2 text-gray-500">
+                                                    <i class="fa-solid fa-clock text-lg"></i>
+                                                    <span>Chưa điểm danh</span>
+                                                </div>
+
+                                                @if($reg->canCancel)
+                                                    <form action="{{ route('profile.activity.cancel', $reg->madangkyhoatdong) }}" 
+                                                        method="POST"
+                                                        onsubmit="return confirm('Bạn có chắc muốn hủy đăng ký này?');">
+                                                        @csrf
+                                                        @method('DELETE')
+                                                        <button type="submit" 
+                                                                class="px-4 py-2 bg-red-100 hover:bg-red-200 text-red-700 font-semibold rounded-lg transition inline-flex items-center gap-2">
+                                                            <i class="fa-solid fa-xmark"></i>
+                                                            Hủy đăng ký
+                                                        </button>
+                                                    </form>
+                                                @endif
+                                            </div>
+                                        @endif
+                                    </div>
+
+                                    @if($reg->status === 'upcoming' && !$reg->canCancel && !$reg->diemdanhqr)
+                                        <div class="mt-4 bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-800">
+                                            <i class="fa-solid fa-info-circle mr-2"></i>
+                                            Không thể hủy đăng ký trong vòng 24 giờ trước sự kiện
+                                        </div>
+                                    @endif
+                                </div>
+                            </div>
+                            @endforeach
+                        </div>
+
+                        {{-- Info Box --}}
+                        <div class="mt-8 bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-xl p-6">
+                            <h3 class="font-bold text-purple-800 mb-3 flex items-center gap-2">
+                                <i class="fa-solid fa-lightbulb text-purple-500"></i>
+                                Lưu ý quan trọng
+                            </h3>
+                            <ul class="space-y-2 text-purple-700 text-sm">
+                                <li class="flex items-start gap-2">
+                                    <i class="fa-solid fa-check text-green-600 mt-1"></i>
+                                    <span>Bạn có thể hủy đăng ký trước 24 giờ bắt đầu sự kiện</span>
+                                </li>
+                                <li class="flex items-start gap-2">
+                                    <i class="fa-solid fa-check text-green-600 mt-1"></i>
+                                    <span>Không thể hủy đăng ký đã điểm danh</span>
+                                </li>
+                                <li class="flex items-start gap-2">
+                                    <i class="fa-solid fa-check text-green-600 mt-1"></i>
+                                    <span>Điểm rèn luyện chỉ được cộng sau khi điểm danh thành công</span>
+                                </li>
+                            </ul>
                         </div>
                     @endif
                 </div>

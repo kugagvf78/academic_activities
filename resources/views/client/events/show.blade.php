@@ -70,7 +70,7 @@
                     </a>
 
                     {{-- Đăng ký hỗ trợ - FIXED: Dùng macuocthi --}}
-                    <a href="{{ route('client.events.support', $event->macuocthi) }}"
+                    <a href="{{ route('client.events.support', $event->slug) }}"
                         class="bg-white/10 backdrop-blur-sm border border-white/20 text-white px-8 py-3.5 rounded-lg font-semibold hover:bg-white/20 transition inline-flex items-center gap-2">
                         <i class="fas fa-people-carry-box"></i>
                         <span>Đăng ký hỗ trợ</span>

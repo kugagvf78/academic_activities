@@ -3,34 +3,42 @@
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use Illuminate\Pagination\LengthAwarePaginator;
+use App\Http\Controllers\Web\Client\ProfileController;
 
 /*
 |--------------------------------------------------------------------------
 | Auth Routes
 |--------------------------------------------------------------------------
 */
-// Thêm vào phần Auth Routes trong web.php
 Route::controller(AuthController::class)->group(function () {
     Route::get('/login', 'showLogin')->name('login');
     Route::post('/login', 'webLogin')->name('login.post');
     
-    // Routes đăng ký
     Route::get('/register', 'showRegister')->name('register');
     Route::post('/register', 'webRegister')->name('register.post');
 
-    // Middleware jwt.web
     Route::middleware('jwt.web')->group(function () {
-        Route::get('/change-password', 'showChangePassword')->name('password.change');
-        Route::post('/change-password', 'changePassword')->name('password.update');
+        Route::get('/change-password', 'showChangePassword')->name('password.change.view');
+        Route::post('/change-password', 'changePassword')->name('password.change');
         Route::post('/logout', 'logout')->name('logout');
     });
 });
+
+// Password Reset Routes
+Route::get('/quen-mat-khau', [AuthController::class, 'showForgotPassword'])
+    ->name('password.request');
+Route::post('/quen-mat-khau', [AuthController::class, 'sendResetLink'])
+    ->name('password.email');
+Route::get('/dat-lai-mat-khau/{token}', [AuthController::class, 'showResetPassword'])
+    ->name('password.reset');
+Route::post('/dat-lai-mat-khau', [AuthController::class, 'resetPassword'])
+    ->name('password.update');
+
 /*
 |--------------------------------------------------------------------------
 | Public Routes
 |--------------------------------------------------------------------------
 */
-
 Route::view('/', 'client.home')->name('client.home');
 
 Route::prefix('/hoi-thao')->name('client.events.')->group(function () {
@@ -72,7 +80,6 @@ Route::prefix('/hoi-thao')->name('client.events.')->group(function () {
         return view('client.events.show', compact('event'));
     })->name('show');
 
-    // Dùng middleware jwt.web
     Route::middleware('jwt.web')->group(function () {
         Route::get('/{slug}/dang-ky', function ($slug) {
             return view('client.events.register', compact('slug'));
@@ -129,17 +136,28 @@ Route::view('/lien-he', 'client.contact')->name('client.contact');
 
 /*
 |--------------------------------------------------------------------------
-| User Routes (JWT Auth)
+| User Profile Routes (JWT Auth)
 |--------------------------------------------------------------------------
 */
 Route::middleware('jwt.web')->group(function () {
-    // Route::view('/hoi-thao-cua-toi', 'user.my-events')->name('user.myEvents');
-    Route::view('/ho-so', 'client.profile')->name('client.profile');
+    Route::prefix('ho-so')->name('profile.')->controller(ProfileController::class)->group(function () {
+        // Xem profile
+        Route::get('/', 'index')->name('index');
+        
+        // Cập nhật avatar
+        Route::post('/avatar', 'updateAvatar')->name('avatar.update');
+        
+        // Cập nhật thông tin
+        Route::put('/update', 'updateInfo')->name('update');
+        
+        // Xuất điểm rèn luyện PDF
+        Route::get('/diem-ren-luyen/export', 'exportDiemRenLuyenPDF')->name('diem.export');
+    });
 });
 
 /*
 |--------------------------------------------------------------------------
-| Test Route (có thể xóa sau khi test xong)
+| Test Route
 |--------------------------------------------------------------------------
 */
 Route::get('/test-jwt', function () {
@@ -149,15 +167,3 @@ Route::get('/test-jwt', function () {
         'jwt_guest' => jwt_guest(),
     ];
 });
-
-Route::get('/quen-mat-khau', [AuthController::class, 'showForgotPassword'])
-    ->name('password.request');
-
-Route::post('/quen-mat-khau', [AuthController::class, 'sendResetLink'])
-    ->name('password.email');
-
-Route::get('/dat-lai-mat-khau/{token}', [AuthController::class, 'showResetPassword'])
-    ->name('password.reset');
-
-Route::post('/dat-lai-mat-khau', [AuthController::class, 'resetPassword'])
-    ->name('password.update');

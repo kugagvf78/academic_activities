@@ -180,7 +180,7 @@
 
                             {{-- Menu Items --}}
                             <div class="py-2">
-                                <a href="{{ route('client.profile') }}"
+                                <a href="{{ route('profile.index') }}"
                                     class="flex items-center gap-3 px-4 py-2.5 text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition">
                                     <i class="fa-solid fa-user w-4"></i>
                                     <span class="text-sm font-medium">Hồ sơ cá nhân</span>
@@ -322,7 +322,7 @@
 
                 @if($user)
                     <div class="mt-6 pt-6 border-t border-gray-200 space-y-2">
-                        <a href="{{ route('client.profile') }}"
+                        <a href="{{ route('profile.index') }}"
                             @click="mobileMenuOpen = false"
                             class="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-blue-50 transition text-gray-700">
                             <i class="fa-solid fa-user w-5"></i>

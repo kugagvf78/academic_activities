@@ -21,23 +21,26 @@ class AuthController extends Controller
     public function register(Request $request)
     {
         $request->validate([
-            'TenDangNhap' => 'required|string|unique:nguoidung,tendangnhap',
+            'Email' => 'required|email|unique:nguoidung,email',
             'MatKhau' => 'required|string|min:6',
-            'Email' => 'nullable|email|unique:nguoidung,email',
             'HoTen' => 'nullable|string|max:150',
             'SoDienThoai' => 'nullable|string|max:20',
         ]);
 
-        // Tạo mã người dùng tự động
-        $maNguoiDung = 'ND' . str_pad(NguoiDung::count() + 1, 6, '0', STR_PAD_LEFT);
-
         try {
             DB::beginTransaction();
 
-            // ✅ Sử dụng tên cột thực trong database (snake_case)
+            // Tạo mã sinh viên tự động
+            $count = SinhVien::count() + 1;
+            $maSinhVien = '20' . date('y') . str_pad($count, 6, '0', STR_PAD_LEFT);
+            
+            // Tạo mã người dùng
+            $maNguoiDung = 'ND' . str_pad(NguoiDung::count() + 1, 6, '0', STR_PAD_LEFT);
+
+            // ✅ Tên đăng nhập = Mã sinh viên
             $user = NguoiDung::create([
                 'manguoidung' => $maNguoiDung,
-                'tendangnhap' => $request->TenDangNhap,
+                'tendangnhap' => $maSinhVien, // Tên đăng nhập = Mã sinh viên
                 'matkhau' => Hash::make($request->MatKhau),
                 'email' => $request->Email,
                 'hoten' => $request->HoTen,
@@ -48,7 +51,7 @@ class AuthController extends Controller
 
             // ✅ Tạo bản ghi SinhVien
             SinhVien::create([
-                'masinhvien' => $maNguoiDung,
+                'masinhvien' => $maSinhVien,
                 'manguoidung' => $maNguoiDung,
                 'trangthai' => 'Active',
             ]);
@@ -57,7 +60,8 @@ class AuthController extends Controller
 
             return response()->json([
                 'message' => 'Đăng ký thành công',
-                'user' => $user
+                'user' => $user,
+                'ma_sinh_vien' => $maSinhVien
             ], 201);
 
         } catch (\Exception $e) {
@@ -90,18 +94,16 @@ class AuthController extends Controller
     public function webRegister(Request $request)
     {
         $request->validate([
-            'TenDangNhap' => 'required|string|unique:nguoidung,tendangnhap',
             'MatKhau' => 'required|string|min:6|confirmed',
-            'HoTen' => 'nullable|string|max:150',
+            'HoTen' => 'required|string|max:150',
             'Email' => 'required|email|unique:nguoidung,email',
             'SoDienThoai' => 'nullable|string|max:20',
             'VaiTro' => 'required|in:SinhVien,GiangVien',
         ], [
-            'TenDangNhap.required' => 'Vui lòng nhập tên đăng nhập',
-            'TenDangNhap.unique' => 'Tên đăng nhập đã tồn tại',
             'MatKhau.required' => 'Vui lòng nhập mật khẩu',
             'MatKhau.min' => 'Mật khẩu phải có ít nhất 6 ký tự',
             'MatKhau.confirmed' => 'Xác nhận mật khẩu không khớp',
+            'HoTen.required' => 'Vui lòng nhập họ tên',
             'Email.required' => 'Vui lòng nhập email',
             'Email.email' => 'Email không hợp lệ',
             'Email.unique' => 'Email đã được sử dụng',
@@ -109,19 +111,25 @@ class AuthController extends Controller
             'VaiTro.in' => 'Vai trò không hợp lệ',
         ]);
 
-        // Tạo mã người dùng tự động dựa trên vai trò
-        $prefix = $request->VaiTro === 'SinhVien' ? 'SV' : 'GV';
-        $count = NguoiDung::where('vaitro', $request->VaiTro)->count() + 1;
-        $maNguoiDung = $prefix . str_pad($count, 6, '0', STR_PAD_LEFT);
-
-        // ✅ Sử dụng transaction để đảm bảo tính toàn vẹn dữ liệu
         try {
             DB::beginTransaction();
 
-            // Tạo NguoiDung
+            // Tạo mã người dùng
+            $maNguoiDung = 'ND' . str_pad(NguoiDung::count() + 1, 6, '0', STR_PAD_LEFT);
+            
+            // Tạo mã và tên đăng nhập dựa trên vai trò
+            if ($request->VaiTro === 'SinhVien') {
+                $count = SinhVien::count() + 1;
+                $maVaiTro = '20' . date('y') . str_pad($count, 6, '0', STR_PAD_LEFT);
+            } else {
+                $count = GiangVien::count() + 1;
+                $maVaiTro = 'GV' . str_pad($count, 3, '0', STR_PAD_LEFT);
+            }
+
+            // ✅ Tên đăng nhập = Mã sinh viên/giảng viên
             $user = NguoiDung::create([
                 'manguoidung' => $maNguoiDung,
-                'tendangnhap' => $request->TenDangNhap,
+                'tendangnhap' => $maVaiTro, // Tên đăng nhập = Mã SV/GV
                 'matkhau' => Hash::make($request->MatKhau),
                 'hoten' => $request->HoTen,
                 'email' => $request->Email,
@@ -133,13 +141,13 @@ class AuthController extends Controller
             // ✅ Tạo bản ghi tương ứng trong SinhVien hoặc GiangVien
             if ($request->VaiTro === 'SinhVien') {
                 SinhVien::create([
-                    'masinhvien' => $maNguoiDung,
+                    'masinhvien' => $maVaiTro,
                     'manguoidung' => $maNguoiDung,
                     'trangthai' => 'Active',
                 ]);
             } else {
                 GiangVien::create([
-                    'magiangvien' => $maNguoiDung,
+                    'magiangvien' => $maVaiTro,
                     'manguoidung' => $maNguoiDung,
                 ]);
             }
@@ -150,8 +158,10 @@ class AuthController extends Controller
             $token = Auth::guard('api')->login($user);
             $cookie = cookie('jwt_token', $token, 60 * 24, '/', null, false, true);
 
+            $vaiTroText = $request->VaiTro === 'SinhVien' ? 'Sinh viên' : 'Giảng viên';
+            
             return redirect()->route('client.home')
-                ->with('success', 'Đăng ký thành công! Chào mừng bạn.')
+                ->with('success', "Đăng ký thành công! Mã {$vaiTroText} của bạn là: {$maVaiTro}. Đây cũng là tên đăng nhập của bạn.")
                 ->cookie($cookie);
 
         } catch (\Exception $e) {
@@ -183,14 +193,15 @@ class AuthController extends Controller
     public function login(Request $request)
     {
         $request->validate([
-            'TenDangNhap' => 'required|string',
+            'TenDangNhap' => 'required|string', // Mã sinh viên hoặc mã giảng viên
             'MatKhau' => 'required|string',
         ]);
 
+        // ✅ Tìm user bằng tên đăng nhập (là mã sinh viên/giảng viên)
         $user = NguoiDung::where('tendangnhap', $request->TenDangNhap)->first();
 
         if (!$user || !Hash::check($request->MatKhau, $user->matkhau)) {
-            return response()->json(['error' => 'Sai tên đăng nhập hoặc mật khẩu'], 401);
+            return response()->json(['error' => 'Sai mã sinh viên/giảng viên hoặc mật khẩu'], 401);
         }
 
         if ($user->trangthai !== 'Active') {
@@ -206,21 +217,22 @@ class AuthController extends Controller
     public function webLogin(Request $request)
     {
         $request->validate([
-            'TenDangNhap' => 'required|string',
+            'TenDangNhap' => 'required|string', // Mã sinh viên hoặc mã giảng viên
             'MatKhau' => 'required|string',
             'VaiTro' => 'required|in:SinhVien,GiangVien',
         ], [
-            'TenDangNhap.required' => 'Vui lòng nhập tên đăng nhập',
+            'TenDangNhap.required' => 'Vui lòng nhập mã sinh viên/giảng viên',
             'MatKhau.required' => 'Vui lòng nhập mật khẩu',
             'VaiTro.required' => 'Vui lòng chọn vai trò',
             'VaiTro.in' => 'Vai trò không hợp lệ',
         ]);
 
+        // ✅ Tìm user bằng tên đăng nhập (là mã sinh viên/giảng viên)
         $user = NguoiDung::where('tendangnhap', $request->TenDangNhap)->first();
 
         if (!$user || !Hash::check($request->MatKhau, $user->matkhau)) {
             return back()->withErrors([
-                'TenDangNhap' => 'Tên đăng nhập hoặc mật khẩu không đúng.'
+                'TenDangNhap' => 'Mã sinh viên/giảng viên hoặc mật khẩu không đúng.'
             ])->withInput($request->only('TenDangNhap', 'VaiTro'));
         }
 
@@ -254,7 +266,24 @@ class AuthController extends Controller
     // Lấy thông tin người dùng hiện tại
     public function me()
     {
-        return response()->json(Auth::guard('api')->user());
+        $user = Auth::guard('api')->user();
+        
+        if (!$user) {
+            return response()->json(['error' => 'Không tìm thấy người dùng'], 401);
+        }
+
+        // Lấy thêm thông tin sinh viên hoặc giảng viên
+        $additionalInfo = null;
+        if ($user->vaitro === 'SinhVien') {
+            $additionalInfo = SinhVien::where('manguoidung', $user->manguoidung)->first();
+        } elseif ($user->vaitro === 'GiangVien') {
+            $additionalInfo = GiangVien::where('manguoidung', $user->manguoidung)->first();
+        }
+
+        return response()->json([
+            'user' => $user,
+            'detail' => $additionalInfo
+        ]);
     }
 
     // Đăng xuất

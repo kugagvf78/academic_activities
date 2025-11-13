@@ -1,11 +1,21 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Web\Client;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\DB;
+use App\Http\Controllers\Controller;
+use App\Models\Lop;
+use Illuminate\Support\Facades\Log;
+use App\Models\SinhVien;
+use App\Models\GiangVien;
+use App\Models\DangKyDuThi;
+use App\Models\DangKyHoatDong;
+use App\Models\DiemRenLuyen;
+use App\Models\DatGiai;
 
 class ProfileController extends Controller
 {
@@ -22,30 +32,50 @@ class ProfileController extends Controller
 
         // Lấy thông tin chi tiết theo vai trò
         if ($user->vaitro === 'SinhVien') {
-            $profile = $user->sinhVien()->with('lop')->first();
+            $profile = $user->sinhVien()
+                ->with([
+                    'lop.giangvienchunhiem.nguoiDung'
+                ])
+                ->first();
+            
+            // Lấy danh sách lớp để chọn (nếu cần)
+            $danhSachLop = Lop::with('giangvienchunhiem.nguoiDung')
+                ->orderBy('tenlop')
+                ->get();
             
             // Lấy hoạt động học thuật của sinh viên
             $activities = $this->getSinhVienActivities($profile);
             
-            // Lấy điểm rèn luyện
-            $diemRenLuyen = $this->getDiemRenLuyen($profile);
+            // Lấy chứng nhận (đạt giải)
+            $certificates = $this->getSinhVienCertificates($profile);
             
-            // Lấy chứng nhận (placeholder - cần tạo bảng chứng nhận)
-            $certificates = [];
+            // Lấy điểm rèn luyện chi tiết
+            $diemRenLuyen = $this->getDiemRenLuyenDetail($profile);
             
         } else if ($user->vaitro === 'GiangVien') {
-            $profile = $user->giangVien()->with('boMon')->first();
+            $profile = $user->giangVien()
+                ->with(['boMon', 'lopChuNhiem'])
+                ->first();
             $activities = [];
-            $diemRenLuyen = null;
             $certificates = [];
+            $danhSachLop = [];
+            $diemRenLuyen = [];
         } else {
             $profile = null;
             $activities = [];
-            $diemRenLuyen = null;
             $certificates = [];
+            $danhSachLop = [];
+            $diemRenLuyen = [];
         }
 
-        return view('client.profile', compact('user', 'profile', 'activities', 'diemRenLuyen', 'certificates'));
+        return view('client.profile.profile', compact(
+            'user', 
+            'profile', 
+            'activities', 
+            'certificates', 
+            'danhSachLop',
+            'diemRenLuyen'
+        ));
     }
 
     /**
@@ -57,125 +87,222 @@ class ProfileController extends Controller
 
         $activities = collect([]);
 
-        // Lấy các cuộc thi đã đăng ký
-        $dangKyDuThi = $sinhVien->dangKyDuThis()
-            ->with('cuocThi')
-            ->orderBy('ngaydangky', 'desc')
-            ->get();
+        try {
+            // 1. Lấy các đội thi mà sinh viên tham gia
+            $doiThis = DB::table('thanhviendoithi as tv')
+                ->join('doithi as dt', 'tv.madoithi', '=', 'dt.madoithi')
+                ->join('cuocthi as ct', 'dt.macuocthi', '=', 'ct.macuocthi')
+                ->where('tv.masinhvien', $sinhVien->masinhvien)
+                ->select(
+                    'ct.tencuocthi',
+                    'ct.thoigianbatdau',
+                    'ct.thoigianketthuc',
+                    'dt.tendoithi',
+                    'tv.vaitro',
+                    'tv.ngaythamgia',
+                    'dt.trangthai'
+                )
+                ->get();
 
-        foreach ($dangKyDuThi as $dangKy) {
-            $activities->push([
-                'type' => 'dự thi',
-                'title' => $dangKy->cuocThi->tencuocthi ?? 'Cuộc thi',
-                'date' => $dangKy->ngaydangky,
-                'role' => 'Thí sinh',
-                'status' => $dangKy->trangthai,
-                'points' => 10, // Điểm mặc định
-            ]);
+            foreach ($doiThis as $doi) {
+                $activities->push([
+                    'type' => 'Dự thi',
+                    'title' => $doi->tencuocthi,
+                    'subtitle' => 'Đội: ' . $doi->tendoithi,
+                    'date' => $doi->ngaythamgia,
+                    'role' => $doi->vaitro === 'TruongDoi' ? 'Trưởng đội' : 'Thành viên',
+                    'status' => $doi->trangthai,
+                    'icon' => 'fa-trophy',
+                    'color' => 'blue',
+                ]);
+            }
+        } catch (\Exception $e) {
+            Log::error('Error fetching team activities: ' . $e->getMessage());
         }
 
-        // Lấy các hoạt động đã đăng ký
-        $dangKyHoatDong = $sinhVien->dangKyHoatDongs()
-            ->with('cuocThi')
-            ->orderBy('ngaydangky', 'desc')
-            ->get();
+        try {
+            // 2. Lấy đăng ký dự thi cá nhân
+            $dangKyDuThi = DB::table('dangkyduthi as dk')
+                ->join('cuocthi as ct', 'dk.macuocthi', '=', 'ct.macuocthi')
+                ->where('dk.masinhvien', $sinhVien->masinhvien)
+                ->whereNull('dk.madoithi') // Dự thi cá nhân
+                ->select(
+                    'ct.tencuocthi',
+                    'dk.ngaydangky',
+                    'dk.trangthai',
+                    'dk.hinhthucdangky'
+                )
+                ->get();
 
-        foreach ($dangKyHoatDong as $dangKy) {
-            $activities->push([
-                'type' => $dangKy->vaitro,
-                'title' => $dangKy->cuocThi->tencuocthi ?? 'Cuộc thi',
-                'date' => $dangKy->ngaydangky,
-                'role' => $this->translateRole($dangKy->vaitro),
-                'status' => $dangKy->trangthai,
-                'points' => $this->getPointsByRole($dangKy->vaitro),
-            ]);
+            foreach ($dangKyDuThi as $dk) {
+                $activities->push([
+                    'type' => 'Dự thi cá nhân',
+                    'title' => $dk->tencuocthi,
+                    'subtitle' => null,
+                    'date' => $dk->ngaydangky,
+                    'role' => 'Thí sinh',
+                    'status' => $dk->trangthai,
+                    'icon' => 'fa-user-graduate',
+                    'color' => 'green',
+                ]);
+            }
+        } catch (\Exception $e) {
+            Log::error('Error fetching personal registration: ' . $e->getMessage());
         }
 
-        return $activities->sortByDesc('date')->take(12);
+        try {
+            // 3. Lấy các hoạt động hỗ trợ đã đăng ký
+            $hoatDongHoTro = DB::table('dangkyhoatdong as dkhd')
+                ->join('hoatdonghotro as hd', 'dkhd.mahoatdong', '=', 'hd.mahoatdong')
+                ->join('cuocthi as ct', 'hd.macuocthi', '=', 'ct.macuocthi')
+                ->where('dkhd.masinhvien', $sinhVien->masinhvien)
+                ->select(
+                    'ct.tencuocthi',
+                    'hd.tenhoatdong',
+                    'hd.loaihoatdong',
+                    'dkhd.ngaydangky',
+                    'dkhd.trangthai',
+                    'dkhd.diemdanhqr',
+                    'dkhd.thoigiandiemdanh'
+                )
+                ->get();
+
+            foreach ($hoatDongHoTro as $hd) {
+                $loaiMap = [
+                    'HoTroKyThuat' => 'Hỗ trợ kỹ thuật',
+                    'CoVu' => 'Cổ vũ',
+                    'ToChuc' => 'Tổ chức',
+                ];
+
+                $activities->push([
+                    'type' => 'Hoạt động hỗ trợ',
+                    'title' => $hd->tencuocthi,
+                    'subtitle' => $hd->tenhoatdong,
+                    'date' => $hd->ngaydangky,
+                    'role' => $loaiMap[$hd->loaihoatdong] ?? $hd->loaihoatdong,
+                    'status' => $hd->trangthai,
+                    'icon' => 'fa-hands-helping',
+                    'color' => 'purple',
+                    'diem_danh' => $hd->diemdanhqr ? 'Đã điểm danh' : 'Chưa điểm danh',
+                ]);
+            }
+        } catch (\Exception $e) {
+            Log::error('Error fetching support activities: ' . $e->getMessage());
+        }
+
+        return $activities->sortByDesc('date')->values();
     }
 
     /**
-     * Lấy điểm rèn luyện
+     * Lấy chứng nhận của sinh viên (các giải đã đạt)
      */
-    private function getDiemRenLuyen($sinhVien)
+    private function getSinhVienCertificates($sinhVien)
     {
-        if (!$sinhVien) return null;
+        if (!$sinhVien) return collect([]);
 
-        // Lấy tổng điểm từ bảng diemrenluyen
-        $diemRenLuyenRecords = $sinhVien->diemRenLuyens()
-            ->orderBy('hocky', 'desc')
-            ->orderBy('namhoc', 'desc')
-            ->get();
+        try {
+            $certificates = DB::table('datgiai as dg')
+                ->join('cuocthi as ct', 'dg.macuocthi', '=', 'ct.macuocthi')
+                ->join('dangkyduthi as dk', 'dg.madangky', '=', 'dk.madangky')
+                ->where('dk.masinhvien', $sinhVien->masinhvien)
+                ->select(
+                    'dg.madatgiai',
+                    'ct.tencuocthi',
+                    'dg.tengiai',
+                    'dg.giaithuong',
+                    'dg.diemrenluyen',
+                    'dg.ngaytrao'
+                )
+                ->orderBy('dg.ngaytrao', 'desc')
+                ->get();
 
-        $tongDiem = $diemRenLuyenRecords->sum('tongdiem');
+            return $certificates->map(function($cert) {
+                return [
+                    'id' => $cert->madatgiai,
+                    'event' => $cert->tencuocthi,
+                    'award' => $cert->tengiai,
+                    'prize' => $cert->giaithuong,
+                    'points' => $cert->diemrenluyen,
+                    'date' => $cert->ngaytrao,
+                ];
+            });
+        } catch (\Exception $e) {
+            Log::error('Error fetching certificates: ' . $e->getMessage());
+            return collect([]);
+        }
+    }
 
-        // Lấy chi tiết điểm gần nhất
-        $chiTiet = [];
-        
-        // Từ đăng ký dự thi
-        $dangKyDuThi = $sinhVien->dangKyDuThis()
-            ->with('cuocThi')
-            ->where('trangthai', 'Approved')
-            ->orderBy('ngaydangky', 'desc')
-            ->take(5)
-            ->get();
+    /**
+     * Lấy chi tiết điểm rèn luyện của sinh viên
+     */
+    private function getDiemRenLuyenDetail($sinhVien)
+    {
+        if (!$sinhVien) return [
+            'details' => collect([]),
+            'total' => 0,
+            'base' => 70,
+            'bonus' => 0,
+            'final' => 70,
+        ];
 
-        foreach ($dangKyDuThi as $dangKy) {
-            $chiTiet[] = [
-                'ten' => 'Tham gia ' . ($dangKy->cuocThi->tencuocthi ?? 'Cuộc thi'),
-                'ngay' => $dangKy->ngaydangky,
-                'diem' => 10,
+        try {
+            $diemRenLuyen = DB::table('diemrenluyen as drl')
+                ->leftJoin('cuocthi as ct', 'drl.macuocthi', '=', 'ct.macuocthi')
+                ->leftJoin('hoatdonghotro as hd', 'drl.mahoatdong', '=', 'hd.mahoatdong')
+                ->where('drl.masinhvien', $sinhVien->masinhvien)
+                ->select(
+                    'drl.madiemrl',
+                    'drl.loaihoatdong',
+                    'drl.diem',
+                    'drl.mota',
+                    'drl.ngaycong',
+                    'ct.tencuocthi',
+                    'hd.tenhoatdong'
+                )
+                ->orderBy('drl.ngaycong', 'desc')
+                ->get();
+
+            $details = [];
+            $totalPoints = 0;
+
+            foreach ($diemRenLuyen as $diem) {
+                $loaiMap = [
+                    'DatGiai' => 'Đạt giải',
+                    'DuThi' => 'Dự thi',
+                    'HoTro' => 'Hỗ trợ',
+                    'ToChuc' => 'Tổ chức',
+                ];
+
+                $title = $diem->tencuocthi ?? $diem->tenhoatdong ?? $diem->mota;
+
+                $details[] = [
+                    'loai' => $loaiMap[$diem->loaihoatdong] ?? $diem->loaihoatdong,
+                    'title' => $title,
+                    'diem' => $diem->diem,
+                    'ngay' => $diem->ngaycong,
+                    'mota' => $diem->mota,
+                ];
+
+                $totalPoints += $diem->diem;
+            }
+
+            return [
+                'details' => collect($details),
+                'total' => $totalPoints,
+                'base' => 70, // Điểm cơ bản
+                'bonus' => $totalPoints,
+                'final' => 70 + $totalPoints,
+            ];
+        } catch (\Exception $e) {
+            Log::error('Error fetching diem ren luyen: ' . $e->getMessage());
+            return [
+                'details' => collect([]),
+                'total' => 0,
+                'base' => 70,
+                'bonus' => 0,
+                'final' => 70,
             ];
         }
-
-        // Từ đăng ký hoạt động
-        $dangKyHoatDong = $sinhVien->dangKyHoatDongs()
-            ->with('cuocThi')
-            ->where('trangthai', 'Approved')
-            ->orderBy('ngaydangky', 'desc')
-            ->take(5)
-            ->get();
-
-        foreach ($dangKyHoatDong as $dangKy) {
-            $chiTiet[] = [
-                'ten' => $this->translateRole($dangKy->vaitro) . ' ' . ($dangKy->cuocThi->tencuocthi ?? 'Cuộc thi'),
-                'ngay' => $dangKy->ngaydangky,
-                'diem' => $this->getPointsByRole($dangKy->vaitro),
-            ];
-        }
-
-        return [
-            'tong' => $tongDiem ?: 0,
-            'chi_tiet' => collect($chiTiet)->sortByDesc('ngay')->take(10),
-        ];
-    }
-
-    /**
-     * Dịch vai trò sang tiếng Việt
-     */
-    private function translateRole($role)
-    {
-        $roles = [
-            'CoVu' => 'Cổ vũ',
-            'HoTro' => 'Hỗ trợ',
-            'ThiSinh' => 'Thí sinh',
-        ];
-
-        return $roles[$role] ?? $role;
-    }
-
-    /**
-     * Lấy điểm theo vai trò
-     */
-    private function getPointsByRole($role)
-    {
-        $points = [
-            'CoVu' => 5,
-            'HoTro' => 10,
-            'ThiSinh' => 10,
-        ];
-
-        return $points[$role] ?? 0;
     }
 
     /**
@@ -216,25 +343,107 @@ class ProfileController extends Controller
      */
     public function updateInfo(Request $request)
     {
-        $request->validate([
-            'HoTen' => 'nullable|string|max:150',
-            'Email' => 'nullable|email|unique:nguoidung,email,' . Auth::guard('api')->id() . ',manguoidung',
-            'SoDienThoai' => 'nullable|string|max:20',
-        ], [
-            'Email.email' => 'Email không hợp lệ',
-            'Email.unique' => 'Email đã được sử dụng',
-            'SoDienThoai.max' => 'Số điện thoại không được quá 20 ký tự',
-        ]);
-
         $user = Auth::guard('api')->user();
         
-        $user->update([
-            'hoten' => $request->HoTen,
-            'email' => $request->Email,
-            'sodienthoai' => $request->SoDienThoai,
-        ]);
+        // Validation rules chung
+        $rules = [
+            'hoten' => 'required|string|max:150',
+            'email' => 'required|email|unique:nguoidung,email,' . $user->manguoidung . ',manguoidung',
+            'sodienthoai' => 'nullable|string|max:20|regex:/^[0-9]{10,11}$/',
+        ];
 
-        return back()->with('success', 'Cập nhật thông tin thành công!');
+        $messages = [
+            'hoten.required' => 'Họ và tên không được để trống',
+            'hoten.max' => 'Họ và tên không được quá 150 ký tự',
+            'email.required' => 'Email không được để trống',
+            'email.email' => 'Email không hợp lệ',
+            'email.unique' => 'Email đã được sử dụng',
+            'sodienthoai.regex' => 'Số điện thoại phải có 10-11 chữ số',
+            'sodienthoai.max' => 'Số điện thoại không được quá 20 ký tự',
+        ];
+
+        // Validation riêng cho sinh viên
+        if ($user->vaitro === 'SinhVien') {
+            $rules['malop'] = 'nullable|exists:lop,malop';
+            $rules['namnhaphoc'] = 'nullable|integer|min:2000|max:' . (date('Y') + 1);
+            
+            $messages['malop.exists'] = 'Lớp không tồn tại';
+            $messages['namnhaphoc.integer'] = 'Năm nhập học phải là số';
+            $messages['namnhaphoc.min'] = 'Năm nhập học không hợp lệ';
+            $messages['namnhaphoc.max'] = 'Năm nhập học không hợp lệ';
+        }
+
+        // Validation riêng cho giảng viên
+        if ($user->vaitro === 'GiangVien') {
+            $rules['chucvu'] = 'nullable|string|max:100';
+            $rules['hocvi'] = 'nullable|string|max:100';
+            $rules['chuyenmon'] = 'nullable|string|max:255';
+            
+            $messages['chucvu.max'] = 'Chức vụ không được quá 100 ký tự';
+            $messages['hocvi.max'] = 'Học vị không được quá 100 ký tự';
+            $messages['chuyenmon.max'] = 'Chuyên môn không được quá 255 ký tự';
+        }
+
+        $request->validate($rules, $messages);
+
+        try {
+            DB::beginTransaction();
+
+            // Cập nhật thông tin người dùng
+            $user->update([
+                'hoten' => $request->hoten,
+                'email' => $request->email,
+                'sodienthoai' => $request->sodienthoai,
+            ]);
+
+            // Cập nhật thông tin riêng theo vai trò
+            if ($user->vaitro === 'SinhVien') {
+                $sinhVien = $user->sinhVien;
+                if ($sinhVien) {
+                    $updateData = [];
+                    
+                    if ($request->filled('malop')) {
+                        $updateData['malop'] = $request->malop;
+                    }
+                    
+                    if ($request->filled('namnhaphoc')) {
+                        $updateData['namnhaphoc'] = $request->namnhaphoc;
+                    }
+                    
+                    if (!empty($updateData)) {
+                        $sinhVien->update($updateData);
+                    }
+                }
+            } elseif ($user->vaitro === 'GiangVien') {
+                $giangVien = $user->giangVien;
+                if ($giangVien) {
+                    $updateData = [];
+                    
+                    if ($request->filled('chucvu')) {
+                        $updateData['chucvu'] = $request->chucvu;
+                    }
+                    
+                    if ($request->filled('hocvi')) {
+                        $updateData['hocvi'] = $request->hocvi;
+                    }
+                    
+                    if ($request->filled('chuyenmon')) {
+                        $updateData['chuyenmon'] = $request->chuyenmon;
+                    }
+                    
+                    if (!empty($updateData)) {
+                        $giangVien->update($updateData);
+                    }
+                }
+            }
+
+            DB::commit();
+
+            return back()->with('success', 'Cập nhật thông tin thành công!');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->with('error', 'Có lỗi xảy ra: ' . $e->getMessage());
+        }
     }
 
     /**
@@ -249,10 +458,20 @@ class ProfileController extends Controller
         }
 
         $sinhVien = $user->sinhVien;
-        $diemRenLuyen = $this->getDiemRenLuyen($sinhVien);
+        
+        if (!$sinhVien) {
+            return back()->with('error', 'Không tìm thấy thông tin sinh viên');
+        }
 
         // TODO: Implement PDF generation
-        // Sử dụng package như barryvdh/laravel-dompdf
+        // Sử dụng package như barryvdh/laravel-dompdf hoặc mpdf
+        
+        // Lấy thông tin cho PDF
+        $diemRenLuyen = $this->getDiemRenLuyenDetail($sinhVien);
+        
+        // TODO: Generate PDF here
+        // $pdf = PDF::loadView('pdf.diem-ren-luyen', compact('user', 'sinhVien', 'diemRenLuyen'));
+        // return $pdf->download('diem-ren-luyen-' . $sinhVien->masinhvien . '.pdf');
         
         return back()->with('info', 'Chức năng xuất PDF đang được phát triển');
     }

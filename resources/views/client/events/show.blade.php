@@ -55,22 +55,22 @@
             {{-- Action buttons --}}
             <div class="flex flex-wrap gap-4">
                 @if($event->can_register)
-                    {{-- Đăng ký dự thi --}}
-                    <a href="{{ route('client.events.register', [$event->slug, $event->macuocthi]) }}"
+                    {{-- Đăng ký dự thi - FIXED: Dùng macuocthi --}}
+                    <a href="{{ route('client.events.register', $event->macuocthi) }}"
                         class="bg-white text-blue-900 px-8 py-3.5 rounded-lg font-semibold shadow-lg hover:shadow-xl hover:bg-blue-50 transition inline-flex items-center gap-2">
                         <i class="fas fa-user-plus"></i>
                         <span>Đăng ký dự thi</span>
                     </a>
 
-                    {{-- Đăng ký cổ vũ --}}
+                    {{-- Đăng ký cổ vũ - Dùng slug --}}
                     <a href="{{ route('client.events.cheer', $event->slug) }}"
                         class="bg-white/10 backdrop-blur-sm border border-white/20 text-white px-8 py-3.5 rounded-lg font-semibold hover:bg-white/20 transition inline-flex items-center gap-2">
                         <i class="fas fa-hands-clapping"></i>
                         <span>Đăng ký cổ vũ</span>
                     </a>
 
-                    {{-- Đăng ký hỗ trợ --}}
-                    <a href="{{ route('client.events.support', $event->slug) }}"
+                    {{-- Đăng ký hỗ trợ - FIXED: Dùng macuocthi --}}
+                    <a href="{{ route('client.events.support', $event->macuocthi) }}"
                         class="bg-white/10 backdrop-blur-sm border border-white/20 text-white px-8 py-3.5 rounded-lg font-semibold hover:bg-white/20 transition inline-flex items-center gap-2">
                         <i class="fas fa-people-carry-box"></i>
                         <span>Đăng ký hỗ trợ</span>
@@ -452,7 +452,8 @@
 
                 <div class="pt-5 border-t border-gray-100 space-y-3">
                     @if($event->can_register)
-                    <a href="{{ route('client.events.register', [$event->slug, $event->macuocthi]) }}" 
+                    {{-- FIXED: Dùng macuocthi --}}
+                    <a href="{{ route('client.events.register', $event->macuocthi) }}" 
                         class="w-full block text-center bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-semibold shadow-sm hover:shadow transition">
                         Đăng ký ngay
                     </a>

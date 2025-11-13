@@ -360,13 +360,28 @@ class EventController extends Controller
             abort(404, 'Không tìm thấy cuộc thi');
         }
 
+        // Kiểm tra có thể đăng ký không
+        if (!$this->canRegister($event)) {
+            return redirect()
+                ->route('client.events.show', $slug)
+                ->with('error', 'Cuộc thi này hiện không nhận đăng ký');
+        }
+
         // Lấy danh sách hoạt động cổ vũ
-        $hoatdong = DB::table('hoatdonghotro')
+        $hoatdongs = DB::table('hoatdonghotro')
             ->where('macuocthi', $macuocthi)
             ->where('loaihoatdong', 'CoVu')
+            ->where('thoigianketthuc', '>=', now())
+            ->orderBy('thoigianbatdau', 'asc')
             ->get();
 
-        return view('client.events.cheer', compact('event', 'slug', 'hoatdong'));
+        // Thêm slug vào event
+        $event->slug = $slug;
+
+        // Alias để phù hợp với blade template
+        $cuocthi = $event;
+
+        return view('client.events.cheer', compact('cuocthi', 'hoatdongs', 'slug'));
     }
 
     /**

@@ -1,0 +1,11 @@
+-- Hoạt động cổ vũ (cổ động) cho CT009 – HD007
+INSERT INTO HoatDongHoTro (
+    MaHoatDong, TenHoatDong, MaCuocThi, LoaiHoatDong, DiemRenLuyen,
+    ThoiGianBatDau, ThoiGianKetThuc, DiaDiem, MoTa
+)
+VALUES
+    ('HD007', 'Cổ vũ Game Development Challenge 2025', 'CT009', 'CoVu', 3.00,
+     '2025-11-30 13:00:00+07',      -- Chiều ngày cuối cùng của cuộc thi
+     '2025-11-30 17:00:00+07',      -- Kết thúc cùng giờ với CT009
+     'B Building - HUIT',
+     'Cổ vũ, biểu diễn flashmob, tạo bầu không khí sôi động cho vòng chung kết và buổi demo game');

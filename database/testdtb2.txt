@@ -1,0 +1,472 @@
+-- =====================================================
+-- HỆ THỐNG QUẢN LÝ CUỘC THI HỌC THUẬT - POSTGRESQL SCHEMA (FK ở cuối)
+-- =====================================================
+
+-- Bảng Người dùng
+CREATE TABLE NguoiDung (
+    MaNguoiDung VARCHAR(50) PRIMARY KEY,
+    TenDangNhap VARCHAR(100) NOT NULL UNIQUE,
+    MatKhau VARCHAR(255) NOT NULL,
+    HoTen VARCHAR(200) NOT NULL,
+    Email VARCHAR(200) NOT NULL UNIQUE,
+    SoDienThoai VARCHAR(20),
+    VaiTro VARCHAR(50) NOT NULL CHECK (VaiTro IN ('Admin', 'GiangVien', 'SinhVien')),
+    TrangThai VARCHAR(20) DEFAULT 'Active',
+    NgayTao TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    NgayCapNhat TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Bảng Bộ môn
+CREATE TABLE BoMon (
+    MaBoMon VARCHAR(50) PRIMARY KEY,
+    TenBoMon VARCHAR(200) NOT NULL,
+    MaTruongBoMon VARCHAR(50),
+    MoTa TEXT
+);
+
+-- Bảng Lớp
+CREATE TABLE Lop (
+    MaLop VARCHAR(50) PRIMARY KEY,
+    TenLop VARCHAR(200) NOT NULL,
+    NienKhoa VARCHAR(20),
+    SoLuongSinhVien INTEGER DEFAULT 0,
+    MaGiangVienChuNhiem VARCHAR(50)
+);
+
+-- Bảng Giảng viên
+CREATE TABLE GiangVien (
+    MaGiangVien VARCHAR(50) PRIMARY KEY,
+    MaNguoiDung VARCHAR(50) NOT NULL UNIQUE,
+    MaBoMon VARCHAR(50),
+    ChucVu VARCHAR(100),
+    HocVi VARCHAR(50),
+    ChuyenMon VARCHAR(200)
+);
+
+-- Bảng Sinh viên
+CREATE TABLE SinhVien (
+    MaSinhVien VARCHAR(50) PRIMARY KEY,
+    MaNguoiDung VARCHAR(50) NOT NULL UNIQUE,
+    MaLop VARCHAR(50),
+    NamNhapHoc INTEGER,
+    DiemRenLuyen NUMERIC(5,2) DEFAULT 70.00,
+    TrangThai VARCHAR(20) DEFAULT 'Active'
+);
+
+-- Bảng Cuộc thi/Hoạt động
+CREATE TABLE CuocThi (
+    MaCuocThi VARCHAR(50) PRIMARY KEY,
+    TenCuocThi VARCHAR(300) NOT NULL,
+    LoaiCuocThi VARCHAR(50) CHECK (LoaiCuocThi IN ('CuocThi', 'Seminar', 'HoiThao')),
+    MoTa TEXT,
+    MucDich TEXT,
+    DoiTuongThamGia VARCHAR(200),
+    ThoiGianBatDau TIMESTAMPTZ,
+    ThoiGianKetThuc TIMESTAMPTZ,
+    DiaDiem VARCHAR(300),
+    SoLuongThanhVien INTEGER,
+    HinhThucThamGia VARCHAR(50) CHECK (HinhThucThamGia IN ('CaNhan', 'DoiNhom')),
+    TrangThai VARCHAR(50) DEFAULT 'Draft'
+        CHECK (TrangThai IN ('Draft', 'Approved', 'InProgress', 'Completed', 'Cancelled')),
+    DuTruKinhPhi NUMERIC(15,2),
+    ChiPhiThucTe NUMERIC(15,2),
+    MaBoMon VARCHAR(50),
+    NgayTao TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    NgayCapNhat TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Bảng Kế hoạch cuộc thi
+CREATE TABLE KeHoachCuocThi (
+    MaKeHoach VARCHAR(50) PRIMARY KEY,
+    MaCuocThi VARCHAR(50) NOT NULL,
+    NamHoc VARCHAR(20) NOT NULL,
+    HocKy VARCHAR(10),
+    TrangThaiDuyet VARCHAR(50) DEFAULT 'Pending'
+        CHECK (TrangThaiDuyet IN ('Pending', 'Approved', 'Rejected')),
+    NgayNopKeHoach TIMESTAMPTZ,
+    NgayDuyet TIMESTAMPTZ,
+    NguoiDuyet VARCHAR(50),
+    GhiChu TEXT
+);
+
+-- Bảng Ban tổ chức
+CREATE TABLE Ban (
+    MaBan VARCHAR(50) PRIMARY KEY,
+    TenBan VARCHAR(200) NOT NULL,
+    MaCuocThi VARCHAR(50) NOT NULL,
+    MoTa TEXT
+);
+
+-- Bảng Công việc
+CREATE TABLE CongViec (
+    MaCongViec VARCHAR(50) PRIMARY KEY,
+    TenCongViec VARCHAR(300) NOT NULL,
+    MaBan VARCHAR(50),
+    MaCuocThi VARCHAR(50) NOT NULL,
+    MoTa TEXT,
+    ThoiGianBatDau TIMESTAMPTZ,
+    ThoiGianKetThuc TIMESTAMPTZ,
+    TrangThai VARCHAR(50) DEFAULT 'Pending'
+);
+
+-- Bảng Phân công giảng viên
+CREATE TABLE PhanCongGiangVien (
+    MaPhanCong VARCHAR(50) PRIMARY KEY,
+    MaGiangVien VARCHAR(50) NOT NULL,
+    MaCongViec VARCHAR(50) NOT NULL,
+    MaBan VARCHAR(50),
+    VaiTro VARCHAR(100),
+    NgayPhanCong TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Bảng Đội thi/Nhóm
+CREATE TABLE DoiThi (
+    MaDoiThi VARCHAR(50) PRIMARY KEY,
+    TenDoiThi VARCHAR(200) NOT NULL,
+    MaCuocThi VARCHAR(50) NOT NULL,
+    MaTruongDoi VARCHAR(50),
+    SoThanhVien INTEGER DEFAULT 0,
+    NgayDangKy TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    TrangThai VARCHAR(50) DEFAULT 'Active'
+);
+
+-- Bảng Đăng ký dự thi
+CREATE TABLE DangKyDuThi (
+    MaDangKy VARCHAR(50) PRIMARY KEY,
+    MaCuocThi VARCHAR(50) NOT NULL,
+    MaSinhVien VARCHAR(50) NOT NULL,
+    MaDoiThi VARCHAR(50),
+    HinhThucDangKy VARCHAR(20) CHECK (HinhThucDangKy IN ('CaNhan', 'DoiNhom')),
+    NgayDangKy TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    TrangThai VARCHAR(50) DEFAULT 'Registered'
+);
+
+-- Bảng Thành viên đội thi
+CREATE TABLE ThanhVienDoiThi (
+    MaThanhVien VARCHAR(50) PRIMARY KEY,
+    MaDoiThi VARCHAR(50) NOT NULL,
+    MaSinhVien VARCHAR(50) NOT NULL,
+    VaiTro VARCHAR(50) CHECK (VaiTro IN ('TruongDoi', 'ThanhVien')),
+    NgayThamGia TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (MaDoiThi, MaSinhVien)
+);
+
+-- Bảng Hoạt động hỗ trợ
+CREATE TABLE HoatDongHoTro (
+    MaHoatDong VARCHAR(50) PRIMARY KEY,
+    TenHoatDong VARCHAR(300) NOT NULL,
+    MaCuocThi VARCHAR(50) NOT NULL,
+    LoaiHoatDong VARCHAR(50) CHECK (LoaiHoatDong IN ('CoVu', 'ToChuc', 'HoTroKyThuat')),
+    DiemRenLuyen NUMERIC(5,2),
+    ThoiGianBatDau TIMESTAMPTZ,
+    ThoiGianKetThuc TIMESTAMPTZ,
+    DiaDiem VARCHAR(300),
+    MoTa TEXT
+);
+
+-- Bảng Đăng ký hoạt động hỗ trợ
+CREATE TABLE DangKyHoatDong (
+    MaDangKyHoatDong VARCHAR(50) PRIMARY KEY,
+    MaHoatDong VARCHAR(50) NOT NULL,
+    MaSinhVien VARCHAR(50) NOT NULL,
+    NgayDangKy TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    TrangThai VARCHAR(50) DEFAULT 'Registered',
+    DiemDanhQR BOOLEAN DEFAULT FALSE,
+    ThoiGianDiemDanh TIMESTAMPTZ,
+    UNIQUE (MaHoatDong, MaSinhVien)
+);
+
+-- Bảng Đề thi
+CREATE TABLE DeThi (
+    MaDeThi VARCHAR(50) PRIMARY KEY,
+    TenDeThi VARCHAR(300) NOT NULL,
+    MaCuocThi VARCHAR(50) NOT NULL,
+    LoaiDeThi VARCHAR(50),
+    FileDeThi VARCHAR(500),
+    ThoiGianLamBai INTEGER,
+    DiemToiDa NUMERIC(5,2),
+    NgayTao TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    NguoiTao VARCHAR(50),
+    TrangThai VARCHAR(50) DEFAULT 'Draft'
+);
+
+-- Bảng Bài thi
+CREATE TABLE BaiThi (
+    MaBaiThi VARCHAR(50) PRIMARY KEY,
+    MaDeThi VARCHAR(50) NOT NULL,
+    MaDangKy VARCHAR(50) NOT NULL,
+    FileBaiThi VARCHAR(500),
+    ThoiGianNop TIMESTAMPTZ,
+    TrangThai VARCHAR(50) DEFAULT 'Submitted'
+);
+
+-- Bảng Kết quả thi
+CREATE TABLE KetQuaThi (
+    MaKetQua VARCHAR(50) PRIMARY KEY,
+    MaBaiThi VARCHAR(50) NOT NULL,
+    Diem NUMERIC(5,2),
+    XepHang INTEGER,
+    GiaiThuong VARCHAR(100),
+    NhanXet TEXT,
+    NgayChamDiem TIMESTAMPTZ,
+    NguoiChamDiem VARCHAR(50)
+);
+
+-- Bảng Đạt giải
+CREATE TABLE DatGiai (
+    MaDatGiai VARCHAR(50) PRIMARY KEY,
+    MaCuocThi VARCHAR(50) NOT NULL,
+    MaDangKy VARCHAR(50) NOT NULL,
+    TenGiai VARCHAR(100),
+    GiaiThuong VARCHAR(300),
+    DiemRenLuyen NUMERIC(5,2),
+    NgayTrao TIMESTAMPTZ
+);
+
+-- Bảng Điểm rèn luyện
+CREATE TABLE DiemRenLuyen (
+    MaDiemRL VARCHAR(50) PRIMARY KEY,
+    MaSinhVien VARCHAR(50) NOT NULL,
+    MaCuocThi VARCHAR(50),
+    MaHoatDong VARCHAR(50),
+    LoaiHoatDong VARCHAR(50) CHECK (LoaiHoatDong IN ('DuThi', 'HoTro', 'DatGiai')),
+    Diem NUMERIC(5,2),
+    MoTa TEXT,
+    NgayCong TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Bảng Chi phí
+CREATE TABLE ChiPhi (
+    MaChiPhi VARCHAR(50) PRIMARY KEY,
+    MaCuocThi VARCHAR(50) NOT NULL,
+    TenKhoanChi VARCHAR(300) NOT NULL,
+    DuTruChiPhi NUMERIC(15,2),
+    ThucTeChi NUMERIC(15,2),
+    NgayChi DATE,
+    NguoiDuyet VARCHAR(50),
+    TrangThai VARCHAR(50) DEFAULT 'Pending',
+    ChungTu VARCHAR(500),
+    GhiChu TEXT
+);
+
+-- Bảng Quyết toán
+CREATE TABLE QuyetToan (
+    MaQuyetToan VARCHAR(50) PRIMARY KEY,
+    MaCuocThi VARCHAR(50) NOT NULL,
+    TongDuTru NUMERIC(15,2),
+    TongThucTe NUMERIC(15,2),
+    ChenhLech NUMERIC(15,2),
+    NgayQuyetToan DATE,
+    NguoiLap VARCHAR(50),
+    NguoiDuyet VARCHAR(50),
+    TrangThai VARCHAR(50) DEFAULT 'Draft',
+    FileQuyetToan VARCHAR(500),
+    GhiChu TEXT
+);
+
+-- Bảng Tin tức/Thông báo
+CREATE TABLE TinTuc (
+    MaTinTuc VARCHAR(50) PRIMARY KEY,
+    TieuDe VARCHAR(500) NOT NULL,
+    NoiDung TEXT,
+    MaCuocThi VARCHAR(50),
+    LoaiTin VARCHAR(50) CHECK (LoaiTin IN ('ThongBao', 'TinTuc', 'SuKien')),
+    HinhAnh VARCHAR(500),
+    TacGia VARCHAR(50),
+    LuotXem INTEGER DEFAULT 0,
+    TrangThai VARCHAR(50) DEFAULT 'Published',
+    NgayDang TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    NgayCapNhat TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Bảng Vòng thi
+CREATE TABLE VongThi (
+    MaVongThi VARCHAR(50) PRIMARY KEY,
+    TenVongThi VARCHAR(200) NOT NULL,
+    MaCuocThi VARCHAR(50) NOT NULL,
+    ThuTu INTEGER,
+    ThoiGianBatDau TIMESTAMPTZ,
+    ThoiGianKetThuc TIMESTAMPTZ,
+    DiaDiem VARCHAR(300),
+    MoTa TEXT,
+    TrangThai VARCHAR(50) DEFAULT 'Upcoming'
+);
+
+-- Bảng Điểm danh QR
+CREATE TABLE DiemDanhQR (
+    MaDiemDanh VARCHAR(50) PRIMARY KEY,
+    MaHoatDong VARCHAR(50),
+    MaCuocThi VARCHAR(50),
+    MaSinhVien VARCHAR(50) NOT NULL,
+    MaQR VARCHAR(200) UNIQUE,
+    ThoiGianDiemDanh TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    ViTri VARCHAR(300)
+);
+
+-- FOREIGN KEY CONSTRAINTS (Thêm sau khi tất cả bảng đã được tạo)
+
+-- BoMon
+ALTER TABLE BoMon
+    ADD CONSTRAINT fk_bomon_truongbomon
+        FOREIGN KEY (MaTruongBoMon) REFERENCES GiangVien(MaGiangVien) ON DELETE SET NULL;
+
+-- Lop
+ALTER TABLE Lop
+    ADD CONSTRAINT fk_lop_giangvienchunhiem
+        FOREIGN KEY (MaGiangVienChuNhiem) REFERENCES GiangVien(MaGiangVien) ON DELETE SET NULL;
+
+-- GiangVien
+ALTER TABLE GiangVien
+    ADD CONSTRAINT fk_giangvien_nguoidung
+        FOREIGN KEY (MaNguoiDung) REFERENCES NguoiDung(MaNguoiDung) ON DELETE CASCADE,
+    ADD CONSTRAINT fk_giangvien_bomon
+        FOREIGN KEY (MaBoMon) REFERENCES BoMon(MaBoMon) ON DELETE SET NULL;
+
+-- SinhVien
+ALTER TABLE SinhVien
+    ADD CONSTRAINT fk_sinhvien_nguoidung
+        FOREIGN KEY (MaNguoiDung) REFERENCES NguoiDung(MaNguoiDung) ON DELETE CASCADE,
+    ADD CONSTRAINT fk_sinhvien_lop
+        FOREIGN KEY (MaLop) REFERENCES Lop(MaLop) ON DELETE SET NULL;
+
+-- CuocThi
+ALTER TABLE CuocThi
+    ADD CONSTRAINT fk_cuocthi_bomon
+        FOREIGN KEY (MaBoMon) REFERENCES BoMon(MaBoMon) ON DELETE SET NULL;
+
+-- KeHoachCuocThi
+ALTER TABLE KeHoachCuocThi
+    ADD CONSTRAINT fk_kehoach_cuocthi
+        FOREIGN KEY (MaCuocThi) REFERENCES CuocThi(MaCuocThi) ON DELETE CASCADE,
+    ADD CONSTRAINT fk_kehoach_nguoiduyet
+        FOREIGN KEY (NguoiDuyet) REFERENCES GiangVien(MaGiangVien) ON DELETE SET NULL;
+
+-- Ban
+ALTER TABLE Ban
+    ADD CONSTRAINT fk_ban_cuocthi
+        FOREIGN KEY (MaCuocThi) REFERENCES CuocThi(MaCuocThi) ON DELETE CASCADE;
+
+-- CongViec
+ALTER TABLE CongViec
+    ADD CONSTRAINT fk_congviec_ban
+        FOREIGN KEY (MaBan) REFERENCES Ban(MaBan) ON DELETE SET NULL,
+    ADD CONSTRAINT fk_congviec_cuocthi
+        FOREIGN KEY (MaCuocThi) REFERENCES CuocThi(MaCuocThi) ON DELETE CASCADE;
+
+-- PhanCongGiangVien
+ALTER TABLE PhanCongGiangVien
+    ADD CONSTRAINT fk_phancong_giangvien
+        FOREIGN KEY (MaGiangVien) REFERENCES GiangVien(MaGiangVien) ON DELETE CASCADE,
+    ADD CONSTRAINT fk_phancong_congviec
+        FOREIGN KEY (MaCongViec) REFERENCES CongViec(MaCongViec) ON DELETE CASCADE,
+    ADD CONSTRAINT fk_phancong_ban
+        FOREIGN KEY (MaBan) REFERENCES Ban(MaBan) ON DELETE SET NULL;
+
+-- DoiThi
+ALTER TABLE DoiThi
+    ADD CONSTRAINT fk_doithi_cuocthi
+        FOREIGN KEY (MaCuocThi) REFERENCES CuocThi(MaCuocThi) ON DELETE CASCADE,
+    ADD CONSTRAINT fk_doithi_truongdoi
+        FOREIGN KEY (MaTruongDoi) REFERENCES SinhVien(MaSinhVien) ON DELETE SET NULL;
+
+-- DangKyDuThi
+ALTER TABLE DangKyDuThi
+    ADD CONSTRAINT fk_dangky_cuocthi
+        FOREIGN KEY (MaCuocThi) REFERENCES CuocThi(MaCuocThi) ON DELETE CASCADE,
+    ADD CONSTRAINT fk_dangky_sinhvien
+        FOREIGN KEY (MaSinhVien) REFERENCES SinhVien(MaSinhVien) ON DELETE CASCADE,
+    ADD CONSTRAINT fk_dangky_doithi
+        FOREIGN KEY (MaDoiThi) REFERENCES DoiThi(MaDoiThi) ON DELETE CASCADE;
+
+-- ThanhVienDoiThi
+ALTER TABLE ThanhVienDoiThi
+    ADD CONSTRAINT fk_thanhvien_doithi
+        FOREIGN KEY (MaDoiThi) REFERENCES DoiThi(MaDoiThi) ON DELETE CASCADE,
+    ADD CONSTRAINT fk_thanhvien_sinhvien
+        FOREIGN KEY (MaSinhVien) REFERENCES SinhVien(MaSinhVien) ON DELETE CASCADE;
+
+-- HoatDongHoTro
+ALTER TABLE HoatDongHoTro
+    ADD CONSTRAINT fk_hoatdong_cuocthi
+        FOREIGN KEY (MaCuocThi) REFERENCES CuocThi(MaCuocThi) ON DELETE CASCADE;
+
+-- DangKyHoatDong
+ALTER TABLE DangKyHoatDong
+    ADD CONSTRAINT fk_dangkyhoatdong_hoatdong
+        FOREIGN KEY (MaHoatDong) REFERENCES HoatDongHoTro(MaHoatDong) ON DELETE CASCADE,
+    ADD CONSTRAINT fk_dangkyhoatdong_sinhvien
+        FOREIGN KEY (MaSinhVien) REFERENCES SinhVien(MaSinhVien) ON DELETE CASCADE;
+
+-- DeThi
+ALTER TABLE DeThi
+    ADD CONSTRAINT fk_dethi_cuocthi
+        FOREIGN KEY (MaCuocThi) REFERENCES CuocThi(MaCuocThi) ON DELETE CASCADE,
+    ADD CONSTRAINT fk_dethi_nguoitao
+        FOREIGN KEY (NguoiTao) REFERENCES GiangVien(MaGiangVien) ON DELETE SET NULL;
+
+-- BaiThi
+ALTER TABLE BaiThi
+    ADD CONSTRAINT fk_baithi_dethi
+        FOREIGN KEY (MaDeThi) REFERENCES DeThi(MaDeThi) ON DELETE CASCADE,
+    ADD CONSTRAINT fk_baithi_dangky
+        FOREIGN KEY (MaDangKy) REFERENCES DangKyDuThi(MaDangKy) ON DELETE CASCADE;
+
+-- KetQuaThi
+ALTER TABLE KetQuaThi
+    ADD CONSTRAINT fk_ketqua_baithi
+        FOREIGN KEY (MaBaiThi) REFERENCES BaiThi(MaBaiThi) ON DELETE CASCADE,
+    ADD CONSTRAINT fk_ketqua_nguoichamdiem
+        FOREIGN KEY (NguoiChamDiem) REFERENCES GiangVien(MaGiangVien) ON DELETE SET NULL;
+
+-- DatGiai
+ALTER TABLE DatGiai
+    ADD CONSTRAINT fk_datgiai_cuocthi
+        FOREIGN KEY (MaCuocThi) REFERENCES CuocThi(MaCuocThi) ON DELETE CASCADE,
+    ADD CONSTRAINT fk_datgiai_dangky
+        FOREIGN KEY (MaDangKy) REFERENCES DangKyDuThi(MaDangKy) ON DELETE CASCADE;
+
+-- DiemRenLuyen
+ALTER TABLE DiemRenLuyen
+    ADD CONSTRAINT fk_diemrl_sinhvien
+        FOREIGN KEY (MaSinhVien) REFERENCES SinhVien(MaSinhVien) ON DELETE CASCADE,
+    ADD CONSTRAINT fk_diemrl_cuocthi
+        FOREIGN KEY (MaCuocThi) REFERENCES CuocThi(MaCuocThi) ON DELETE SET NULL,
+    ADD CONSTRAINT fk_diemrl_hoatdong
+        FOREIGN KEY (MaHoatDong) REFERENCES HoatDongHoTro(MaHoatDong) ON DELETE SET NULL;
+
+-- ChiPhi
+ALTER TABLE ChiPhi
+    ADD CONSTRAINT fk_chiphi_cuocthi
+        FOREIGN KEY (MaCuocThi) REFERENCES CuocThi(MaCuocThi) ON DELETE CASCADE,
+    ADD CONSTRAINT fk_chiphi_nguoiduyet
+        FOREIGN KEY (NguoiDuyet) REFERENCES GiangVien(MaGiangVien) ON DELETE SET NULL;
+
+-- QuyetToan
+ALTER TABLE QuyetToan
+    ADD CONSTRAINT fk_quyettoan_cuocthi
+        FOREIGN KEY (MaCuocThi) REFERENCES CuocThi(MaCuocThi) ON DELETE CASCADE,
+    ADD CONSTRAINT fk_quyettoan_nguoilap
+        FOREIGN KEY (NguoiLap) REFERENCES GiangVien(MaGiangVien) ON DELETE SET NULL,
+    ADD CONSTRAINT fk_quyettoan_nguoiduyet
+        FOREIGN KEY (NguoiDuyet) REFERENCES GiangVien(MaGiangVien) ON DELETE SET NULL;
+
+-- TinTuc
+ALTER TABLE TinTuc
+    ADD CONSTRAINT fk_tintuc_cuocthi
+        FOREIGN KEY (MaCuocThi) REFERENCES CuocThi(MaCuocThi) ON DELETE SET NULL,
+    ADD CONSTRAINT fk_tintuc_tacgia
+        FOREIGN KEY (TacGia) REFERENCES GiangVien(MaGiangVien) ON DELETE SET NULL;
+
+-- VongThi
+ALTER TABLE VongThi
+    ADD CONSTRAINT fk_vongthi_cuocthi
+        FOREIGN KEY (MaCuocThi) REFERENCES CuocThi(MaCuocThi) ON DELETE CASCADE;
+
+-- DiemDanhQR
+ALTER TABLE DiemDanhQR
+    ADD CONSTRAINT fk_diemdanh_hoatdong
+        FOREIGN KEY (MaHoatDong) REFERENCES HoatDongHoTro(MaHoatDong) ON DELETE CASCADE,
+    ADD CONSTRAINT fk_diemdanh_cuocthi
+        FOREIGN KEY (MaCuocThi) REFERENCES CuocThi(MaCuocThi) ON DELETE CASCADE,
+    ADD CONSTRAINT fk_diemdanh_sinhvien
+        FOREIGN KEY (MaSinhVien) REFERENCES SinhVien(MaSinhVien) ON DELETE CASCADE;

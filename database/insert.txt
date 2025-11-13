@@ -1,0 +1,303 @@
+-- =====================================================
+-- SCRIPT NHẬP DỮ LIỆU MẪU CHO HỆ THỐNG QUẢN LÝ CUỘC THI
+-- =====================================================
+
+-- 1. NGƯỜI DÙNG (NguoiDung) - Phải tạo trước
+INSERT INTO NguoiDung (MaNguoiDung, TenDangNhap, MatKhau, HoTen, Email, SoDienThoai, VaiTro, TrangThai)
+VALUES 
+    ('ND001', 'admin01', '$2a$10$abcdefghijklmnopqrstuv', 'Nguyễn Văn Admin', 'admin@uit.edu.vn', '0901234567', 'Admin', 'Active'),
+    ('ND002', 'GV001', '$2a$10$abcdefghijklmnopqrstuv', 'Nguyễn Thị Thúy Trang', 'trangntt@uit.edu.vn', '0912345678', 'GiangVien', 'Active'),
+    ('ND003', '2001221872', '$2a$10$abcdefghijklmnopqrstuv', 'Lê Trung Kiên', 'kienlt@gm.uit.edu.vn', '0923456789', 'SinhVien', 'Active'),
+    ('ND004', 'GV002', '$2a$10$abcdefghijklmnopqrstuv', 'Nguyễn Ngọc Thành', 'thanhnn@uit.edu.vn', '0934567890', 'GiangVien', 'Active'),
+    ('ND005', '2001221873', '$2a$10$abcdefghijklmnopqrstuv', 'Nguyễn Thị Ánh', 'anhnt@gm.uit.edu.vn', '0945678901', 'SinhVien', 'Active');
+
+-- 2. BỘ MÔN (BoMon) - Chưa có MaTruongBoMon
+INSERT INTO BoMon (MaBoMon, TenBoMon, MoTa)
+VALUES 
+    ('KHMT', 'Khoa Công nghệ Thông tin', 'Khoa đào tạo về Công nghệ thông tin và Khoa học máy tính'),
+    ('KHDL', 'Khoa Khoa học Dữ liệu', 'Khoa đào tạo về Khoa học dữ liệu và Trí tuệ nhân tạo'),
+    ('HTTT', 'Khoa Hệ thống Thông tin', 'Khoa đào tạo về Hệ thống thông tin quản lý'),
+    ('CNPM', 'Khoa Công nghệ Phần mềm', 'Khoa đào tạo về Công nghệ phần mềm');
+
+-- 3. LỚP (Lop) - Chưa có MaGiangVienChuNhiem
+INSERT INTO Lop (MaLop, TenLop, NienKhoa, SoLuongSinhVien)
+VALUES 
+    ('13DHTH02', 'Lớp 13DHTH02', '2022-2026', 45),
+    ('14DHTH01', 'Lớp 14DHTH01', '2023-2027', 50),
+    ('13KHDL01', 'Lớp 13KHDL01', '2022-2026', 40),
+    ('14CNPM01', 'Lớp 14CNPM01', '2023-2027', 48);
+
+-- 4. GIẢNG VIÊN (GiangVien)
+INSERT INTO GiangVien (MaGiangVien, MaNguoiDung, MaBoMon, ChucVu, HocVi, ChuyenMon)
+VALUES 
+    ('GV001', 'ND002', 'KHDL', 'Giảng viên', 'Thạc sĩ', 'Khoa học dữ liệu, Trí tuệ nhân tạo'),
+    ('GV002', 'ND004', 'KHMT', 'Phó trưởng khoa', 'Tiến sĩ', 'Công nghệ phần mềm, Hệ thống thông tin');
+
+-- 5. Cập nhật MaTruongBoMon cho BoMon
+UPDATE BoMon SET MaTruongBoMon = 'GV002' WHERE MaBoMon = 'KHMT';
+UPDATE BoMon SET MaTruongBoMon = 'GV001' WHERE MaBoMon = 'KHDL';
+
+-- 6. Cập nhật MaGiangVienChuNhiem cho Lop
+UPDATE Lop SET MaGiangVienChuNhiem = 'GV002' WHERE MaLop = '13DHTH02';
+UPDATE Lop SET MaGiangVienChuNhiem = 'GV001' WHERE MaLop = '13KHDL01';
+
+-- 7. SINH VIÊN (SinhVien)
+INSERT INTO SinhVien (MaSinhVien, MaNguoiDung, MaLop, NamNhapHoc, DiemRenLuyen, TrangThai)
+VALUES 
+    ('2001221872', 'ND003', '13DHTH02', 2022, 85.00, 'Active'),
+    ('2001221873', 'ND005', '13KHDL01', 2022, 80.00, 'Active');
+
+-- 8. CUỘC THI (CuocThi)
+INSERT INTO CuocThi (
+    MaCuocThi, TenCuocThi, LoaiCuocThi, MoTa, MucDich, DoiTuongThamGia,
+    ThoiGianBatDau, ThoiGianKetThuc, DiaDiem, SoLuongThanhVien,
+    HinhThucThamGia, TrangThai, DuTruKinhPhi, MaBoMon
+)
+VALUES 
+    (
+        'CT001',
+        'Ứng dụng thuật toán COATI để cải tiến gom mở trong phân loại khách hàng',
+        'CuocThi',
+        'Nâng cao hiệu quả phân cụm khách hàng bằng cách cải tiến thuật toán Fuzzy C-Means (FCM), khắc phục các hạn chế về độ chính xác, tốc độ hội tụ và nguy cơ rơi vào cực tiểu cục bộ.',
+        'Nghiên cứu và ứng dụng thuật toán COATI-FCM trong phân tích khách hàng',
+        'Sinh viên khoa CNTT',
+        '2024-03-01 08:00:00+07',
+        '2024-06-30 17:00:00+07',
+        'Trường Đại học Công nghệ Thông tin - ĐHQG TP.HCM',
+        3,
+        'DoiNhom',
+        'InProgress',
+        15000000.00,
+        'KHDL'
+    ),
+    (
+        'CT002',
+        'Hội thảo Khoa học Dữ liệu 2024',
+        'HoiThao',
+        'Hội thảo trao đổi về các công nghệ mới trong lĩnh vực khoa học dữ liệu',
+        'Cập nhật kiến thức và kỹ năng mới',
+        'Sinh viên và giảng viên',
+        '2024-05-15 08:00:00+07',
+        '2024-05-15 17:00:00+07',
+        'Hội trường A, UIT',
+        200,
+        'CaNhan',
+        'Approved',
+        20000000.00,
+        'KHDL'
+    );
+
+-- 9. KẾ HOẠCH CUỘC THI (KeHoachCuocThi)
+INSERT INTO KeHoachCuocThi (
+    MaKeHoach, MaCuocThi, NamHoc, HocKy, TrangThaiDuyet,
+    NgayNopKeHoach, NgayDuyet, NguoiDuyet, GhiChu
+)
+VALUES 
+    ('KH001', 'CT001', '2023-2024', 'HK2', 'Approved', 
+     '2024-02-01 10:00:00+07', '2024-02-15 14:00:00+07', 'GV002', 'Kế hoạch đã được phê duyệt'),
+    ('KH002', 'CT002', '2023-2024', 'HK2', 'Approved',
+     '2024-04-01 10:00:00+07', '2024-04-10 14:00:00+07', 'GV001', 'Kế hoạch đã được phê duyệt');
+
+-- 10. BAN TỔ CHỨC (Ban)
+INSERT INTO Ban (MaBan, TenBan, MaCuocThi, MoTa)
+VALUES 
+    ('BAN001', 'Ban Học thuật', 'CT001', 'Phụ trách nội dung học thuật và chấm điểm'),
+    ('BAN002', 'Ban Tổ chức', 'CT001', 'Phụ trách tổ chức và vận hành cuộc thi'),
+    ('BAN003', 'Ban Chuyên môn', 'CT002', 'Phụ trách nội dung hội thảo');
+
+-- 11. CÔNG VIỆC (CongViec)
+INSERT INTO CongViec (
+    MaCongViec, TenCongViec, MaBan, MaCuocThi, MoTa,
+    ThoiGianBatDau, ThoiGianKetThuc, TrangThai
+)
+VALUES 
+    ('CV001', 'Xây dựng đề tài và tiêu chí đánh giá', 'BAN001', 'CT001', 
+     'Xây dựng đề tài cuộc thi và bộ tiêu chí chấm điểm',
+     '2024-02-20 08:00:00+07', '2024-03-01 17:00:00+07', 'Completed'),
+    ('CV002', 'Tổ chức lễ khai mạc', 'BAN002', 'CT001',
+     'Chuẩn bị và tổ chức lễ khai mạc cuộc thi',
+     '2024-03-01 08:00:00+07', '2024-03-01 10:00:00+07', 'Completed');
+
+-- 12. PHÂN CÔNG GIẢNG VIÊN (PhanCongGiangVien)
+INSERT INTO PhanCongGiangVien (
+    MaPhanCong, MaGiangVien, MaCongViec, MaBan, VaiTro, NgayPhanCong
+)
+VALUES 
+    ('PC001', 'GV001', 'CV001', 'BAN001', 'Trưởng ban', '2024-02-15 10:00:00+07'),
+    ('PC002', 'GV002', 'CV002', 'BAN002', 'Thành viên', '2024-02-15 10:00:00+07');
+
+-- 13. ĐỘI THI (DoiThi)
+INSERT INTO DoiThi (
+    MaDoiThi, TenDoiThi, MaCuocThi, MaTruongDoi, SoThanhVien,
+    NgayDangKy, TrangThai
+)
+VALUES 
+    ('DT001', 'Team COATI Research', 'CT001', '2001221872', 1, 
+     '2024-03-05 09:00:00+07', 'Active');
+
+-- 14. ĐĂNG KÝ DỰ THI (DangKyDuThi)
+INSERT INTO DangKyDuThi (
+    MaDangKy, MaCuocThi, MaSinhVien, MaDoiThi, HinhThucDangKy,
+    NgayDangKy, TrangThai
+)
+VALUES 
+    ('DK001', 'CT001', '2001221872', 'DT001', 'DoiNhom',
+     '2024-03-05 09:00:00+07', 'Registered'),
+    ('DK002', 'CT002', '2001221872', NULL, 'CaNhan',
+     '2024-05-01 10:00:00+07', 'Registered'),
+    ('DK003', 'CT002', '2001221873', NULL, 'CaNhan',
+     '2024-05-01 11:00:00+07', 'Registered');
+
+-- 15. THÀNH VIÊN ĐỘI THI (ThanhVienDoiThi)
+INSERT INTO ThanhVienDoiThi (
+    MaThanhVien, MaDoiThi, MaSinhVien, VaiTro, NgayThamGia
+)
+VALUES 
+    ('TV001', 'DT001', '2001221872', 'TruongDoi', '2024-03-05 09:00:00+07');
+
+-- 16. HOẠT ĐỘNG HỖ TRỢ (HoatDongHoTro)
+INSERT INTO HoatDongHoTro (
+    MaHoatDong, TenHoatDong, MaCuocThi, LoaiHoatDong, DiemRenLuyen,
+    ThoiGianBatDau, ThoiGianKetThuc, DiaDiem, MoTa
+)
+VALUES 
+    ('HD001', 'Hỗ trợ kỹ thuật cuộc thi', 'CT001', 'HoTroKyThuat', 5.00,
+     '2024-03-01 08:00:00+07', '2024-06-30 17:00:00+07', 'UIT',
+     'Hỗ trợ kỹ thuật cho các đội thi'),
+    ('HD002', 'Cổ vũ cuộc thi', 'CT001', 'CoVu', 3.00,
+     '2024-06-20 08:00:00+07', '2024-06-20 12:00:00+07', 'Hội trường B',
+     'Cổ vũ các đội thi trong ngày thi');
+
+-- 17. ĐĂNG KÝ HOẠT ĐỘNG (DangKyHoatDong)
+INSERT INTO DangKyHoatDong (
+    MaDangKyHoatDong, MaHoatDong, MaSinhVien, NgayDangKy,
+    TrangThai, DiemDanhQR, ThoiGianDiemDanh
+)
+VALUES 
+    ('DKHD001', 'HD002', '2001221873', '2024-06-10 10:00:00+07',
+     'Registered', TRUE, '2024-06-20 08:30:00+07');
+
+-- 18. ĐỀ THI (DeThi)
+INSERT INTO DeThi (
+    MaDeThi, TenDeThi, MaCuocThi, LoaiDeThi, ThoiGianLamBai,
+    DiemToiDa, NgayTao, NguoiTao, TrangThai
+)
+VALUES 
+    ('DE001', 'Đề tài nghiên cứu COATI-FCM', 'CT001', 'Nghiên cứu', 120,
+     100.00, '2024-02-25 10:00:00+07', 'GV001', 'Published');
+
+-- 19. BÀI THI (BaiThi)
+INSERT INTO BaiThi (
+    MaBaiThi, MaDeThi, MaDangKy, FileBaiThi, ThoiGianNop, TrangThai
+)
+VALUES 
+    ('BT001', 'DE001', 'DK001', '/uploads/baithi/DK001_COATI_Research.pdf',
+     '2024-06-15 16:00:00+07', 'Submitted');
+
+-- 20. KẾT QUẢ THI (KetQuaThi)
+INSERT INTO KetQuaThi (
+    MaKetQua, MaBaiThi, Diem, XepHang, GiaiThuong, NhanXet,
+    NgayChamDiem, NguoiChamDiem
+)
+VALUES 
+    ('KQ001', 'BT001', 85.00, 1, 'Giải Nhất', 
+     'Nghiên cứu sâu sắc, ứng dụng thực tế tốt',
+     '2024-06-25 15:00:00+07', 'GV001');
+
+-- 21. ĐẠT GIẢI (DatGiai)
+INSERT INTO DatGiai (
+    MaDatGiai, MaCuocThi, MaDangKy, TenGiai, GiaiThuong,
+    DiemRenLuyen, NgayTrao
+)
+VALUES 
+    ('DG001', 'CT001', 'DK001', 'Giải Nhất', 'Chứng nhận + 5 triệu đồng',
+     15.00, '2024-06-30 15:00:00+07');
+
+-- 22. ĐIỂM RÈN LUYỆN (DiemRenLuyen)
+INSERT INTO DiemRenLuyen (
+    MaDiemRL, MaSinhVien, MaCuocThi, MaHoatDong, LoaiHoatDong,
+    Diem, MoTa, NgayCong
+)
+VALUES 
+    ('RL001', '2001221872', 'CT001', NULL, 'DatGiai', 15.00,
+     'Giải Nhất cuộc thi COATI', '2024-06-30 16:00:00+07'),
+    ('RL002', '2001221872', 'CT001', NULL, 'DuThi', 10.00,
+     'Tham gia cuộc thi', '2024-06-30 16:00:00+07'),
+    ('RL003', '2001221873', NULL, 'HD002', 'HoTro', 3.00,
+     'Cổ vũ cuộc thi', '2024-06-20 12:00:00+07');
+
+-- 23. CHI PHÍ (ChiPhi)
+INSERT INTO ChiPhi (
+    MaChiPhi, MaCuocThi, TenKhoanChi, DuTruChiPhi, ThucTeChi,
+    NgayChi, NguoiDuyet, TrangThai, GhiChu
+)
+VALUES 
+    ('CP001', 'CT001', 'Giải thưởng', 10000000.00, 10000000.00,
+     '2024-06-30', 'GV002', 'Approved', 'Giải thưởng cho các đội đạt giải'),
+    ('CP002', 'CT001', 'Văn phòng phẩm', 2000000.00, 1800000.00,
+     '2024-03-15', 'GV002', 'Approved', 'Mua văn phòng phẩm cho cuộc thi');
+
+-- 24. QUYẾT TOÁN (QuyetToan)
+INSERT INTO QuyetToan (
+    MaQuyetToan, MaCuocThi, TongDuTru, TongThucTe, ChenhLech,
+    NgayQuyetToan, NguoiLap, NguoiDuyet, TrangThai, GhiChu
+)
+VALUES 
+    ('QT001', 'CT001', 15000000.00, 14500000.00, 500000.00,
+     '2024-07-10', 'GV001', 'GV002', 'Approved', 'Quyết toán cuộc thi COATI');
+
+-- 25. TIN TỨC (TinTuc)
+INSERT INTO TinTuc (
+    MaTinTuc, TieuDe, NoiDung, MaCuocThi, LoaiTin, TacGia,
+    LuotXem, TrangThai, NgayDang
+)
+VALUES 
+    ('TT001', 'Thông báo khai mạc cuộc thi COATI', 
+     'Cuộc thi nghiên cứu ứng dụng thuật toán COATI chính thức khai mạc',
+     'CT001', 'ThongBao', 'GV001', 150, 'Published',
+     '2024-03-01 08:00:00+07'),
+    ('TT002', 'Công bố kết quả cuộc thi COATI',
+     'Kết quả cuộc thi đã được công bố, chúc mừng các đội đạt giải',
+     'CT001', 'TinTuc', 'GV001', 200, 'Published',
+     '2024-06-30 17:00:00+07');
+
+-- 26. VÒNG THI (VongThi)
+INSERT INTO VongThi (
+    MaVongThi, TenVongThi, MaCuocThi, ThuTu, ThoiGianBatDau,
+    ThoiGianKetThuc, DiaDiem, MoTa, TrangThai
+)
+VALUES 
+    ('VT001', 'Vòng Nộp đề cương', 'CT001', 1,
+     '2024-03-01 08:00:00+07', '2024-04-30 17:00:00+07',
+     'Online', 'Nộp đề cương nghiên cứu', 'Completed'),
+    ('VT002', 'Vòng Báo cáo kết quả', 'CT001', 2,
+     '2024-06-15 08:00:00+07', '2024-06-20 17:00:00+07',
+     'Hội trường A', 'Trình bày kết quả nghiên cứu', 'Completed');
+
+-- 27. ĐIỂM DANH QR (DiemDanhQR)
+INSERT INTO DiemDanhQR (
+    MaDiemDanh, MaHoatDong, MaCuocThi, MaSinhVien, MaQR,
+    ThoiGianDiemDanh, ViTri
+)
+VALUES 
+    ('DD001', 'HD002', 'CT001', '2001221873', 'QR_HD002_2001221873',
+     '2024-06-20 08:30:00+07', 'Hội trường B - UIT');
+
+-- Cập nhật số lượng sinh viên trong lớp
+UPDATE Lop SET SoLuongSinhVien = (
+    SELECT COUNT(*) FROM SinhVien WHERE MaLop = Lop.MaLop
+);
+
+-- Cập nhật số thành viên trong đội thi
+UPDATE DoiThi SET SoThanhVien = (
+    SELECT COUNT(*) FROM ThanhVienDoiThi WHERE MaDoiThi = DoiThi.MaDoiThi
+);
+
+-- Cập nhật tổng điểm rèn luyện cho sinh viên
+UPDATE SinhVien SET DiemRenLuyen = (
+    SELECT COALESCE(SUM(Diem), 0) + 70.00
+    FROM DiemRenLuyen 
+    WHERE MaSinhVien = SinhVien.MaSinhVien
+);
+
+COMMIT;

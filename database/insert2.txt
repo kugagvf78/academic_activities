@@ -1,0 +1,683 @@
+-- =====================================================
+-- SCRIPT THÊM DỮ LIỆU CUỘC THI MỚI
+-- =====================================================
+
+-- Thêm người dùng (Giảng viên và Sinh viên)
+INSERT INTO NguoiDung (MaNguoiDung, TenDangNhap, MatKhau, HoTen, Email, SoDienThoai, VaiTro, TrangThai)
+VALUES 
+    ('ND006', 'GV003', '$2a$10$abcdefghijklmnopqrstuv', 'Trần Văn Minh', 'minhtv@uit.edu.vn', '0956789012', 'GiangVien', 'Active'),
+    ('ND007', 'GV004', '$2a$10$abcdefghijklmnopqrstuv', 'Lê Thị Hương', 'huonglt@uit.edu.vn', '0967890123', 'GiangVien', 'Active'),
+    ('ND008', 'GV005', '$2a$10$abcdefghijklmnopqrstuv', 'Phạm Hoàng Nam', 'namph@uit.edu.vn', '0978901234', 'GiangVien', 'Active'),
+    ('ND009', '2001221874', '$2a$10$abcdefghijklmnopqrstuv', 'Trần Minh Tuấn', 'tuantm@gm.uit.edu.vn', '0989012345', 'SinhVien', 'Active'),
+    ('ND010', '2001221875', '$2a$10$abcdefghijklmnopqrstuv', 'Võ Thị Lan', 'lanvt@gm.uit.edu.vn', '0990123456', 'SinhVien', 'Active'),
+    ('ND011', '2001221876', '$2a$10$abcdefghijklmnopqrstuv', 'Nguyễn Văn Hùng', 'hungnv@gm.uit.edu.vn', '0901234568', 'SinhVien', 'Active'),
+    ('ND012', '2001221877', '$2a$10$abcdefghijklmnopqrstuv', 'Lê Thị Mai', 'mailt@gm.uit.edu.vn', '0912345679', 'SinhVien', 'Active'),
+    ('ND013', '2001221878', '$2a$10$abcdefghijklmnopqrstuv', 'Phạm Văn Đức', 'ducpv@gm.uit.edu.vn', '0923456780', 'SinhVien', 'Active'),
+    ('ND014', '2001221879', '$2a$10$abcdefghijklmnopqrstuv', 'Hoàng Thị Thu', 'thuht@gm.uit.edu.vn', '0934567891', 'SinhVien', 'Active');
+
+-- Thêm Giảng viên
+INSERT INTO GiangVien (MaGiangVien, MaNguoiDung, MaBoMon, ChucVu, HocVi, ChuyenMon)
+VALUES 
+    ('GV003', 'ND006', 'KHMT', 'Giảng viên', 'Tiến sĩ', 'Cơ sở dữ liệu, Hệ thống thông tin'),
+    ('GV004', 'ND007', 'CNPM', 'Giảng viên', 'Thạc sĩ', 'An toàn thông tin, Mạng máy tính'),
+    ('GV005', 'ND008', 'HTTT', 'Trưởng bộ môn', 'Tiến sĩ', 'Trí tuệ nhân tạo, Machine Learning');
+
+-- Thêm Sinh viên
+INSERT INTO SinhVien (MaSinhVien, MaNguoiDung, MaLop, NamNhapHoc, DiemRenLuyen, TrangThai)
+VALUES 
+    ('2001221874', 'ND009', '13DHTH02', 2022, 82.00, 'Active'),
+    ('2001221875', 'ND010', '14DHTH01', 2023, 78.00, 'Active'),
+    ('2001221876', 'ND011', '13KHDL01', 2022, 85.00, 'Active'),
+    ('2001221877', 'ND012', '14CNPM01', 2023, 80.00, 'Active'),
+    ('2001221878', 'ND013', '13DHTH02', 2022, 83.00, 'Active'),
+    ('2001221879', 'ND014', '14DHTH01', 2023, 79.00, 'Active');
+
+-- =====================================================
+-- CUỘC THI 3: Database Design Challenge 2025
+-- =====================================================
+INSERT INTO CuocThi (
+    MaCuocThi, TenCuocThi, LoaiCuocThi, MoTa, MucDich, DoiTuongThamGia,
+    ThoiGianBatDau, ThoiGianKetThuc, DiaDiem, SoLuongThanhVien,
+    HinhThucThamGia, TrangThai, DuTruKinhPhi, MaBoMon
+)
+VALUES 
+    (
+        'CT003',
+        'Database Design Challenge 2025',
+        'CuocThi',
+        'Cuộc thi thiết kế cơ sở dữ liệu nhằm tạo cơ hội cho sinh viên vận dụng kiến thức về mô hình hóa dữ liệu, chuẩn hóa và tối ưu hóa CSDL vào giải quyết các bài toán thực tế',
+        'Rèn luyện kỹ năng phân tích yêu cầu nghiệp vụ, chuyển đổi thành cấu trúc CSDL hiệu quả và chính xác',
+        'Sinh viên năm 2, năm 3 các ngành Công nghệ thông tin, An toàn thông tin, Khoa học dữ liệu',
+        '2025-12-07 07:45:00+07',
+        '2025-12-07 16:30:00+07',
+        'Trường Đại học Công Thương TP.HCM',
+        1,
+        'CaNhan',
+        'Approved',
+        12000000.00,
+        'KHMT'
+    );
+
+INSERT INTO KeHoachCuocThi (
+    MaKeHoach, MaCuocThi, NamHoc, HocKy, TrangThaiDuyet,
+    NgayNopKeHoach, NgayDuyet, NguoiDuyet, GhiChu
+)
+VALUES 
+    ('KH003', 'CT003', '2025-2026', 'HK1', 'Approved', 
+     '2025-11-05 10:00:00+07', '2025-11-10 14:00:00+07', 'GV003', 'Kế hoạch đã được phê duyệt');
+
+-- Ban tổ chức cho CT003
+INSERT INTO Ban (MaBan, TenBan, MaCuocThi, MoTa)
+VALUES 
+    ('BAN004', 'Ban Đề thi', 'CT003', 'Ban soạn đề thi vòng sơ khảo và chung kết'),
+    ('BAN005', 'Ban Giám khảo Sơ khảo', 'CT003', 'Ban chấm điểm vòng sơ khảo'),
+    ('BAN006', 'Ban Giám khảo Chung kết', 'CT003', 'Ban chấm điểm vòng chung kết');
+
+-- Vòng thi
+INSERT INTO VongThi (
+    MaVongThi, TenVongThi, MaCuocThi, ThuTu, ThoiGianBatDau,
+    ThoiGianKetThuc, DiaDiem, MoTa, TrangThai
+)
+VALUES 
+    ('VT003', 'Vòng Sơ khảo', 'CT003', 1,
+     '2025-12-07 07:45:00+07', '2025-12-07 08:45:00+07',
+     'Phòng B205, B401, B502', 'Thi trắc nghiệm lý thuyết', 'InProgress'),
+    ('VT004', 'Vòng Chung kết', 'CT003', 2,
+     '2025-12-07 13:30:00+07', '2025-12-07 14:30:00+07',
+     'Phòng A204, A209', 'Thi thực hành thiết kế CSDL', 'Pending');
+
+-- Hoạt động hỗ trợ
+INSERT INTO HoatDongHoTro (
+    MaHoatDong, TenHoatDong, MaCuocThi, LoaiHoatDong, DiemRenLuyen,
+    ThoiGianBatDau, ThoiGianKetThuc, DiaDiem, MoTa
+)
+VALUES 
+    ('HD003', 'Hỗ trợ tổ chức Database Challenge', 'CT003', 'ToChuc', 4.00,
+     '2025-12-07 07:00:00+07', '2025-12-07 16:30:00+07', 'HUIT',
+     'Hỗ trợ tổ chức cuộc thi, điểm danh, hướng dẫn thí sinh');
+
+-- =====================================================
+-- CUỘC THI 4: Hackathon AI 2025
+-- =====================================================
+INSERT INTO CuocThi (
+    MaCuocThi, TenCuocThi, LoaiCuocThi, MoTa, MucDich, DoiTuongThamGia,
+    ThoiGianBatDau, ThoiGianKetThuc, DiaDiem, SoLuongThanhVien,
+    HinhThucThamGia, TrangThai, DuTruKinhPhi, MaBoMon
+)
+VALUES 
+    (
+        'CT004',
+        'Hackathon AI 2025 - Giải pháp Smart City',
+        'CuocThi',
+        'Cuộc thi phát triển giải pháp AI cho thành phố thông minh, tập trung vào các vấn đề thực tế như giao thông, môi trường, y tế',
+        'Khuyến khích sinh viên áp dụng AI vào giải quyết các vấn đề của thành phố thông minh',
+        'Sinh viên các ngành CNTT, KHDL, ATTT',
+        '2025-10-15 08:00:00+07',
+        '2025-10-17 18:00:00+07',
+        'HUIT - B Building',
+        4,
+        'DoiNhom',
+        'InProgress',
+        25000000.00,
+        'KHDL'
+    );
+
+INSERT INTO KeHoachCuocThi (
+    MaKeHoach, MaCuocThi, NamHoc, HocKy, TrangThaiDuyet,
+    NgayNopKeHoach, NgayDuyet, NguoiDuyet, GhiChu
+)
+VALUES 
+    ('KH004', 'CT004', '2025-2026', 'HK1', 'Approved', 
+     '2025-09-01 10:00:00+07', '2025-09-10 14:00:00+07', 'GV005', 'Kế hoạch đã được phê duyệt');
+
+INSERT INTO Ban (MaBan, TenBan, MaCuocThi, MoTa)
+VALUES 
+    ('BAN007', 'Ban Học thuật Hackathon', 'CT004', 'Phụ trách nội dung và chấm điểm'),
+    ('BAN008', 'Ban Hậu cần Hackathon', 'CT004', 'Phụ trách logistics và hỗ trợ kỹ thuật');
+
+-- Đội thi cho Hackathon
+INSERT INTO DoiThi (
+    MaDoiThi, TenDoiThi, MaCuocThi, MaTruongDoi, SoThanhVien,
+    NgayDangKy, TrangThai
+)
+VALUES 
+    ('DT002', 'AI Warriors', 'CT004', '2001221874', 4, 
+     '2025-09-20 10:00:00+07', 'Active'),
+    ('DT003', 'Smart City Innovators', 'CT004', '2001221876', 4,
+     '2025-09-21 14:00:00+07', 'Active');
+
+-- Đăng ký dự thi Hackathon
+INSERT INTO DangKyDuThi (
+    MaDangKy, MaCuocThi, MaSinhVien, MaDoiThi, HinhThucDangKy,
+    NgayDangKy, TrangThai
+)
+VALUES 
+    ('DK004', 'CT004', '2001221874', 'DT002', 'DoiNhom', '2025-09-20 10:00:00+07', 'Registered'),
+    ('DK005', 'CT004', '2001221875', 'DT002', 'DoiNhom', '2025-09-20 10:30:00+07', 'Registered'),
+    ('DK006', 'CT004', '2001221876', 'DT003', 'DoiNhom', '2025-09-21 14:00:00+07', 'Registered'),
+    ('DK007', 'CT004', '2001221877', 'DT003', 'DoiNhom', '2025-09-21 14:30:00+07', 'Registered');
+
+-- Thành viên đội thi
+INSERT INTO ThanhVienDoiThi (MaThanhVien, MaDoiThi, MaSinhVien, VaiTro, NgayThamGia)
+VALUES 
+    ('TV002', 'DT002', '2001221874', 'TruongDoi', '2025-09-20 10:00:00+07'),
+    ('TV003', 'DT002', '2001221875', 'ThanhVien', '2025-09-20 10:30:00+07'),
+    ('TV004', 'DT003', '2001221876', 'TruongDoi', '2025-09-21 14:00:00+07'),
+    ('TV005', 'DT003', '2001221877', 'ThanhVien', '2025-09-21 14:30:00+07');
+
+-- =====================================================
+-- CUỘC THI 5: Olympic Tin học Sinh viên 2025
+-- =====================================================
+INSERT INTO CuocThi (
+    MaCuocThi, TenCuocThi, LoaiCuocThi, MoTa, MucDich, DoiTuongThamGia,
+    ThoiGianBatDau, ThoiGianKetThuc, DiaDiem, SoLuongThanhVien,
+    HinhThucThamGia, TrangThai, DuTruKinhPhi, MaBoMon
+)
+VALUES 
+    (
+        'CT005',
+        'Olympic Tin học Sinh viên 2025',
+        'CuocThi',
+        'Kỳ thi Olympic Tin học cấp trường dành cho sinh viên, bao gồm các nội dung lập trình, thuật toán, cấu trúc dữ liệu',
+        'Phát hiện và bồi dưỡng tài năng lập trình, chuẩn bị cho các kỳ thi Olympic cấp quốc gia',
+        'Sinh viên tất cả các khoa',
+        '2025-11-20 08:00:00+07',
+        '2025-11-20 12:00:00+07',
+        'Phòng máy A301, A302, A303',
+        1,
+        'CaNhan',
+        'Approved',
+        18000000.00,
+        'KHMT'
+    );
+
+INSERT INTO KeHoachCuocThi (
+    MaKeHoach, MaCuocThi, NamHoc, HocKy, TrangThaiDuyet,
+    NgayNopKeHoach, NgayDuyet, NguoiDuyet, GhiChu
+)
+VALUES 
+    ('KH005', 'CT005', '2025-2026', 'HK1', 'Approved', 
+     '2025-10-01 10:00:00+07', '2025-10-05 14:00:00+07', 'GV003', 'Kế hoạch đã được phê duyệt');
+
+-- =====================================================
+-- CUỘC THI 6: Hội thảo An toàn Thông tin 2025
+-- =====================================================
+INSERT INTO CuocThi (
+    MaCuocThi, TenCuocThi, LoaiCuocThi, MoTa, MucDich, DoiTuongThamGia,
+    ThoiGianBatDau, ThoiGianKetThuc, DiaDiem, SoLuongThanhVien,
+    HinhThucThamGia, TrangThai, DuTruKinhPhi, MaBoMon
+)
+VALUES 
+    (
+        'CT006',
+        'Hội thảo An toàn Thông tin 2025',
+        'HoiThao',
+        'Hội thảo về các xu hướng và thách thức trong lĩnh vực an toàn thông tin, mạng máy tính và bảo mật dữ liệu',
+        'Cập nhật kiến thức về an toàn thông tin, trao đổi kinh nghiệm thực tiễn',
+        'Sinh viên và giảng viên các khoa CNTT',
+        '2025-09-25 08:00:00+07',
+        '2025-09-25 17:00:00+07',
+        'Hội trường C - HUIT',
+        300,
+        'CaNhan',
+        'Completed',
+        22000000.00,
+        'CNPM'
+    );
+
+INSERT INTO KeHoachCuocThi (
+    MaKeHoach, MaCuocThi, NamHoc, HocKy, TrangThaiDuyet,
+    NgayNopKeHoach, NgayDuyet, NguoiDuyet, GhiChu
+)
+VALUES 
+    ('KH006', 'CT006', '2025-2026', 'HK1', 'Approved', 
+     '2025-08-15 10:00:00+07', '2025-08-20 14:00:00+07', 'GV004', 'Kế hoạch đã được phê duyệt');
+
+INSERT INTO DangKyDuThi (
+    MaDangKy, MaCuocThi, MaSinhVien, MaDoiThi, HinhThucDangKy,
+    NgayDangKy, TrangThai
+)
+VALUES 
+    ('DK008', 'CT006', '2001221872', NULL, 'CaNhan', '2025-09-10 10:00:00+07', 'Completed'),
+    ('DK009', 'CT006', '2001221873', NULL, 'CaNhan', '2025-09-10 11:00:00+07', 'Completed'),
+    ('DK010', 'CT006', '2001221874', NULL, 'CaNhan', '2025-09-11 09:00:00+07', 'Completed');
+
+-- =====================================================
+-- CUỘC THI 7: Cuộc thi Web Design 2025
+-- =====================================================
+INSERT INTO CuocThi (
+    MaCuocThi, TenCuocThi, LoaiCuocThi, MoTa, MucDich, DoiTuongThamGia,
+    ThoiGianBatDau, ThoiGianKetThuc, DiaDiem, SoLuongThanhVien,
+    HinhThucThamGia, TrangThai, DuTruKinhPhi, MaBoMon
+)
+VALUES 
+    (
+        'CT007',
+        'Cuộc thi Thiết kế Website 2025',
+        'CuocThi',
+        'Cuộc thi thiết kế và phát triển website với giao diện đẹp, tính năng hiện đại và trải nghiệm người dùng tốt',
+        'Phát triển kỹ năng thiết kế web, frontend và backend cho sinh viên',
+        'Sinh viên năm 2, 3, 4 các ngành CNTT',
+        '2025-08-15 08:00:00+07',
+        '2025-09-30 17:00:00+07',
+        'Online + Phòng A204',
+        3,
+        'DoiNhom',
+        'Completed',
+        16000000.00,
+        'CNPM'
+    );
+
+INSERT INTO KeHoachCuocThi (
+    MaKeHoach, MaCuocThi, NamHoc, HocKy, TrangThaiDuyet,
+    NgayNopKeHoach, NgayDuyet, NguoiDuyet, GhiChu
+)
+VALUES 
+    ('KH007', 'CT007', '2025-2026', 'HK1', 'Approved', 
+     '2025-07-20 10:00:00+07', '2025-07-25 14:00:00+07', 'GV003', 'Kế hoạch đã được phê duyệt');
+
+INSERT INTO DoiThi (
+    MaDoiThi, TenDoiThi, MaCuocThi, MaTruongDoi, SoThanhVien,
+    NgayDangKy, TrangThai
+)
+VALUES 
+    ('DT004', 'WebMasters', 'CT007', '2001221878', 3, 
+     '2025-08-20 10:00:00+07', 'Active');
+
+INSERT INTO DangKyDuThi (
+    MaDangKy, MaCuocThi, MaSinhVien, MaDoiThi, HinhThucDangKy,
+    NgayDangKy, TrangThai
+)
+VALUES 
+    ('DK011', 'CT007', '2001221878', 'DT004', 'DoiNhom', '2025-08-20 10:00:00+07', 'Completed');
+
+INSERT INTO ThanhVienDoiThi (MaThanhVien, MaDoiThi, MaSinhVien, VaiTro, NgayThamGia)
+VALUES 
+    ('TV006', 'DT004', '2001221878', 'TruongDoi', '2025-08-20 10:00:00+07');
+
+-- Kết quả cho Web Design
+INSERT INTO DeThi (
+    MaDeThi, TenDeThi, MaCuocThi, LoaiDeThi, ThoiGianLamBai,
+    DiemToiDa, NgayTao, NguoiTao, TrangThai
+)
+VALUES 
+    ('DE002', 'Thiết kế Website Thương mại điện tử', 'CT007', 'ThucHanh', 480,
+     100.00, '2025-08-15 10:00:00+07', 'GV003', 'Published');
+
+INSERT INTO BaiThi (
+    MaBaiThi, MaDeThi, MaDangKy, FileBaiThi, ThoiGianNop, TrangThai
+)
+VALUES 
+    ('BT002', 'DE002', 'DK011', '/uploads/baithi/DK011_WebMasters_Project.zip',
+     '2025-09-28 16:00:00+07', 'Submitted');
+
+INSERT INTO KetQuaThi (
+    MaKetQua, MaBaiThi, Diem, XepHang, GiaiThuong, NhanXet,
+    NgayChamDiem, NguoiChamDiem
+)
+VALUES 
+    ('KQ002', 'BT002', 90.00, 2, 'Giải Nhì', 
+     'Thiết kế đẹp, tính năng đầy đủ, trải nghiệm người dùng tốt',
+     '2025-09-30 15:00:00+07', 'GV003');
+
+INSERT INTO DatGiai (
+    MaDatGiai, MaCuocThi, MaDangKy, TenGiai, GiaiThuong,
+    DiemRenLuyen, NgayTrao
+)
+VALUES 
+    ('DG002', 'CT007', 'DK011', 'Giải Nhì', 'Chứng nhận + 3 triệu đồng',
+     12.00, '2025-09-30 16:00:00+07');
+
+-- =====================================================
+-- CUỘC THI 8: Mobile App Development Contest 2025
+-- =====================================================
+INSERT INTO CuocThi (
+    MaCuocThi, TenCuocThi, LoaiCuocThi, MoTa, MucDich, DoiTuongThamGia,
+    ThoiGianBatDau, ThoiGianKetThuc, DiaDiem, SoLuongThanhVien,
+    HinhThucThamGia, TrangThai, DuTruKinhPhi, MaBoMon
+)
+VALUES 
+    (
+        'CT008',
+        'Cuộc thi Phát triển Ứng dụng Di động 2025',
+        'CuocThi',
+        'Cuộc thi phát triển ứng dụng di động trên nền tảng Android/iOS giải quyết các vấn đề thực tế',
+        'Khuyến khích sinh viên phát triển ứng dụng di động sáng tạo và hữu ích',
+        'Sinh viên các ngành CNTT, CNPM',
+        '2025-07-01 08:00:00+07',
+        '2025-08-31 17:00:00+07',
+        'Online + Demo tại A209',
+        4,
+        'DoiNhom',
+        'Completed',
+        20000000.00,
+        'CNPM'
+    );
+
+INSERT INTO KeHoachCuocThi (
+    MaKeHoach, MaCuocThi, NamHoc, HocKy, TrangThaiDuyet,
+    NgayNopKeHoach, NgayDuyet, NguoiDuyet, GhiChu
+)
+VALUES 
+    ('KH008', 'CT008', '2024-2025', 'HK3', 'Approved', 
+     '2025-06-01 10:00:00+07', '2025-06-10 14:00:00+07', 'GV003', 'Kế hoạch đã được phê duyệt');
+
+-- =====================================================
+-- CUỘC THI 9: Game Development Challenge 2025
+-- =====================================================
+INSERT INTO CuocThi (
+    MaCuocThi, TenCuocThi, LoaiCuocThi, MoTa, MucDich, DoiTuongThamGia,
+    ThoiGianBatDau, ThoiGianKetThuc, DiaDiem, SoLuongThanhVien,
+    HinhThucThamGia, TrangThai, DuTruKinhPhi, MaBoMon
+)
+VALUES 
+    (
+        'CT009',
+        'Cuộc thi Phát triển Game 2025',
+        'CuocThi',
+        'Cuộc thi thiết kế và phát triển game 2D/3D với nội dung sáng tạo, gameplay hấp dẫn',
+        'Phát triển tư duy sáng tạo và kỹ năng lập trình game cho sinh viên',
+        'Sinh viên các khoa',
+        '2025-10-01 08:00:00+07',
+        '2025-11-30 17:00:00+07',
+        'Online + Demo tại B Building',
+        5,
+        'DoiNhom',
+        'InProgress',
+        18000000.00,
+        'CNPM'
+    );
+
+INSERT INTO KeHoachCuocThi (
+    MaKeHoach, MaCuocThi, NamHoc, HocKy, TrangThaiDuyet,
+    NgayNopKeHoach, NgayDuyet, NguoiDuyet, GhiChu
+)
+VALUES 
+    ('KH009', 'CT009', '2025-2026', 'HK1', 'Approved', 
+     '2025-09-10 10:00:00+07', '2025-09-15 14:00:00+07', 'GV003', 'Kế hoạch đã được phê duyệt');
+
+-- =====================================================
+-- CUỘC THI 10: IoT Innovation Contest 2025
+-- =====================================================
+INSERT INTO CuocThi (
+    MaCuocThi, TenCuocThi, LoaiCuocThi, MoTa, MucDich, DoiTuongThamGia,
+    ThoiGianBatDau, ThoiGianKetThuc, DiaDiem, SoLuongThanhVien,
+    HinhThucThamGia, TrangThai, DuTruKinhPhi, MaBoMon
+)
+VALUES 
+    (
+        'CT010',
+        'Cuộc thi Đổi mới Sáng tạo IoT 2025',
+        'CuocThi',
+        'Cuộc thi phát triển các giải pháp IoT (Internet of Things) ứng dụng trong nông nghiệp thông minh, nhà thông minh, y tế',
+        'Khuyến khích sinh viên nghiên cứu và phát triển các giải pháp IoT thiết thực',
+        'Sinh viên các ngành CNTT, ATTT, KHDL',
+        '2025-09-01 08:00:00+07',
+        '2025-10-31 17:00:00+07',
+        'Lab IoT - C Building',
+        4,
+        'DoiNhom',
+        'InProgress',
+        22000000.00,
+        'HTTT'
+    );
+
+INSERT INTO KeHoachCuocThi (
+    MaKeHoach, MaCuocThi, NamHoc, HocKy, TrangThaiDuyet,
+    NgayNopKeHoach, NgayDuyet, NguoiDuyet, GhiChu
+)
+VALUES 
+    ('KH010', 'CT010', '2025-2026', 'HK1', 'Approved', 
+     '2025-08-01 10:00:00+07', '2025-08-10 14:00:00+07', 'GV005', 'Kế hoạch đã được phê duyệt');
+
+-- =====================================================
+-- TIN TỨC VÀ THÔNG BÁO
+-- =====================================================
+INSERT INTO TinTuc (
+    MaTinTuc, TieuDe, NoiDung, MaCuocThi, LoaiTin, TacGia,
+    LuotXem, TrangThai, NgayDang
+)
+VALUES 
+    ('TT003', 'Thông báo Database Design Challenge 2025', 
+     'Khoa CNTT thông báo tổ chức cuộc thi Database Design Challenge vào ngày 07/12/2025',
+     'CT003', 'ThongBao', 'GV003', 250, 'Published',
+     '2025-11-07 08:00:00+07'),
+    ('TT004', 'Khai mạc Hackathon AI 2025',
+     'Cuộc thi Hackathon AI 2025 với chủ đề Smart City chính thức khai mạc',
+     'CT004', 'TinTuc', 'GV005', 180, 'Published',
+     '2025-10-15 08:00:00+07'),
+    ('TT005', 'Công bố kết quả Web Design Contest',
+     'Ban tổ chức công bố kết quả cuộc thi thiết kế website, chúc mừng các đội đạt giải',
+     'CT007', 'TinTuc', 'GV003', 220, 'Published',
+     '2025-09-30 17:00:00+07'),
+    ('TT006', 'Thông báo tổ chức Olympic Tin học',
+     'Olympic Tin học Sinh viên 2025 sẽ được tổ chức vào ngày 20/11/2025',
+     'CT005', 'ThongBao', 'GV003', 160, 'Published',
+     '2025-10-20 10:00:00+07');
+
+-- =====================================================
+-- CHI PHÍ CÁC CUỘC THI
+-- =====================================================
+INSERT INTO ChiPhi (
+    MaChiPhi, MaCuocThi, TenKhoanChi, DuTruChiPhi, ThucTeChi,
+    NgayChi, NguoiDuyet, TrangThai, GhiChu
+)
+VALUES 
+    -- Database Challenge
+    ('CP003', 'CT003', 'Giải thưởng', 8000000.00, NULL, NULL, NULL, 'Pending', 'Giải Nhất: 3tr, Nhì: 2tr, Ba: 1.5tr x2'),
+    ('CP004', 'CT003', 'Văn phòng phẩm và in ấn', 1500000.00, NULL, NULL, NULL, 'Pending', 'In đề thi, giấy làm bài'),
+    ('CP005', 'CT003', 'Nước uống và refreshment', 2500000.00, NULL, NULL, NULL, 'Pending', 'Cho giám khảo và giảng viên'),
+    
+    -- Hackathon AI
+    ('CP006', 'CT004', 'Giải thưởng', 15000000.00, NULL, NULL, NULL, 'Pending', 'Giải Nhất: 8tr, Nhì: 5tr, Ba: 2tr'),
+    ('CP007', 'CT004', 'Thuê thiết bị', 5000000.00, NULL, NULL, NULL, 'Pending', 'Máy chiếu, âm thanh, wifi'),
+    ('CP008', 'CT004', 'Ăn uống cho thí sinh', 5000000.00, NULL, NULL, NULL, 'Pending', '3 ngày thi'),
+    
+    -- Olympic Tin học
+    ('CP009', 'CT005', 'Giải thưởng', 12000000.00, NULL, NULL, NULL, 'Pending', 'Giải Vàng, Bạc, Đồng và Khuyến khích'),
+    ('CP010', 'CT005', 'Vận hành hệ thống', 3000000.00, NULL, NULL, NULL, 'Pending', 'Server chấm bài online'),
+    ('CP011', 'CT005', 'Văn phòng phẩm', 3000000.00, NULL, NULL, NULL, 'Pending', 'In giấy khen, tài liệu'),
+    
+    -- Hội thảo An toàn TT
+    ('CP012', 'CT006', 'Tiền diễn giả', 10000000.00, 10000000.00, '2025-09-25', 'GV004', 'Approved', 'Chi phí mời 3 diễn giả'),
+    ('CP013', 'CT006', 'In tài liệu hội thảo', 5000000.00, 4800000.00, '2025-09-20', 'GV004', 'Approved', '300 bộ tài liệu'),
+    ('CP014', 'CT006', 'Ăn trưa cho khách mời', 7000000.00, 6900000.00, '2025-09-25', 'GV004', 'Approved', 'Tiệc trưa buffet'),
+    
+    -- Web Design
+    ('CP015', 'CT007', 'Giải thưởng', 10000000.00, 10000000.00, '2025-09-30', 'GV003', 'Approved', 'Giải Nhất: 5tr, Nhì: 3tr, Ba: 2tr'),
+    ('CP016', 'CT007', 'Hosting và Domain', 3000000.00, 2500000.00, '2025-08-20', 'GV003', 'Approved', 'Cho các đội demo'),
+    ('CP017', 'CT007', 'Văn phòng phẩm', 3000000.00, 2800000.00, '2025-09-28', 'GV003', 'Approved', 'In giấy khen, băng rôn');
+
+-- Quyết toán cho các cuộc thi đã hoàn thành
+INSERT INTO QuyetToan (
+    MaQuyetToan, MaCuocThi, TongDuTru, TongThucTe, ChenhLech,
+    NgayQuyetToan, NguoiLap, NguoiDuyet, TrangThai, GhiChu
+)
+VALUES 
+    ('QT002', 'CT006', 22000000.00, 21700000.00, 300000.00,
+     '2025-10-05', 'GV004', 'GV002', 'Approved', 'Quyết toán Hội thảo ATTT'),
+    ('QT003', 'CT007', 16000000.00, 15300000.00, 700000.00,
+     '2025-10-10', 'GV003', 'GV002', 'Approved', 'Quyết toán Web Design Contest');
+
+-- =====================================================
+-- ĐĂNG KÝ THÊM CHO CÁC CUỘC THI
+-- =====================================================
+INSERT INTO DangKyDuThi (
+    MaDangKy, MaCuocThi, MaSinhVien, MaDoiThi, HinhThucDangKy,
+    NgayDangKy, TrangThai
+)
+VALUES 
+    -- Database Challenge
+    ('DK012', 'CT003', '2001221872', NULL, 'CaNhan', '2025-11-18 10:00:00+07', 'Registered'),
+    ('DK013', 'CT003', '2001221873', NULL, 'CaNhan', '2025-11-18 11:00:00+07', 'Registered'),
+    ('DK014', 'CT003', '2001221874', NULL, 'CaNhan', '2025-11-19 09:00:00+07', 'Registered'),
+    ('DK015', 'CT003', '2001221875', NULL, 'CaNhan', '2025-11-19 10:00:00+07', 'Registered'),
+    ('DK016', 'CT003', '2001221876', NULL, 'CaNhan', '2025-11-19 14:00:00+07', 'Registered'),
+    
+    -- Olympic Tin học
+    ('DK017', 'CT005', '2001221872', NULL, 'CaNhan', '2025-10-25 10:00:00+07', 'Registered'),
+    ('DK018', 'CT005', '2001221874', NULL, 'CaNhan', '2025-10-25 11:00:00+07', 'Registered'),
+    ('DK019', 'CT005', '2001221876', NULL, 'CaNhan', '2025-10-26 09:00:00+07', 'Registered');
+
+-- =====================================================
+-- HOẠT ĐỘNG HỖ TRỢ THÊM
+-- =====================================================
+INSERT INTO HoatDongHoTro (
+    MaHoatDong, TenHoatDong, MaCuocThi, LoaiHoatDong, DiemRenLuyen,
+    ThoiGianBatDau, ThoiGianKetThuc, DiaDiem, MoTa
+)
+VALUES 
+    ('HD004', 'Hỗ trợ kỹ thuật Hackathon AI', 'CT004', 'HoTroKyThuat', 6.00,
+     '2025-10-15 08:00:00+07', '2025-10-17 18:00:00+07', 'HUIT',
+     'Hỗ trợ kỹ thuật 3 ngày thi liên tục'),
+    ('HD005', 'MC và điều phối Olympic', 'CT005', 'CoVu', 4.00,
+     '2025-11-20 08:00:00+07', '2025-11-20 12:00:00+07', 'Phòng máy A301',
+     'MC chương trình và điều phối thi'),
+    ('HD006', 'Quay phim Hội thảo ATTT', 'CT006', 'ToChuc', 3.00,
+     '2025-09-25 08:00:00+07', '2025-09-25 17:00:00+07', 'Hội trường C',
+     'Quay phim và chụp ảnh hội thảo');
+
+-- Đăng ký hoạt động hỗ trợ
+INSERT INTO DangKyHoatDong (
+    MaDangKyHoatDong, MaHoatDong, MaSinhVien, NgayDangKy,
+    TrangThai, DiemDanhQR, ThoiGianDiemDanh
+)
+VALUES 
+    ('DKHD002', 'HD004', '2001221878', '2025-10-01 10:00:00+07', 'Completed', TRUE, '2025-10-15 08:15:00+07'),
+    ('DKHD003', 'HD004', '2001221879', '2025-10-01 11:00:00+07', 'Completed', TRUE, '2025-10-15 08:20:00+07'),
+    ('DKHD004', 'HD005', '2001221873', '2025-11-10 10:00:00+07', 'Registered', FALSE, NULL),
+    ('DKHD005', 'HD006', '2001221877', '2025-09-15 14:00:00+07', 'Completed', TRUE, '2025-09-25 08:30:00+07');
+
+-- =====================================================
+-- ĐIỂM RÈN LUYỆN CHO CÁC HOẠT ĐỘNG
+-- =====================================================
+INSERT INTO DiemRenLuyen (
+    MaDiemRL, MaSinhVien, MaCuocThi, MaHoatDong, LoaiHoatDong,
+    Diem, MoTa, NgayCong
+)
+VALUES 
+    ('RL004', '2001221878', NULL, 'HD004', 'HoTro', 6.00,
+     'Hỗ trợ kỹ thuật Hackathon AI 3 ngày', '2025-10-17 18:00:00+07'),
+    ('RL005', '2001221879', NULL, 'HD004', 'HoTro', 6.00,
+     'Hỗ trợ kỹ thuật Hackathon AI 3 ngày', '2025-10-17 18:00:00+07'),
+    ('RL006', '2001221877', NULL, 'HD006', 'HoTro', 3.00,
+     'Quay phim Hội thảo ATTT', '2025-09-25 17:00:00+07'),
+    ('RL007', '2001221872', 'CT006', NULL, 'DuThi', 2.00,
+     'Tham dự Hội thảo ATTT', '2025-09-25 17:00:00+07'),
+    ('RL008', '2001221873', 'CT006', NULL, 'DuThi', 2.00,
+     'Tham dự Hội thảo ATTT', '2025-09-25 17:00:00+07'),
+    ('RL009', '2001221874', 'CT006', NULL, 'DuThi', 2.00,
+     'Tham dú Hội thảo ATTT', '2025-09-25 17:00:00+07');
+-- =====================================================
+-- ĐỀ THI CHO CÁC CUỘC THI
+-- =====================================================
+INSERT INTO DeThi (
+    MaDeThi, TenDeThi, MaCuocThi, LoaiDeThi, ThoiGianLamBai,
+    DiemToiDa, NgayTao, NguoiTao, TrangThai
+)
+VALUES 
+    ('DE003', 'Đề thi Sơ khảo Database Challenge', 'CT003', 'TracNghiem', 60,
+     100.00, '2025-11-25 10:00:00+07', 'GV003', 'Published'),
+    ('DE004', 'Đề thi Chung kết Database Challenge', 'CT003', 'ThucHanh', 60,
+     100.00, '2025-11-25 10:00:00+07', 'GV003', 'Published'),
+    ('DE005', 'Đề thi Olympic Tin học', 'CT005', 'LapTrinh', 240,
+     100.00, '2025-11-10 10:00:00+07', 'GV003', 'Published'),
+    ('DE006', 'Đề án Hackathon AI', 'CT004', 'DeAn', 2880,
+     100.00, '2025-09-15 10:00:00+07', 'GV005', 'Published');
+
+-- =====================================================
+-- CÔNG VIỆC CHO CÁC BAN
+-- =====================================================
+INSERT INTO CongViec (
+    MaCongViec, TenCongViec, MaBan, MaCuocThi, MoTa,
+    ThoiGianBatDau, ThoiGianKetThuc, TrangThai
+)
+VALUES 
+    ('CV003', 'Soạn đề thi Database Challenge', 'BAN004', 'CT003', 
+     'Soạn đề thi sơ khảo và chung kết',
+     '2025-11-10 08:00:00+07', '2025-11-25 17:00:00+07', 'Completed'),
+    ('CV004', 'Chấm điểm vòng sơ khảo', 'BAN005', 'CT003',
+     'Chấm bài thi trắc nghiệm vòng sơ khảo',
+     '2025-12-07 09:00:00+07', '2025-12-07 11:00:00+07', 'Pending'),
+    ('CV005', 'Chấm điểm vòng chung kết', 'BAN006', 'CT003',
+     'Chấm bài thực hành vòng chung kết',
+     '2025-12-07 14:30:00+07', '2025-12-07 16:00:00+07', 'Pending'),
+    ('CV006', 'Hỗ trợ kỹ thuật Hackathon', 'BAN008', 'CT004',
+     'Hỗ trợ kỹ thuật và giải đáp thắc mắc',
+     '2025-10-15 08:00:00+07', '2025-10-17 18:00:00+07', 'InProgress'),
+    ('CV007', 'Đánh giá dự án Hackathon', 'BAN007', 'CT004',
+     'Đánh giá và chấm điểm các dự án',
+     '2025-10-17 14:00:00+07', '2025-10-17 18:00:00+07', 'Pending');
+
+-- Phân công giảng viên cho công việc
+INSERT INTO PhanCongGiangVien (
+    MaPhanCong, MaGiangVien, MaCongViec, MaBan, VaiTro, NgayPhanCong
+)
+VALUES 
+    ('PC003', 'GV003', 'CV003', 'BAN004', 'TruongBan', '2025-11-01 10:00:00+07'),
+    ('PC004', 'GV001', 'CV003', 'BAN004', 'ThanhVien', '2025-11-01 10:00:00+07'),
+    ('PC005', 'GV002', 'CV004', 'BAN005', 'TruongBan', '2025-11-20 10:00:00+07'),
+    ('PC006', 'GV003', 'CV005', 'BAN006', 'TruongBan', '2025-11-20 10:00:00+07'),
+    ('PC007', 'GV005', 'CV006', 'BAN008', 'TruongBan', '2025-10-01 10:00:00+07'),
+    ('PC008', 'GV005', 'CV007', 'BAN007', 'TruongBan', '2025-10-01 10:00:00+07'),
+    ('PC009', 'GV004', 'CV007', 'BAN007', 'ThanhVien', '2025-10-01 10:00:00+07');
+
+-- =====================================================
+-- CẬP NHẬT DỮ LIỆU
+-- =====================================================
+
+-- Cập nhật số lượng sinh viên trong lớp
+UPDATE Lop SET SoLuongSinhVien = (
+    SELECT COUNT(*) FROM SinhVien WHERE MaLop = Lop.MaLop
+);
+
+-- Cập nhật số thành viên trong đội thi
+UPDATE DoiThi SET SoThanhVien = (
+    SELECT COUNT(*) FROM ThanhVienDoiThi WHERE MaDoiThi = DoiThi.MaDoiThi
+);
+
+-- Cập nhật tổng điểm rèn luyện cho sinh viên
+UPDATE SinhVien SET DiemRenLuyen = (
+    SELECT COALESCE(SUM(Diem), 0) + 70.00
+    FROM DiemRenLuyen 
+    WHERE MaSinhVien = SinhVien.MaSinhVien
+);
+
+-- =====================================================
+-- THỐNG KÊ CÁC CUỘC THI
+-- =====================================================
+
+-- Xem danh sách tất cả cuộc thi
+SELECT 
+    MaCuocThi,
+    TenCuocThi,
+    LoaiCuocThi,
+    ThoiGianBatDau,
+    ThoiGianKetThuc,
+    TrangThai,
+    DuTruKinhPhi
+FROM CuocThi
+ORDER BY ThoiGianBatDau DESC;
+
+-- Thống kê số lượng đăng ký theo cuộc thi
+SELECT 
+    ct.TenCuocThi,
+    COUNT(dk.MaDangKy) as SoLuongDangKy,
+    ct.TrangThai
+FROM CuocThi ct
+LEFT JOIN DangKyDuThi dk ON ct.MaCuocThi = dk.MaCuocThi
+GROUP BY ct.MaCuocThi, ct.TenCuocThi, ct.TrangThai
+ORDER BY SoLuongDangKy DESC;
+
+-- Thống kê chi phí theo cuộc thi
+SELECT 
+    ct.TenCuocThi,
+    ct.DuTruKinhPhi,
+    COALESCE(SUM(cp.ThucTeChi), 0) as TongThucTe,
+    ct.DuTruKinhPhi - COALESCE(SUM(cp.ThucTeChi), 0) as ConLai
+FROM CuocThi ct
+LEFT JOIN ChiPhi cp ON ct.MaCuocThi = cp.MaCuocThi AND cp.TrangThai = 'Approved'
+GROUP BY ct.MaCuocThi, ct.TenCuocThi, ct.DuTruKinhPhi
+ORDER BY ct.ThoiGianBatDau DESC;
+
+COMMIT;

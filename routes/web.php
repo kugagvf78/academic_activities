@@ -8,6 +8,7 @@ use App\Http\Controllers\Web\Client\EventController;
 use App\Http\Controllers\Web\Client\ResultController;
 use App\Http\Controllers\Web\Client\NewsController;
 use App\Http\Controllers\Web\Client\ContestRegistrationController;
+use App\Http\Controllers\Web\Client\CheerRegistrationController;
 
 /*
 |--------------------------------------------------------------------------
@@ -54,7 +55,7 @@ Route::prefix('/hoi-thao')->name('client.events.')->group(function () {
     // Danh sách cuộc thi
     Route::get('/', [EventController::class, 'index'])->name('index');
     
-    // Chi tiết cuộc thi (slug only)
+    // Chi tiết cuộc thi (dùng slug)
     Route::get('/{slug}', [EventController::class, 'show'])->name('show');
     
     // Protected routes - Cần đăng nhập
@@ -67,9 +68,13 @@ Route::prefix('/hoi-thao')->name('client.events.')->group(function () {
         Route::post('/{slug}/dang-ky', [ContestRegistrationController::class, 'register'])
             ->name('register.submit');
         
-        // Đăng ký cổ vũ
-        Route::get('/{slug}/co-vu', [EventController::class, 'showCheerForm'])
+        // Đăng ký cổ vũ - FORM (dùng slug)
+        Route::get('/{slug}/co-vu', [CheerRegistrationController::class, 'showCheerForm'])
             ->name('cheer');
+        
+        // Đăng ký cổ vũ - SUBMIT (dùng slug)
+        Route::post('/{slug}/co-vu', [CheerRegistrationController::class, 'registerCheer'])
+            ->name('cheer.submit');
         
         // Đăng ký hỗ trợ
         Route::get('/{slug}/ho-tro', [EventController::class, 'showSupportForm'])
@@ -80,7 +85,6 @@ Route::prefix('/hoi-thao')->name('client.events.')->group(function () {
     Route::post('/check-student-code', [ContestRegistrationController::class, 'checkStudentCode'])
         ->name('check.student');
 });
-
 /*
 |--------------------------------------------------------------------------
 | Result Routes (Kết quả)
@@ -133,6 +137,14 @@ Route::middleware('jwt.web')->group(function () {
         // Xuất điểm rèn luyện PDF
         Route::get('/diem-ren-luyen/export', 'exportDiemRenLuyenPDF')->name('diem.export');
     });
+    
+    // Route xem danh sách đăng ký của tôi
+    Route::get('/hoat-dong-cua-toi', [CheerRegistrationController::class, 'myRegistrations'])
+        ->name('my.registrations');
+    
+    // Route hủy đăng ký
+    Route::delete('/hoat-dong/{madangkyhoatdong}/huy', [CheerRegistrationController::class, 'cancelRegistration'])
+        ->name('registration.cancel');
 });
 
 /*
@@ -147,19 +159,3 @@ Route::get('/test-jwt', function () {
         'jwt_guest' => jwt_guest(),
     ];
 });
-
-
-// // Routes đăng ký cuộc thi
-// Route::prefix('events')->name('client.events.')->group(function () {
-//     // Hiển thị form đăng ký
-//     Route::get('/{macuocthi}/register', [ContestRegistrationController::class, 'showRegistrationForm'])
-//         ->name('register.form');
-    
-//     // Xử lý đăng ký
-//     Route::post('/{macuocthi}/register', [ContestRegistrationController::class, 'register'])
-//         ->name('register.submit');
-    
-//     // API kiểm tra mã sinh viên
-//     Route::post('/check-student-code', [ContestRegistrationController::class, 'checkStudentCode'])
-//         ->name('check.student');
-// });

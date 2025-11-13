@@ -56,7 +56,7 @@ class ContestRegistrationController extends Controller
             'main_student_code' => 'required|string|max:50',
             'main_email' => 'required|email|max:255',
             'main_phone' => 'required|string|max:20',
-            'team_name' => 'required_if:type,team|string|max:255|nullable',
+            'team_name' => 'required|string|max:255',
             'members' => 'required_if:type,team|array|nullable',
             'members.*.name' => 'required_with:members|string|max:255',
             'members.*.student_code' => 'required_with:members|string|max:50',
@@ -67,7 +67,7 @@ class ContestRegistrationController extends Controller
             'main_student_code.required' => 'Vui lòng nhập mã sinh viên',
             'main_email.required' => 'Vui lòng nhập email',
             'main_phone.required' => 'Vui lòng nhập số điện thoại',
-            'team_name.required_if' => 'Vui lòng nhập tên đội',
+            'team_name.required' => 'Vui lòng nhập tên đội',
             'members.required_if' => 'Vui lòng thêm thành viên nhóm',
         ]);
 
@@ -94,91 +94,106 @@ class ContestRegistrationController extends Controller
                             ->withInput();
             }
 
-            $madoithi = null;
+            // LUÔN TẠO ĐỘI THI (cho cả cá nhân và nhóm)
+            $madoithi = 'DT' . Str::upper(Str::random(8));
             
-            // Xử lý đăng ký theo nhóm
-            if ($validated['type'] === 'team') {
+            // Số thành viên = 1 (trưởng đội) + số thành viên thêm vào (nếu có)
+            $sothanhvien = 1;
+            if ($validated['type'] === 'team' && !empty($validated['members'])) {
+                $sothanhvien += count($validated['members']);
+            }
+            
+            $doithi = DoiThi::create([
+                'madoithi' => $madoithi,
+                'tendoithi' => $validated['team_name'],
+                'macuocthi' => $macuocthi,
+                'matruongdoi' => $sinhvienChinh->masinhvien,
+                'sothanhvien' => $sothanhvien,
+                'ngaydangky' => now(),
+                'trangthai' => 'Active',
+            ]);
+
+            // LƯU TRƯỞNG ĐỘI VÀO BẢNG THANHVIENDOITHI (cho cả cá nhân và nhóm)
+            $mathanhvienTruongDoi = 'TV' . Str::upper(Str::random(8));
+            
+            ThanhVienDoiThi::create([
+                'mathanhvien' => $mathanhvienTruongDoi,
+                'madoithi' => $madoithi,
+                'masinhvien' => $sinhvienChinh->masinhvien,
+                'vaitro' => 'TruongDoi',
+                'ngaythamgia' => now(),
+                'trangthai' => 'Active',
+            ]);
+
+            // Xử lý đăng ký theo nhóm (thêm thành viên)
+            if ($validated['type'] === 'team' && !empty($validated['members'])) {
                 // Kiểm tra số lượng thành viên
-                if (empty($validated['members']) || count($validated['members']) < 1) {
+                if (count($validated['members']) < 1) {
+                    DB::rollBack();
                     return back()->withErrors(['members' => 'Đội thi phải có ít nhất 1 thành viên ngoài trưởng đội'])
                                 ->withInput();
                 }
                 
-                // Tạo đội thi
-                $madoithi = 'DT' . Str::upper(Str::random(8));
-                
-                $doithi = DoiThi::create([
-                    'madoithi' => $madoithi,
-                    'tendoithi' => $validated['team_name'],
-                    'macuocthi' => $macuocthi,
-                    'matruongdoi' => $sinhvienChinh->masinhvien,
-                    'sothanhvien' => count($validated['members']) + 1, // +1 cho trưởng đội
-                    'ngaydangky' => now(),
-                    'trangthai' => 'Active',
-                ]);
-
                 // Thêm thành viên nhóm
-                if (!empty($validated['members'])) {
-                    foreach ($validated['members'] as $member) {
-                        // Kiểm tra mã sinh viên thành viên
-                        $sinhvienThanhVien = SinhVien::where('masinhvien', $member['student_code'])->first();
-                        
-                        if (!$sinhvienThanhVien) {
-                            DB::rollBack();
-                            return back()->withErrors(['members' => "Mã sinh viên {$member['student_code']} không tồn tại"])
-                                        ->withInput();
-                        }
-
-                        // Kiểm tra thành viên đã tham gia cuộc thi này chưa
-                        $daThamGiaCuocThi = DangKyDuThi::where('macuocthi', $macuocthi)
-                                                       ->where('masinhvien', $sinhvienThanhVien->masinhvien)
-                                                       ->exists();
-                        
-                        if ($daThamGiaCuocThi) {
-                            DB::rollBack();
-                            return back()->withErrors(['members' => "Sinh viên {$member['name']} đã đăng ký cuộc thi này rồi"])
-                                        ->withInput();
-                        }
-
-                        // Kiểm tra thành viên đã trong đội khác chưa
-                        $daTrongDoiKhac = ThanhVienDoiThi::join('doithi', 'thanhviendoithi.madoithi', '=', 'doithi.madoithi')
-                                                         ->where('doithi.macuocthi', $macuocthi)
-                                                         ->where('thanhviendoithi.masinhvien', $sinhvienThanhVien->masinhvien)
-                                                         ->exists();
-                        
-                        if ($daTrongDoiKhac) {
-                            DB::rollBack();
-                            return back()->withErrors(['members' => "Sinh viên {$member['name']} đã tham gia đội khác trong cuộc thi này"])
-                                        ->withInput();
-                        }
-
-                        $mathanhvien = 'TV' . Str::upper(Str::random(8));
-                        
-                        ThanhVienDoiThi::create([
-                            'mathanhvien' => $mathanhvien,
-                            'madoithi' => $madoithi,
-                            'masinhvien' => $sinhvienThanhVien->masinhvien,
-                            'vaitro' => 'Member',
-                            'ngaythamgia' => now(),
-                            'trangthai' => 'Active',
-                        ]);
-                        
-                        // Tạo đăng ký dự thi cho thành viên
-                        $madangkyThanhVien = 'DK' . Str::upper(Str::random(8));
-                        DangKyDuThi::create([
-                            'madangky' => $madangkyThanhVien,
-                            'macuocthi' => $macuocthi,
-                            'masinhvien' => $sinhvienThanhVien->masinhvien,
-                            'madoithi' => $madoithi,
-                            'hinhthucdangky' => 'DoiNhom',
-                            'ngaydangky' => now(),
-                            'trangthai' => 'Registered',
-                        ]);
+                foreach ($validated['members'] as $member) {
+                    // Kiểm tra mã sinh viên thành viên
+                    $sinhvienThanhVien = SinhVien::where('masinhvien', $member['student_code'])->first();
+                    
+                    if (!$sinhvienThanhVien) {
+                        DB::rollBack();
+                        return back()->withErrors(['members' => "Mã sinh viên {$member['student_code']} không tồn tại"])
+                                    ->withInput();
                     }
+
+                    // Kiểm tra thành viên đã tham gia cuộc thi này chưa
+                    $daThamGiaCuocThi = DangKyDuThi::where('macuocthi', $macuocthi)
+                                                   ->where('masinhvien', $sinhvienThanhVien->masinhvien)
+                                                   ->exists();
+                    
+                    if ($daThamGiaCuocThi) {
+                        DB::rollBack();
+                        return back()->withErrors(['members' => "Sinh viên {$member['name']} đã đăng ký cuộc thi này rồi"])
+                                    ->withInput();
+                    }
+
+                    // Kiểm tra thành viên đã trong đội khác chưa
+                    $daTrongDoiKhac = ThanhVienDoiThi::join('doithi', 'thanhviendoithi.madoithi', '=', 'doithi.madoithi')
+                                                     ->where('doithi.macuocthi', $macuocthi)
+                                                     ->where('thanhviendoithi.masinhvien', $sinhvienThanhVien->masinhvien)
+                                                     ->exists();
+                    
+                    if ($daTrongDoiKhac) {
+                        DB::rollBack();
+                        return back()->withErrors(['members' => "Sinh viên {$member['name']} đã tham gia đội khác trong cuộc thi này"])
+                                    ->withInput();
+                    }
+
+                    $mathanhvien = 'TV' . Str::upper(Str::random(8));
+                    
+                    ThanhVienDoiThi::create([
+                        'mathanhvien' => $mathanhvien,
+                        'madoithi' => $madoithi,
+                        'masinhvien' => $sinhvienThanhVien->masinhvien,
+                        'vaitro' => 'ThanhVien',
+                        'ngaythamgia' => now(),
+                        'trangthai' => 'Active',
+                    ]);
+                    
+                    // Tạo đăng ký dự thi cho thành viên
+                    $madangkyThanhVien = 'DK' . Str::upper(Str::random(8));
+                    DangKyDuThi::create([
+                        'madangky' => $madangkyThanhVien,
+                        'macuocthi' => $macuocthi,
+                        'masinhvien' => $sinhvienThanhVien->masinhvien,
+                        'madoithi' => $madoithi,
+                        'hinhthucdangky' => 'DoiNhom',
+                        'ngaydangky' => now(),
+                        'trangthai' => 'Registered',
+                    ]);
                 }
             }
 
-            // Tạo đăng ký dự thi cho trưởng đội/cá nhân
+            // Tạo đăng ký dự thi cho trưởng đội (cả cá nhân và nhóm đều có đội)
             $madangky = 'DK' . Str::upper(Str::random(8));
             
             DangKyDuThi::create([
@@ -193,8 +208,7 @@ class ContestRegistrationController extends Controller
 
             DB::commit();
             
-            return redirect()->route('client.events.show', $slug)
-                           ->with('success', 'Đăng ký cuộc thi thành công! Chúc bạn thi tốt! 🎉');
+            return back()->with('success', 'Đăng ký cuộc thi thành công! Chúc bạn thi tốt! 🎉');
 
         } catch (\Exception $e) {
             DB::rollBack();

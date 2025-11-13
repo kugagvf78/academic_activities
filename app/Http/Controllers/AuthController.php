@@ -161,7 +161,11 @@ class AuthController extends Controller
             $vaiTroText = $request->VaiTro === 'SinhVien' ? 'Sinh viên' : 'Giảng viên';
             
             return redirect()->route('client.home')
-                ->with('success', "Đăng ký thành công! Mã {$vaiTroText} của bạn là: {$maVaiTro}. Đây cũng là tên đăng nhập của bạn.")
+                ->with('toast', [
+                    'type' => 'success',
+                    'title' => 'Đăng ký thành công!',
+                    'message' => "Mã {$vaiTroText} của bạn là: {$maVaiTro}. Đây cũng là tên đăng nhập của bạn."
+                ])
                 ->cookie($cookie);
 
         } catch (\Exception $e) {
@@ -258,7 +262,8 @@ class AuthController extends Controller
         return redirect()->route('client.home')
             ->with('toast', [
                 'type' => 'success',
-                'message' => 'Đăng nhập thành công! Chào mừng ' . ($user->hoten ?? $user->tendangnhap)
+                'title' => 'Đăng nhập thành công!',
+                'message' => 'Chào mừng ' . ($user->hoten ?? $user->tendangnhap) . ' đã quay trở lại!'
             ])
             ->cookie($cookie);
     }
@@ -301,7 +306,8 @@ class AuthController extends Controller
         return redirect()->route('login')
             ->with('toast', [
                 'type' => 'success',
-                'message' => 'Đăng xuất thành công!'
+                'title' => 'Đăng xuất thành công!',
+                'message' => 'Hẹn gặp lại bạn! Chúc bạn một ngày tốt lành.'
             ])
             ->cookie($cookie);
     }
@@ -349,7 +355,11 @@ class AuthController extends Controller
             'matkhau' => Hash::make($request->MatKhauMoi)
         ]);
 
-        return back()->with('success', 'Đổi mật khẩu thành công!');
+        return back()->with('toast', [
+            'type' => 'success',
+            'title' => 'Đổi mật khẩu thành công!',
+            'message' => 'Mật khẩu của bạn đã được cập nhật.'
+        ]);
     }
 
     // Trả về token
@@ -385,7 +395,11 @@ class AuthController extends Controller
         );
 
         return $status === Password::RESET_LINK_SENT
-            ? back()->with(['status' => 'Link đặt lại mật khẩu đã được gửi đến email của bạn'])
+            ? back()->with('toast', [
+                'type' => 'success',
+                'title' => 'Gửi link thành công!',
+                'message' => 'Link đặt lại mật khẩu đã được gửi đến email của bạn.'
+            ])
             : back()->withErrors(['Email' => 'Không thể gửi link đặt lại mật khẩu']);
     }
 
@@ -430,7 +444,11 @@ class AuthController extends Controller
         );
 
         return $status === Password::PASSWORD_RESET
-            ? redirect()->route('login')->with('status', 'Đặt lại mật khẩu thành công!')
+            ? redirect()->route('login')->with('toast', [
+                'type' => 'success',
+                'title' => 'Đặt lại mật khẩu thành công!',
+                'message' => 'Bạn có thể đăng nhập bằng mật khẩu mới.'
+            ])
             : back()->withErrors(['Email' => 'Không thể đặt lại mật khẩu. Vui lòng thử lại.']);
     }
 }

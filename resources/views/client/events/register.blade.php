@@ -18,33 +18,75 @@
     </div>
 </section>
 
+{{-- TOAST NOTIFICATION - FIXED POSITION TOP RIGHT --}}
+@if(session('success'))
+<div x-data="{ show: true }" 
+     x-show="show"
+     x-init="
+        setTimeout(() => { show = false }, 5000);
+     "
+     x-transition:enter="transition ease-out duration-300"
+     x-transition:enter-start="opacity-0 transform translate-x-full"
+     x-transition:enter-end="opacity-100 transform translate-x-0"
+     x-transition:leave="transition ease-in duration-300"
+     x-transition:leave-start="opacity-100 transform translate-x-0"
+     x-transition:leave-end="opacity-0 transform translate-x-full"
+     class="fixed top-6 right-6 z-50 min-w-[320px] max-w-md">
+    
+    <div class="bg-white rounded-xl shadow-2xl border border-green-100 overflow-hidden">
+        {{-- Progress bar --}}
+        <div class="h-1 bg-green-500 animate-[shrink_5s_linear_forwards]"></div>
+        
+        <div class="p-4 flex items-start gap-3">
+            {{-- Icon --}}
+            <div class="flex-shrink-0 w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                <i class="fa-solid fa-circle-check text-green-600 text-lg"></i>
+            </div>
+            
+            {{-- Content --}}
+            <div class="flex-1 pt-0.5">
+                <h4 class="font-bold text-gray-900 mb-1">Đăng xuất thành công!</h4>
+                <p class="text-sm text-gray-600">{{ session('success') }}</p>
+            </div>
+            
+            {{-- Close button --}}
+            <button @click="show = false" 
+                    class="flex-shrink-0 text-gray-400 hover:text-gray-600 transition">
+                <i class="fa-solid fa-times text-lg"></i>
+            </button>
+        </div>
+    </div>
+</div>
+
+<style>
+@keyframes shrink {
+    from { width: 100%; }
+    to { width: 0%; }
+}
+</style>
+@endif
+
 {{-- FORM SECTION --}}
 <section class="container mx-auto px-6 py-16">
     <div class="max-w-3xl mx-auto bg-white rounded-2xl shadow-lg border border-gray-100 p-10"
          x-data="registrationForm()">
 
-        {{-- Alert Messages --}}
-        @if(session('success'))
-            <div class="mb-6 bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-lg flex items-center">
-                <i class="fa-solid fa-circle-check mr-2"></i>{{ session('success') }}
-            </div>
-        @endif
-
+        {{-- ERROR MESSAGE --}}
         @if(session('error'))
-            <div class="mb-6 bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg flex items-center">
-                <i class="fa-solid fa-circle-exclamation mr-2"></i>{{ session('error') }}
-            </div>
+        <div class="mb-6 bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg flex items-center">
+            <i class="fa-solid fa-circle-exclamation mr-2"></i>{{ session('error') }}
+        </div>
         @endif
 
         @if($errors->any())
-            <div class="mb-6 bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg">
-                <p class="font-semibold mb-2"><i class="fa-solid fa-triangle-exclamation mr-2"></i>Có lỗi xảy ra:</p>
-                <ul class="list-disc list-inside space-y-1">
-                    @foreach($errors->all() as $error)
-                        <li>{{ $error }}</li>
-                    @endforeach
-                </ul>
-            </div>
+        <div class="mb-6 bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg">
+            <p class="font-semibold mb-2"><i class="fa-solid fa-triangle-exclamation mr-2"></i>Có lỗi xảy ra:</p>
+            <ul class="list-disc list-inside space-y-1">
+                @foreach($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+        </div>
         @endif
 
         {{-- Title --}}
@@ -80,19 +122,27 @@
                 </div>
             </div>
 
-            {{-- Tên đội (chỉ hiện khi chọn team) --}}
-            <div x-show="type === 'team'" x-transition class="mb-8">
-                <label class="block font-semibold text-gray-700 mb-2">Tên đội thi <span class="text-red-500">*</span></label>
-                <input type="text" name="team_name" x-model="teamName"
-                    :required="type === 'team'"
+            {{-- Tên đội (BẮT BUỘC cho cả cá nhân và nhóm) --}}
+            <div class="mb-8">
+                <label class="block font-semibold text-gray-700 mb-2">
+                    Tên đội thi <span class="text-red-500">*</span>
+                </label>
+                <input type="text" name="team_name" x-model="teamName" required
                     class="w-full border border-gray-200 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-blue-500"
-                    placeholder="Nhập tên đội của bạn">
+                    placeholder="Nhập tên đội của bạn"
+                    value="{{ old('team_name') }}">
+                <p class="text-xs text-gray-500 mt-1">
+                    <i class="fa-solid fa-info-circle"></i>
+                    <span x-show="type === 'individual'">Tên đội cho cá nhân (ví dụ: "Đội Nguyễn Văn A")</span>
+                    <span x-show="type === 'team'">Tên đội cho nhóm của bạn</span>
+                </p>
             </div>
 
             {{-- Thông tin thí sinh chính --}}
             <div class="mb-10">
                 <h3 class="text-lg font-semibold text-gray-800 mb-4 border-b border-gray-100 pb-2">
-                    Thông tin thí sinh chính
+                    <span x-show="type === 'individual'">Thông tin thí sinh</span>
+                    <span x-show="type === 'team'">Thông tin trưởng nhóm</span>
                 </h3>
 
                 <div class="grid md:grid-cols-2 gap-5">
@@ -125,10 +175,11 @@
                 </div>
             </div>
 
-            {{-- Thành viên nhóm --}}
+            {{-- Thành viên nhóm (CHỈ HIỆN KHI CHỌN TEAM) --}}
             <div x-show="type === 'team'" x-transition class="mb-10">
                 <h3 class="text-lg font-semibold text-gray-800 mb-4 border-b border-gray-100 pb-2">
                     Thành viên nhóm
+                    <span class="text-sm font-normal text-gray-500">(Ngoài trưởng nhóm)</span>
                 </h3>
 
                 <template x-for="(member, index) in members" :key="index">
@@ -201,32 +252,30 @@ function registrationForm() {
         studentCodeError: '',
 
         init() {
-            // Khởi tạo lại từ old input nếu có lỗi validation
-            @if(old('type') === 'team')
-                this.type = 'team';
+            @if(old('type'))
+                this.type = '{{ old('type') }}';
+            @endif
+            
+            @if(old('team_name'))
                 this.teamName = '{{ old('team_name') }}';
-                
-                @if(old('members'))
-                    @foreach(old('members') as $index => $member)
-                        this.members.push({
-                            name: '{{ $member['name'] ?? '' }}',
-                            student_code: '{{ $member['student_code'] ?? '' }}',
-                            email: '{{ $member['email'] ?? '' }}'
-                        });
-                    @endforeach
-                @endif
+            @endif
+            
+            @if(old('type') === 'team' && old('members'))
+                @foreach(old('members') as $index => $member)
+                    this.members.push({
+                        name: '{{ $member['name'] ?? '' }}',
+                        student_code: '{{ $member['student_code'] ?? '' }}',
+                        email: '{{ $member['email'] ?? '' }}'
+                    });
+                @endforeach
             @endif
 
-            // Watch type changes
             this.$watch('type', (value) => {
                 if (value === 'team') {
-                    // Khi chuyển sang team, tự động thêm 1 thành viên nếu chưa có
                     if (this.members.length === 0) {
                         this.addMember();
                     }
                 } else {
-                    // Khi chuyển sang individual, xóa team name và members
-                    this.teamName = '';
                     this.members = [];
                 }
             });

@@ -60,12 +60,61 @@
             transform: scale(1.05);
             box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
         }
+
+        /* Toast Animation */
+        @keyframes shrink {
+            from { width: 100%; }
+            to { width: 0%; }
+        }
     </style>
 
     @stack('styles')
 </head>
 
 <body class="font-oswald bg-gray-50 text-gray-800 flex flex-col min-h-screen">
+
+    {{-- TOAST NOTIFICATION - FIXED POSITION TOP RIGHT --}}
+    <div x-data="toastHandler()" 
+         x-show="toast.show"
+         x-cloak
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0 transform translate-x-full"
+         x-transition:enter-end="opacity-100 transform translate-x-0"
+         x-transition:leave="transition ease-in duration-300"
+         x-transition:leave-start="opacity-100 transform translate-x-0"
+         x-transition:leave-end="opacity-0 transform translate-x-full"
+         class="fixed top-6 right-6 z-[9999] min-w-[320px] max-w-md">
+        
+        <div :class="toast.type === 'success' ? 'bg-white border-green-100' : 'bg-white border-red-100'" 
+             class="rounded-xl shadow-2xl overflow-hidden border">
+            
+            {{-- Progress bar --}}
+            <div :class="toast.type === 'success' ? 'bg-green-500' : 'bg-red-500'" 
+                 class="h-1" 
+                 :style="{ animation: 'shrink 5s linear forwards' }"></div>
+            
+            <div class="p-4 flex items-start gap-3">
+                {{-- Icon --}}
+                <div class="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center"
+                     :class="toast.type === 'success' ? 'bg-green-100' : 'bg-red-100'">
+                    <i :class="toast.type === 'success' ? 'fa-circle-check text-green-600' : 'fa-circle-exclamation text-red-600'" 
+                       class="fa-solid text-lg"></i>
+                </div>
+                
+                {{-- Content --}}
+                <div class="flex-1 pt-0.5">
+                    <h4 class="font-bold text-gray-900 mb-1" x-text="toast.title"></h4>
+                    <p class="text-sm text-gray-600" x-text="toast.message"></p>
+                </div>
+                
+                {{-- Close button --}}
+                <button @click="hideToast()" 
+                        class="flex-shrink-0 text-gray-400 hover:text-gray-600 transition">
+                    <i class="fa-solid fa-times text-lg"></i>
+                </button>
+            </div>
+        </div>
+    </div>
 
     {{-- 🔄 Global Spinner --}}
     <div id="loadingSpinner"
@@ -166,177 +215,158 @@
                             x-transition:enter-start="opacity-0 scale-95 -translate-y-2"
                             x-transition:enter-end="opacity-100 scale-100 translate-y-0"
                             x-transition:leave="transition ease-in duration-150"
-                            x-transition:leave-start="opacity-100 scale-100"
-                            x-transition:leave-end="opacity-0 scale-95"
+                            x-transition:leave-start="opacity-100 scale-100 translate-y-0"
+                            x-transition:leave-end="opacity-0 scale-95 -translate-y-2"
                             @click.away="userDropdown = false"
-                            class="absolute right-0 mt-2 w-56 bg-white border border-gray-200 rounded-xl overflow-hidden shadow-xl">
+                            class="absolute right-0 mt-3 w-64 bg-white border border-gray-100 rounded-xl shadow-2xl overflow-hidden z-50">
                             
                             {{-- User Info Header --}}
-                            <div class="px-4 py-3 bg-gradient-to-r from-blue-50 to-cyan-50 border-b border-gray-200">
-                                <p class="font-bold text-gray-800 text-sm">{{ $user->ho_ten ?? $user->ten_dang_nhap }}</p>
-                                <p class="text-xs text-gray-600">{{ $user->email ?? 'Chưa có email' }}</p>
+                            <div class="px-4 py-3 bg-gradient-to-r from-blue-600 to-cyan-500 text-white">
+                                <p class="font-bold text-sm">{{ $user->ho_ten ?? $user->ten_dang_nhap }}</p>
+                                <p class="text-xs opacity-90">{{ $user->email }}</p>
                             </div>
 
                             {{-- Menu Items --}}
                             <div class="py-2">
-                                <a href="{{ route('profile.index') }}"
-                                    class="flex items-center gap-3 px-4 py-2.5 text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition">
-                                    <i class="fa-solid fa-user w-4"></i>
-                                    <span class="text-sm font-medium">Hồ sơ cá nhân</span>
+                                <a href="{{ route('profile.index') }}" 
+                                   class="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-blue-50 transition">
+                                    <i class="fa-solid fa-user text-blue-600 w-5"></i>
+                                    <span>Hồ sơ cá nhân</span>
                                 </a>
                                 
-                                <a href="{{ route('password.change') }}"
-                                    class="flex items-center gap-3 px-4 py-2.5 text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition">
-                                    <i class="fa-solid fa-key w-4"></i>
-                                    <span class="text-sm font-medium">Đổi mật khẩu</span>
+                                <a href="{{ route('password.change') }}" 
+                                   class="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-blue-50 transition">
+                                    <i class="fa-solid fa-key text-blue-600 w-5"></i>
+                                    <span>Đổi mật khẩu</span>
                                 </a>
                             </div>
 
                             {{-- Logout --}}
-                            <div class="border-t border-gray-200">
+                            <div class="border-t border-gray-100 py-2">
                                 <form action="{{ route('logout') }}" method="POST">
                                     @csrf
                                     <button type="submit"
-                                        class="flex items-center gap-3 w-full text-left px-4 py-2.5 text-red-600 hover:bg-red-50 font-semibold transition">
-                                        <i class="fa-solid fa-right-from-bracket w-4"></i>
-                                        <span class="text-sm">Đăng xuất</span>
+                                        class="flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition w-full text-left">
+                                        <i class="fa-solid fa-right-from-bracket w-5"></i>
+                                        <span>Đăng xuất</span>
                                     </button>
                                 </form>
                             </div>
                         </div>
                     </div>
                 @else
-                    {{-- Chưa đăng nhập --}}
-                    <div class="flex items-center gap-3">
-                        <a href="{{ route('login') }}"
-                            class="px-5 py-2.5 rounded-lg border-2 border-blue-600 text-blue-600 font-semibold text-sm hover:bg-blue-50 transition">
-                            Đăng nhập
-                        </a>
-                        <a href="{{ route('register') }}"
-                            class="px-5 py-2.5 rounded-lg bg-blue-600 text-white font-semibold text-sm hover:bg-blue-700 transition shadow-md hover:shadow-lg">
-                            Đăng ký
-                        </a>
-                    </div>
+                    <a href="{{ route('login') }}"
+                        class="px-5 py-2 border-2 border-blue-600 text-blue-600 rounded-lg font-semibold hover:bg-blue-50 transition flex items-center gap-2">
+                        <i class="fas fa-sign-in-alt"></i>
+                        <span>Đăng nhập</span>
+                    </a>
+                    <a href="{{ route('register') }}"
+                        class="px-5 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition flex items-center gap-2 shadow-md">
+                        <i class="fas fa-user-plus"></i>
+                        <span>Đăng ký</span>
+                    </a>
                 @endif
             </div>
         </div>
     </header>
 
-    {{-- 📱 MOBILE MENU --}}
-    <div 
-        x-data="{ mobileMenuOpen: false }" 
-        @toggle-mobile-menu.window="mobileMenuOpen = !mobileMenuOpen"
-        x-show="mobileMenuOpen"
-        x-cloak
-        class="fixed inset-0 z-[999] lg:hidden"
-        @click.self="mobileMenuOpen = false">
-
+    {{-- MOBILE MENU - Sidebar slide-in from right --}}
+    <div x-data="{ mobileMenuOpen: false }" 
+         @toggle-mobile-menu.window="mobileMenuOpen = !mobileMenuOpen"
+         class="lg:hidden">
+        
         {{-- Overlay --}}
-        <div 
-            x-show="mobileMenuOpen"
-            x-transition:enter="transition-opacity ease-out duration-300"
-            x-transition:enter-start="opacity-0"
-            x-transition:enter-end="opacity-100"
-            x-transition:leave="transition-opacity ease-in duration-200"
-            x-transition:leave-start="opacity-100"
-            x-transition:leave-end="opacity-0"
-            class="absolute inset-0 bg-black/50 backdrop-blur-sm" 
-            @click="mobileMenuOpen = false">
-        </div>
+        <div x-show="mobileMenuOpen" 
+             x-cloak
+             x-transition:enter="transition-opacity ease-out duration-300"
+             x-transition:enter-start="opacity-0"
+             x-transition:enter-end="opacity-100"
+             x-transition:leave="transition-opacity ease-in duration-200"
+             x-transition:leave-start="opacity-100"
+             x-transition:leave-end="opacity-0"
+             @click="mobileMenuOpen = false"
+             class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60]"></div>
 
-        {{-- Slide Panel --}}
-        <div 
-            x-show="mobileMenuOpen"
-            x-transition:enter="transition ease-out duration-300"
-            x-transition:enter-start="translate-x-full"
-            x-transition:enter-end="translate-x-0"
-            x-transition:leave="transition ease-in duration-200"
-            x-transition:leave-start="translate-x-0"
-            x-transition:leave-end="translate-x-full"
-            class="absolute right-0 top-0 h-full w-4/5 max-w-sm bg-white shadow-2xl flex flex-col">
+        {{-- Sidebar Menu --}}
+        <div x-show="mobileMenuOpen"
+             x-cloak
+             x-transition:enter="transition ease-out duration-300"
+             x-transition:enter-start="translate-x-full"
+             x-transition:enter-end="translate-x-0"
+             x-transition:leave="transition ease-in duration-200"
+             x-transition:leave-start="translate-x-0"
+             x-transition:leave-end="translate-x-full"
+             class="fixed top-0 right-0 h-full w-80 bg-white shadow-2xl z-[70] overflow-y-auto">
             
-            {{-- Close Button --}}
-            <div class="flex justify-between items-center p-6 border-b border-gray-200">
-                <h3 class="font-bold text-lg text-gray-800">Menu</h3>
-                <button 
-                    @click="mobileMenuOpen = false" 
-                    class="w-10 h-10 flex items-center justify-center rounded-lg text-gray-700 hover:bg-gray-100 transition">
-                    <i class="fa-solid fa-xmark text-xl"></i>
+            {{-- Header --}}
+            <div class="sticky top-0 bg-gradient-to-r from-blue-600 to-cyan-500 text-white p-6 flex justify-between items-center">
+                <div>
+                    <h3 class="font-bold text-lg">Menu</h3>
+                    @if($user)
+                        <p class="text-sm opacity-90 mt-1">{{ $user->ho_ten ?? $user->ten_dang_nhap }}</p>
+                    @endif
+                </div>
+                <button @click="mobileMenuOpen = false" 
+                        class="text-white hover:bg-white/20 p-2 rounded-lg transition">
+                    <i class="fa-solid fa-times text-xl"></i>
                 </button>
             </div>
 
-            {{-- User Info Mobile --}}
-            @if($user)
-                <div class="p-6 bg-gradient-to-r from-blue-50 to-cyan-50 border-b border-gray-200">
-                    <div class="flex items-center gap-3">
-                        <div class="w-12 h-12 bg-gradient-to-tr from-blue-600 to-cyan-500 text-white rounded-full flex items-center justify-center font-bold uppercase shadow-md">
-                            {{ strtoupper(substr($user->ho_ten ?? $user->ten_dang_nhap, 0, 1)) }}
-                        </div>
-                        <div>
-                            <p class="font-bold text-gray-800 text-sm">{{ $user->ho_ten ?? $user->ten_dang_nhap }}</p>
-                            <p class="text-xs text-gray-600">{{ '@' . $user->ten_dang_nhap }}</p>
-                        </div>
-                    </div>
-                </div>
-            @endif
-
             {{-- Navigation Links --}}
-            <nav class="flex-1 overflow-y-auto p-6">
-                <div class="space-y-2">
-                    <a href="{{ route('client.home') }}"
-                        @click="mobileMenuOpen = false"
-                        class="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-blue-50 transition {{ request()->routeIs('client.home') ? 'bg-blue-50 text-blue-600 font-semibold' : 'text-gray-700' }}">
-                        <i class="fa-solid fa-house w-5"></i>
-                        <span>Trang chủ</span>
-                    </a>
-                    
-                    <a href="{{ route('client.events.index') }}"
-                        @click="mobileMenuOpen = false"
-                        class="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-blue-50 transition {{ request()->routeIs('client.events.index') ? 'bg-blue-50 text-blue-600 font-semibold' : 'text-gray-700' }}">
-                        <i class="fa-solid fa-calendar-days w-5"></i>
-                        <span>Cuộc thi</span>
-                    </a>
-                    
-                    <a href="{{ route('client.results.index') }}"
-                        @click="mobileMenuOpen = false"
-                        class="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-blue-50 transition {{ request()->routeIs('client.results.index') ? 'bg-blue-50 text-blue-600 font-semibold' : 'text-gray-700' }}">
-                        <i class="fa-solid fa-trophy w-5"></i>
-                        <span>Kết quả</span>
-                    </a>
-                    
-                    <a href="{{ route('client.news.index') }}"
-                        @click="mobileMenuOpen = false"
-                        class="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-blue-50 transition {{ request()->routeIs('client.news.index') ? 'bg-blue-50 text-blue-600 font-semibold' : 'text-gray-700' }}">
-                        <i class="fa-solid fa-newspaper w-5"></i>
-                        <span>Tin tức</span>
-                    </a>
-                    
-                    <a href="{{ route('client.home') }}#contact"
+            <nav class="px-4 py-6 space-y-2">
+                <a href="{{ route('client.home') }}"
+                    @click="mobileMenuOpen = false"
+                    class="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-blue-50 transition {{ request()->routeIs('client.home') ? 'bg-blue-50 text-blue-600 font-semibold' : 'text-gray-700' }}">
+                    <i class="fa-solid fa-home w-5"></i>
+                    <span>Trang chủ</span>
+                </a>
+                
+                <a href="{{ route('client.events.index') }}"
+                    @click="mobileMenuOpen = false"
+                    class="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-blue-50 transition {{ request()->routeIs('client.events.index') ? 'bg-blue-50 text-blue-600 font-semibold' : 'text-gray-700' }}">
+                    <i class="fa-solid fa-calendar-days w-5"></i>
+                    <span>Cuộc thi</span>
+                </a>
+                
+                <a href="{{ route('client.results.index') }}"
+                    @click="mobileMenuOpen = false"
+                    class="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-blue-50 transition {{ request()->routeIs('client.results.index') ? 'bg-blue-50 text-blue-600 font-semibold' : 'text-gray-700' }}">
+                    <i class="fa-solid fa-trophy w-5"></i>
+                    <span>Kết quả</span>
+                </a>
+                
+                <a href="{{ route('client.news.index') }}"
+                    @click="mobileMenuOpen = false"
+                    class="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-blue-50 transition {{ request()->routeIs('client.news.index') ? 'bg-blue-50 text-blue-600 font-semibold' : 'text-gray-700' }}">
+                    <i class="fa-solid fa-newspaper w-5"></i>
+                    <span>Tin tức</span>
+                </a>
+                
+                <a href="{{ route('client.home') }}#contact"
+                    @click="mobileMenuOpen = false"
+                    class="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-blue-50 transition text-gray-700">
+                    <i class="fa-solid fa-envelope w-5"></i>
+                    <span>Liên hệ</span>
+                </a>
+            </nav>
+
+            @if($user)
+                <div class="mt-6 pt-6 border-t border-gray-200 space-y-2">
+                    <a href="{{ route('profile.index') }}"
                         @click="mobileMenuOpen = false"
                         class="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-blue-50 transition text-gray-700">
-                        <i class="fa-solid fa-envelope w-5"></i>
-                        <span>Liên hệ</span>
+                        <i class="fa-solid fa-user w-5"></i>
+                        <span>Hồ sơ cá nhân</span>
+                    </a>
+                    
+                    <a href="{{ route('password.change') }}"
+                        @click="mobileMenuOpen = false"
+                        class="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-blue-50 transition text-gray-700">
+                        <i class="fa-solid fa-key w-5"></i>
+                        <span>Đổi mật khẩu</span>
                     </a>
                 </div>
-
-                @if($user)
-                    <div class="mt-6 pt-6 border-t border-gray-200 space-y-2">
-                        <a href="{{ route('profile.index') }}"
-                            @click="mobileMenuOpen = false"
-                            class="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-blue-50 transition text-gray-700">
-                            <i class="fa-solid fa-user w-5"></i>
-                            <span>Hồ sơ cá nhân</span>
-                        </a>
-                        
-                        <a href="{{ route('password.change') }}"
-                            @click="mobileMenuOpen = false"
-                            class="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-blue-50 transition text-gray-700">
-                            <i class="fa-solid fa-key w-5"></i>
-                            <span>Đổi mật khẩu</span>
-                        </a>
-                    </div>
-                @endif
-            </nav>
+            @endif
 
             {{-- Bottom Action --}}
             <div class="p-6 border-t border-gray-200">
@@ -461,14 +491,51 @@
         </div>
     </footer>
 
-    {{-- Truyền session toast cho JS --}}
-    @if(session('toast'))
+    {{-- Alpine.js Toast Handler --}}
     <script>
-        window.LaravelToast = @json(session('toast'));
+        function toastHandler() {
+            return {
+                toast: {
+                    show: false,
+                    type: 'success',
+                    title: '',
+                    message: ''
+                },
+                
+                init() {
+                    // Kiểm tra session toast từ Laravel
+                    @if(session('toast'))
+                        const toastData = @json(session('toast'));
+                        this.showToast(
+                            toastData.type || 'success',
+                            toastData.title || (toastData.type === 'success' ? 'Thành công' : 'Lỗi'),
+                            toastData.message || ''
+                        );
+                    @endif
+                },
+                
+                showToast(type, title, message) {
+                    this.toast = {
+                        show: true,
+                        type: type,
+                        title: title,
+                        message: message
+                    };
+                    
+                    // Tự động ẩn sau 5 giây
+                    setTimeout(() => {
+                        this.hideToast();
+                    }, 5000);
+                },
+                
+                hideToast() {
+                    this.toast.show = false;
+                }
+            }
+        }
     </script>
-    @endif
 
-@stack('scripts')
+    @stack('scripts')
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 
 </body>

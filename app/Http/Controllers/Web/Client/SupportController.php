@@ -19,28 +19,65 @@ class SupportController extends Controller
      */
     public function showSupportForm($slug)
     {
-        // Parse slug để lấy macuocthi
         $macuocthi = $this->getMaCuocThiFromSlug($slug);
-        
+
         $cuocthi = CuocThi::where('macuocthi', $macuocthi)->firstOrFail();
-        
-        // Kiểm tra trạng thái cuộc thi
-        if ($cuocthi->trangthai !== 'Approved' && $cuocthi->trangthai !== 'InProgress') {
-            return redirect()->route('client.events.show', $slug)
-                ->with('error', 'Cuộc thi không trong thời gian đăng ký');
-        }
-        
-        // Kiểm tra thời gian đăng ký
+
         $now = now();
-        if ($now->lt($cuocthi->thoigianbatdau) || $now->gt($cuocthi->thoigianketthuc)) {
-            return redirect()->route('client.events.show', $slug)
-                ->with('error', 'Cuộc thi không trong thời gian đăng ký');
-        }
+        $start = $cuocthi->thoigianbatdau;
+        $end = $cuocthi->thoigianketthuc;
         
-        // Lấy danh sách hoạt động hỗ trợ Ban tổ chức của cuộc thi này
-        $hoatdongs = HoatDongHoTro::where('macuocthi', $cuocthi->macuocthi)
+        // ============================================
+        // CHỈ CHO ĐĂNG KÝ HỖ TRỢ KHI CUỘC THI SẮP DIỄN RA (APPROVED)
+        // ============================================
+        
+        // Kiểm tra 1: Trạng thái phải là Approved (sắp diễn ra)
+        if ($cuocthi->trangthai !== 'Approved') {
+            if ($cuocthi->trangthai === 'Draft') {
+                return redirect()->route('client.events.show', $slug)
+                    ->with('error', 'Cuộc thi chưa được phê duyệt.');
+            }
+            
+            if ($cuocthi->trangthai === 'InProgress') {
+                return redirect()->route('client.events.show', $slug)
+                    ->with('error', 'Cuộc thi đã bắt đầu, không thể đăng ký hỗ trợ nữa.');
+            }
+            
+            if ($cuocthi->trangthai === 'Completed') {
+                return redirect()->route('client.events.show', $slug)
+                    ->with('error', 'Cuộc thi đã kết thúc.');
+            }
+            
+            return redirect()->route('client.events.show', $slug)
+                ->with('error', 'Cuộc thi chưa mở đăng ký hỗ trợ.');
+        }
+
+        // Tính thời điểm mở đăng ký (7 ngày trước khi cuộc thi bắt đầu)
+        $earlyRegistrationStart = $start->copy()->subDays(7);
+
+        // Kiểm tra 2: Phải đến thời điểm cho phép đăng ký (7 ngày trước)
+        if ($now->lt($earlyRegistrationStart)) {
+            return redirect()->route('client.events.show', $slug)
+                ->with('info', 'Đăng ký hỗ trợ sẽ mở vào ngày ' . $earlyRegistrationStart->format('d/m/Y H:i') . ' (7 ngày trước khi cuộc thi bắt đầu).');
+        }
+
+        // Kiểm tra 3: Không cho đăng ký sau khi cuộc thi đã bắt đầu
+        if ($now->gte($start)) {
+            return redirect()->route('client.events.show', $slug)
+                ->with('error', 'Đã hết thời gian đăng ký hỗ trợ. Cuộc thi đã bắt đầu.');
+        }
+
+        // ============================================
+        // HẾT PHẦN SỬA
+        // ============================================
+        
+        // Lấy danh sách hoạt động hỗ trợ Ban tổ chức
+        $hoatdongs = HoatDongHoTro::select('hoatdonghotro.*')
+            ->selectRaw('(SELECT COUNT(*) FROM dangkyhoatdong WHERE dangkyhoatdong.mahoatdong = hoatdonghotro.mahoatdong) as dangkyhoatdongs_count')
+            ->where('macuocthi', $cuocthi->macuocthi)
             ->where('loaihoatdong', 'HoTroKyThuat')
-            ->where('thoigianketthuc', '>=', now())
+            ->where('thoigianketthuc', '>', $now) // Chưa kết thúc
+            ->whereRaw('(SELECT COUNT(*) FROM dangkyhoatdong WHERE dangkyhoatdong.mahoatdong = hoatdonghotro.mahoatdong) < hoatdonghotro.soluong') // Còn chỗ
             ->orderBy('thoigianbatdau', 'asc')
             ->get();
 
@@ -100,10 +137,10 @@ class SupportController extends Controller
             }
 
             // Kiểm tra thời gian đăng ký (không cho đăng ký sau khi hoạt động bắt đầu)
-            if ($hoatdong->thoigianbatdau <= now()) {
-                return back()->with('error', 'Hoạt động này đã bắt đầu, không thể đăng ký!')
-                            ->withInput();
-            }
+            // if ($hoatdong->thoigianbatdau <= now()) {
+            //     return back()->with('error', 'Hoạt động này đã bắt đầu, không thể đăng ký!')
+            //                 ->withInput();
+            // }
 
             // Tạo mã đăng ký
             $madangky = 'DKHD' . Str::upper(Str::random(8));

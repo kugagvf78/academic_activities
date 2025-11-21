@@ -1,5 +1,9 @@
 <?php
 
+// ==========================================
+// MODEL CẬP NHẬT: CuocThi.php
+// ==========================================
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -70,9 +74,15 @@ class CuocThi extends Model
         return $this->hasMany(DoiThi::class, 'macuocthi', 'macuocthi');
     }
 
-    public function dangkyduthis()
+    // CẬP NHẬT: Thay đổi từ dangkyduthis sang 2 relationship mới
+    public function dangkycanhans()
     {
-        return $this->hasMany(DangKyDuThi::class, 'macuocthi', 'macuocthi');
+        return $this->hasMany(DangKyCaNhan::class, 'macuocthi', 'macuocthi');
+    }
+
+    public function dangkydoithis()
+    {
+        return $this->hasMany(DangKyDoiThi::class, 'macuocthi', 'macuocthi');
     }
 
     public function hoatdonghotros()
@@ -139,5 +149,37 @@ class CuocThi extends Model
     public function scopeCompleted($query)
     {
         return $query->where('trangthai', 'Completed');
+    }
+
+    // CẬP NHẬT: Thêm scope cho hình thức tham gia
+    public function scopeCaNhan($query)
+    {
+        return $query->where('hinhthucthamgia', 'CaNhan');
+    }
+
+    public function scopeDoiNhom($query)
+    {
+        return $query->where('hinhthucthamgia', 'DoiNhom');
+    }
+
+    public function scopeCaHai($query)
+    {
+        return $query->where('hinhthucthamgia', 'CaHai');
+    }
+
+    // Helper methods
+    public function getTotalDangKy()
+    {
+        return $this->dangkycanhans()->count() + $this->dangkydoithis()->count();
+    }
+
+    public function getDangKyCaNhanCount()
+    {
+        return $this->dangkycanhans()->count();
+    }
+
+    public function getDangKyDoiCount()
+    {
+        return $this->dangkydoithis()->count();
     }
 }

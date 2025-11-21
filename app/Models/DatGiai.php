@@ -1,5 +1,9 @@
 <?php
 
+// ==========================================
+// MODEL CẬP NHẬT: DatGiai.php
+// ==========================================
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -18,7 +22,9 @@ class DatGiai extends Model
     protected $fillable = [
         'madatgiai',
         'macuocthi',
-        'madangky',
+        'madangkycanhan',
+        'madangkydoi',
+        'loaidangky',
         'tengiai',
         'giaithuong',
         'diemrenluyen',
@@ -36,8 +42,42 @@ class DatGiai extends Model
         return $this->belongsTo(CuocThi::class, 'macuocthi', 'macuocthi');
     }
 
-    public function dangky()
+    // CẬP NHẬT: Thay đổi relationship
+    public function dangkycanhan()
     {
-        return $this->belongsTo(DangKyDuThi::class, 'madangky', 'madangky');
+        return $this->belongsTo(DangKyCaNhan::class, 'madangkycanhan', 'madangkycanhan');
+    }
+
+    public function dangkydoi()
+    {
+        return $this->belongsTo(DangKyDoiThi::class, 'madangkydoi', 'madangkydoi');
+    }
+
+    // Scopes
+    public function scopeCaNhan($query)
+    {
+        return $query->where('loaidangky', 'CaNhan');
+    }
+
+    public function scopeDoiNhom($query)
+    {
+        return $query->where('loaidangky', 'DoiNhom');
+    }
+
+    // Helper methods
+    public function getDangKy()
+    {
+        if ($this->loaidangky === 'CaNhan') {
+            return $this->dangkycanhan;
+        }
+        return $this->dangkydoi;
+    }
+
+    public function getSinhViens()
+    {
+        if ($this->loaidangky === 'CaNhan') {
+            return collect([$this->dangkycanhan->sinhvien]);
+        }
+        return $this->dangkydoi->doithi->thanhviens->pluck('sinhvien');
     }
 }

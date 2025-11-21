@@ -10,6 +10,8 @@ use App\Http\Controllers\Web\Client\NewsController;
 use App\Http\Controllers\Web\Client\ContestRegistrationController;
 use App\Http\Controllers\Web\Client\CheerRegistrationController;
 use App\Http\Controllers\Web\Client\SupportController;
+use App\Http\Controllers\Web\GiangVien\GiangVienCuocThiController;
+use App\Http\Controllers\Web\GiangVien\GiangVienDeThiController;
 
 /*
 |--------------------------------------------------------------------------
@@ -84,7 +86,6 @@ Route::prefix('/hoi-thao')->name('client.events.')->group(function () {
         // Đăng ký hỗ trợ Ban tổ chức - SUBMIT
         Route::post('/{slug}/ho-tro', [SupportController::class, 'registerSupport'])
             ->name('support.submit');
-
     });
     
     // API kiểm tra mã sinh viên (không cần middleware vì chỉ check data)
@@ -144,11 +145,13 @@ Route::middleware('jwt.web')->group(function () {
         // Xuất điểm rèn luyện PDF
         Route::get('/diem-ren-luyen/export', 'exportDiemRenLuyenPDF')->name('diem.export');
         
-        // **MỚI: Đăng ký cổ vũ**
-        Route::get('/dang-ky-co-vu', 'myCheerRegistrations')->name('cheer.list');
+        // Hủy đăng ký hoạt động (cổ vũ/hỗ trợ)
+        Route::delete('/activity/cancel/{madangkyhoatdong}', 'cancelActivityRegistration')
+            ->name('activity.cancel');
         
-        Route::delete('/activity/cancel/{madangkyhoatdong}', [ProfileController::class, 'cancelActivityRegistration'])
-            ->name('activity.cancel'); 
+        // ✅ FIXED: Hủy đăng ký dự thi
+        Route::delete('/competition/cancel/{id}', 'cancelCompetitionRegistration')
+            ->name('competition.cancel');
     });
 });
 
@@ -164,3 +167,115 @@ Route::get('/test-jwt', function () {
         'jwt_guest' => jwt_guest(),
     ];
 });
+
+
+/*
+|--------------------------------------------------------------------------
+| SINH VIÊN Profile Routes
+|--------------------------------------------------------------------------
+*/
+Route::middleware(['jwt.web', 'role:SinhVien'])
+    ->prefix('ho-so')
+    ->name('profile.')
+    ->controller(ProfileController::class)
+    ->group(function () {
+        Route::get('/', 'index')->name('index');
+        Route::post('/avatar', 'updateAvatar')->name('avatar.update');
+        Route::put('/update', 'updateInfo')->name('update');
+        Route::get('/diem-ren-luyen/export', 'exportDiemRenLuyenPDF')->name('diem.export');
+        Route::delete('/activity/cancel/{madangkyhoatdong}', 'cancelActivityRegistration')->name('activity.cancel');
+        Route::delete('/competition/cancel/{id}', 'cancelCompetitionRegistration')->name('competition.cancel');
+    });
+
+/*
+| GIẢNG VIÊN Routes (đã có middleware jwt.web + role:GiangVien)
+*/
+Route::middleware(['jwt.web', 'role:GiangVien'])
+    ->prefix('giang-vien')
+    ->name('giangvien.')
+    ->group(function () {
+
+        // Hồ sơ giảng viên
+        Route::prefix('ho-so')->name('profile.')->controller(\App\Http\Controllers\Web\GiangVien\GiangVienProfileController::class)->group(function () {
+            Route::get('/', 'index')->name('index');
+            Route::put('/update', 'updateInfo')->name('update');
+            Route::post('/avatar', 'updateAvatar')->name('avatar.update');
+            Route::get('/ke-hoach', 'danhSachKeHoach')->name('kehoach.index');
+            Route::get('/de-thi', 'danhSachDeThi')->name('dethi.index');
+            Route::get('/cham-diem', 'danhSachBaiCanCham')->name('chamdiem.index');
+            Route::get('/phan-cong', 'danhSachPhanCong')->name('phancong.index');
+            Route::get('/chi-phi', 'danhSachChiPhi')->name('chiphi.index');
+            Route::get('/quyet-toan', 'danhSachQuyetToan')->name('quyettoan.index');
+            Route::get('/tin-tuc', 'danhSachTinTuc')->name('tintuc.index');
+        });
+
+        // Quản lý cuộc thi - GỘP VÀO ĐÂY
+        Route::prefix('cuoc-thi')->name('cuocthi.')->controller(GiangVienCuocThiController::class)->group(function () {
+            Route::get('/', 'index')->name('index');
+            Route::get('/tao-moi', 'create')->name('create');
+            Route::post('/tao-moi', 'store')->name('store');
+            Route::get('/{id}/chi-tiet', 'show')->name('show');
+            Route::get('/{id}/sua', 'edit')->name('edit');
+            Route::put('/{id}', 'update')->name('update');
+            Route::delete('/{id}', 'destroy')->name('destroy');
+        });
+
+        // Quản lý đề thi
+        Route::prefix('de-thi')->name('dethi.')->controller(\App\Http\Controllers\Web\GiangVien\GiangVienDeThiController::class)->group(function () {
+            Route::get('/', 'index')->name('index');
+            Route::get('/tao-moi', 'create')->name('create');
+            Route::post('/tao-moi', 'store')->name('store');
+            Route::get('/{id}/chi-tiet', 'show')->name('show');
+            Route::get('/{id}/sua', 'edit')->name('edit');
+            Route::put('/{id}', 'update')->name('update');
+            Route::delete('/{id}', 'destroy')->name('destroy');
+
+            // Route::get('/{id}/view-file', 'viewFile')->name('view-file');
+            Route::get('/{id}/download-file', 'downloadFile')->name('download-file');
+            
+            // API lấy vòng thi
+            Route::get('/api/vongthi/{macuocthi}', 'getVongThi')->name('api.vongthi');
+        });
+
+
+        Route::prefix('cham-diem')->name('chamdiem.')->controller(\App\Http\Controllers\Web\GiangVien\GiangVienChamDiemController::class)->group(function () {
+            // Danh sách bài cần chấm
+            Route::get('/', 'index')->name('index');
+            
+            // Xem chi tiết để chấm điểm
+            Route::get('/{id}/chi-tiet', 'show')->name('show');
+            
+            // Cập nhật điểm
+            Route::put('/{id}', 'update')->name('update');
+            
+            // Xóa điểm (để chấm lại)
+            Route::delete('/{id}', 'destroy')->name('destroy');
+            
+            // Download bài làm
+            Route::get('/{id}/download-bai-lam', 'downloadBaiLam')->name('download-bailam');
+            
+            // API lấy danh sách cuộc thi (cho filter)
+            Route::get('/api/cuocthi', 'getCuocThi')->name('api.cuocthi');
+            
+            // Chấm hàng loạt (optional)
+            Route::post('/bulk-update', 'bulkUpdate')->name('bulk-update');
+        });
+
+        Route::prefix('phan-cong')
+            ->name('phancong.')
+            ->controller(\App\Http\Controllers\Web\GiangVien\GiangVienPhanCongController::class)
+            ->group(function () {
+                // Danh sách phân công
+                Route::get('/', 'index')->name('index');
+                
+                // Chi tiết phân công
+                Route::get('/{id}/chi-tiet', 'show')->name('show');
+                
+                // API thống kê
+                Route::get('/api/statistics', 'statistics')->name('api.statistics');
+                
+                // Export Excel
+                Route::get('/export', 'export')->name('export');
+            });
+
+    });

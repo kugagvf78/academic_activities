@@ -16,31 +16,68 @@ class CheerRegistrationController extends Controller
 {
     /**
      * Hiển thị form đăng ký cổ vũ theo slug
-     */
+    */
     public function showCheerForm($slug)
     {
-        // Parse slug để lấy macuocthi
         $macuocthi = $this->getMaCuocThiFromSlug($slug);
-        
+
         $cuocthi = CuocThi::where('macuocthi', $macuocthi)->firstOrFail();
-        
-        // Kiểm tra trạng thái cuộc thi
-        if ($cuocthi->trangthai !== 'Approved' && $cuocthi->trangthai !== 'InProgress') {
-            return redirect()->route('client.events.show', $slug)
-                ->with('error', 'Cuộc thi không trong thời gian đăng ký');
-        }
-        
-        // Kiểm tra thời gian đăng ký
+
         $now = now();
-        if ($now->lt($cuocthi->thoigianbatdau) || $now->gt($cuocthi->thoigianketthuc)) {
-            return redirect()->route('client.events.show', $slug)
-                ->with('error', 'Cuộc thi không trong thời gian đăng ký');
-        }
+        $start = $cuocthi->thoigianbatdau;
+        $end = $cuocthi->thoigianketthuc;
         
-        // Lấy danh sách hoạt động cổ vũ của cuộc thi này
-        $hoatdongs = HoatDongHoTro::where('macuocthi', $cuocthi->macuocthi)
+        // ============================================
+        // CHỈ CHO ĐĂNG KÝ CỔ VŨ KHI CUỘC THI SẮP DIỄN RA (APPROVED)
+        // ============================================
+        
+        // Kiểm tra 1: Trạng thái phải là Approved (sắp diễn ra)
+        if ($cuocthi->trangthai !== 'Approved') {
+            if ($cuocthi->trangthai === 'Draft') {
+                return redirect()->route('client.events.show', $slug)
+                    ->with('error', 'Cuộc thi chưa được phê duyệt.');
+            }
+            
+            if ($cuocthi->trangthai === 'InProgress') {
+                return redirect()->route('client.events.show', $slug)
+                    ->with('error', 'Cuộc thi đã bắt đầu, không thể đăng ký cổ vũ nữa.');
+            }
+            
+            if ($cuocthi->trangthai === 'Completed') {
+                return redirect()->route('client.events.show', $slug)
+                    ->with('error', 'Cuộc thi đã kết thúc.');
+            }
+            
+            return redirect()->route('client.events.show', $slug)
+                ->with('error', 'Cuộc thi chưa mở đăng ký cổ vũ.');
+        }
+
+        // Tính thời điểm mở đăng ký (7 ngày trước khi cuộc thi bắt đầu)
+        $earlyRegistrationStart = $start->copy()->subDays(7);
+
+        // Kiểm tra 2: Phải đến thời điểm cho phép đăng ký (7 ngày trước)
+        if ($now->lt($earlyRegistrationStart)) {
+            return redirect()->route('client.events.show', $slug)
+                ->with('info', 'Đăng ký cổ vũ sẽ mở vào ngày ' . $earlyRegistrationStart->format('d/m/Y H:i') . ' (7 ngày trước khi cuộc thi bắt đầu).');
+        }
+
+        // Kiểm tra 3: Không cho đăng ký sau khi cuộc thi đã bắt đầu
+        if ($now->gte($start)) {
+            return redirect()->route('client.events.show', $slug)
+                ->with('error', 'Đã hết thời gian đăng ký cổ vũ. Cuộc thi đã bắt đầu.');
+        }
+
+        // ============================================
+        // HẾT PHẦN SỬA
+        // ============================================
+
+        // Lấy các hoạt động cổ vũ còn thời gian đăng ký (chưa kết thúc)
+        $hoatdongs = HoatDongHoTro::select('hoatdonghotro.*')
+            ->selectRaw('(SELECT COUNT(*) FROM dangkyhoatdong WHERE dangkyhoatdong.mahoatdong = hoatdonghotro.mahoatdong) as dangkyhoatdongs_count')
+            ->where('macuocthi', $cuocthi->macuocthi)
             ->where('loaihoatdong', 'CoVu')
-            ->where('thoigianketthuc', '>=', now())
+            ->where('thoigianketthuc', '>', $now) // Chưa kết thúc
+            ->whereRaw('(SELECT COUNT(*) FROM dangkyhoatdong WHERE dangkyhoatdong.mahoatdong = hoatdonghotro.mahoatdong) < hoatdonghotro.soluong') // Còn chỗ
             ->orderBy('thoigianbatdau', 'asc')
             ->get();
 
@@ -52,104 +89,130 @@ class CheerRegistrationController extends Controller
      */
     public function registerCheer(Request $request, $slug)
     {
-        // Parse slug để lấy macuocthi
         $macuocthi = $this->getMaCuocThiFromSlug($slug);
-        
-        // Validate dữ liệu
+
+        // Validate
         $validated = $request->validate([
             'mahoatdong' => 'required|exists:hoatdonghotro,mahoatdong',
-            'student_code' => 'required|string|max:50',
+            'student_code' => 'required|string|max:20',
             'name' => 'required|string|max:255',
             'email' => 'required|email|max:255',
-            'phone' => 'required|string|max:20',
+            'phone' => 'required|string|regex:/^[\+]?[0-9]{10,15}$/',
         ], [
-            'mahoatdong.required' => 'Vui lòng chọn hoạt động cổ vũ',
-            'student_code.required' => 'Vui lòng nhập mã sinh viên',
-            'name.required' => 'Vui lòng nhập họ và tên',
-            'email.required' => 'Vui lòng nhập email',
-            'phone.required' => 'Vui lòng nhập số điện thoại',
+            'mahoatdong.required' => 'Vui lòng chọn hoạt động cổ vũ.',
+            'student_code.required' => 'Vui lòng nhập mã sinh viên.',
+            'name.required' => 'Vui lòng nhập họ tên.',
+            'email.required' => 'Vui lòng nhập email.',
+            'phone.regex' => 'Số điện thoại không hợp lệ.',
         ]);
 
         DB::beginTransaction();
-        
+
         try {
             $cuocthi = CuocThi::where('macuocthi', $macuocthi)->firstOrFail();
-            
-            // Kiểm tra sinh viên có tồn tại không
+            $now = now();
+
+            // Kiểm tra sinh viên
             $sinhvien = SinhVien::where('masinhvien', $validated['student_code'])->first();
-            
             if (!$sinhvien) {
-                return back()->withErrors(['student_code' => 'Mã sinh viên không tồn tại trong hệ thống'])
+                return back()->withErrors(['student_code' => 'Mã sinh viên không tồn tại.'])
                             ->withInput();
             }
 
-            // Kiểm tra hoạt động thuộc cuộc thi này
-            $hoatdong = HoatDongHoTro::where('mahoatdong', $validated['mahoatdong'])
+            // Lấy hoạt động + số lượng đã đăng ký
+            // FIX: Sử dụng selectRaw với subquery
+            $hoatdong = HoatDongHoTro::select('hoatdonghotro.*')
+                ->selectRaw('(SELECT COUNT(*) FROM dangkyhoatdong WHERE dangkyhoatdong.mahoatdong = hoatdonghotro.mahoatdong) as dangkyhoatdongs_count')
+                ->where('mahoatdong', $validated['mahoatdong'])
                 ->where('macuocthi', $cuocthi->macuocthi)
                 ->where('loaihoatdong', 'CoVu')
                 ->firstOrFail();
 
-            // Kiểm tra đã đăng ký chưa
-            $existing = DangKyHoatDong::where('mahoatdong', $validated['mahoatdong'])
+            // Kiểm tra: hoạt động đã kết thúc chưa?
+            if ($hoatdong->thoigianketthuc <= $now) {
+                return back()->with('error', 'Hoạt động đã kết thúc, không thể đăng ký!')
+                            ->withInput();
+            }
+
+            // Kiểm tra: còn chỗ?
+            if ($hoatdong->dangkyhoatdongs_count >= $hoatdong->soluong) {
+                return back()->with('error', 'Hoạt động này đã hết chỗ!')
+                            ->withInput();
+            }
+
+            // Kiểm tra: đã đăng ký chưa?
+            $daDangKy = DangKyHoatDong::where('mahoatdong', $hoatdong->mahoatdong)
                 ->where('masinhvien', $sinhvien->masinhvien)
                 ->exists();
 
-            if ($existing) {
+            if ($daDangKy) {
                 return back()->with('error', 'Bạn đã đăng ký hoạt động này rồi!')
                             ->withInput();
             }
 
-            // Kiểm tra thời gian đăng ký (không cho đăng ký sau khi hoạt động bắt đầu)
-            if ($hoatdong->thoigianbatdau <= now()) {
-                return back()->with('error', 'Hoạt động này đã bắt đầu, không thể đăng ký!')
-                            ->withInput();
+            // Tạo mã đăng ký duy nhất
+            $madangky = 'DKHD' . Str::upper(Str::random(8));
+            while (DangKyHoatDong::where('madangkyhoatdong', $madangky)->exists()) {
+                $madangky = 'DKHD' . Str::upper(Str::random(8));
             }
 
-            // Tạo mã đăng ký
-            $madangky = 'DKHD' . Str::upper(Str::random(8));
-
-            // Lưu đăng ký hoạt động
+            // Lưu đăng ký
             DangKyHoatDong::create([
                 'madangkyhoatdong' => $madangky,
-                'mahoatdong' => $validated['mahoatdong'],
+                'mahoatdong' => $hoatdong->mahoatdong,
                 'masinhvien' => $sinhvien->masinhvien,
-                'ngaydangky' => now(),
+                'ngaydangky' => $now,
                 'trangthai' => 'Registered',
                 'diemdanhqr' => false,
             ]);
 
             DB::commit();
 
-            return back()->with('success', 'Đăng ký cổ vũ thành công! Chúc bạn có trải nghiệm tuyệt vời. 🎉');
+            return back()->with('success', 'Đăng ký cổ vũ thành công! Mã đăng ký: <strong>' . $madangky . '</strong>');
 
         } catch (\Exception $e) {
             DB::rollBack();
-            
-            Log::error('Lỗi đăng ký cổ vũ: ' . $e->getMessage());
-            
-            return back()->with('error', 'Có lỗi xảy ra: ' . $e->getMessage())
+            Log::error('Lỗi đăng ký cổ vũ: ' . $e->getMessage(), [
+                'slug' => $slug,
+                'data' => $request->all()
+            ]);
+
+            return back()->with('error', 'Đã có lỗi xảy ra. Vui lòng thử lại sau.')
                         ->withInput();
         }
     }
 
     /**
-     * Kiểm tra mã sinh viên có tồn tại không (API)
+     * API: Kiểm tra mã sinh viên tồn tại
      */
     public function checkStudentCode(Request $request)
     {
-        $masinhvien = $request->input('student_code');
-        $exists = SinhVien::where('masinhvien', $masinhvien)->exists();
-        
+        $request->validate([
+            'student_code' => 'required|string|max:20'
+        ]);
+
+        $exists = SinhVien::where('masinhvien', $request->student_code)->exists();
+
         return response()->json(['exists' => $exists]);
     }
 
     /**
-     * Lấy mã cuộc thi từ slug
+     * Lấy mã cuộc thi từ slug (an toàn hơn)
      */
     private function getMaCuocThiFromSlug($slug)
     {
-        // Lấy phần cuối cùng sau dấu gạch ngang cuối cùng
+        if (empty($slug)) {
+            abort(404);
+        }
+
         $parts = explode('-', $slug);
-        return end($parts);
+        $macuocthi = end($parts);
+
+        // Kiểm tra định dạng mã (VD: CT001, CT009,...)
+        if (!preg_match('/^CT\d+$/', $macuocthi)) {
+            abort(404, 'Slug không hợp lệ');
+        }
+
+        return $macuocthi;
     }
 }

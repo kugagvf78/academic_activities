@@ -38,15 +38,15 @@
             {{-- Stats - Dynamic from database --}}
             <div class="flex flex-wrap justify-center gap-8 mt-12">
                 <div class="text-center">
-                    <div class="text-4xl font-bold text-white mb-1">{{ $events->total() }}+</div>
+                    <div class="text-4xl font-bold text-white mb-1">{{ $totalEvents }}+</div>
                     <div class="text-blue-100 text-sm">Cuộc thi</div>
                 </div>
                 <div class="text-center">
-                    <div class="text-4xl font-bold text-white mb-1">{{ DB::table('dangkyduthi')->distinct('masinhvien')->count() }}+</div>
+                    <div class="text-4xl font-bold text-white mb-1">{{ $totalStudents }}+</div>
                     <div class="text-blue-100 text-sm">Sinh viên tham gia</div>
                 </div>
                 <div class="text-center">
-                    <div class="text-4xl font-bold text-white mb-1">{{ DB::table('datgiai')->count() }}+</div>
+                    <div class="text-4xl font-bold text-white mb-1">{{ $totalPrizes }}+</div>
                     <div class="text-blue-100 text-sm">Giải thưởng</div>
                 </div>
             </div>

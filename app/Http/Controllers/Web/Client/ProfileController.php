@@ -52,12 +52,15 @@ class ProfileController extends Controller
             // Lấy điểm rèn luyện chi tiết
             $diemRenLuyen = $this->getDiemRenLuyenDetail($profile);
 
+            // ⭐ MỚI: Lấy danh sách đăng ký DỰ THI (cả cá nhân và đội)
+            $competitionRegistrations = $this->getCompetitionRegistrations($profile);
+
             // Lấy danh sách đăng ký cổ vũ VÀ hỗ trợ
             $registrations = DB::table('dangkyhoatdong as dkhd')
                 ->join('hoatdonghotro as hd', 'dkhd.mahoatdong', '=', 'hd.mahoatdong')
                 ->join('cuocthi as ct', 'hd.macuocthi', '=', 'ct.macuocthi')
                 ->where('dkhd.masinhvien', $profile->masinhvien)
-                ->whereIn('hd.loaihoatdong', ['CoVu', 'ToChuc', 'HoTroKyThuat']) // Thêm ToChuc và HoTroKyThuat
+                ->whereIn('hd.loaihoatdong', ['CoVu', 'ToChuc', 'HoTroKyThuat'])
                 ->select(
                     'dkhd.madangkyhoatdong',
                     'dkhd.ngaydangky',
@@ -65,7 +68,7 @@ class ProfileController extends Controller
                     'dkhd.diemdanhqr',
                     'dkhd.thoigiandiemdanh',
                     'hd.tenhoatdong',
-                    'hd.loaihoatdong', // Thêm loaihoatdong để phân biệt
+                    'hd.loaihoatdong',
                     'hd.thoigianbatdau',
                     'hd.thoigianketthuc',
                     'hd.diadiem',
@@ -99,14 +102,14 @@ class ProfileController extends Controller
 
                 // Có thể hủy không (chỉ hủy được nếu chưa điểm danh và còn >24h)
                 $canCancel = !$reg->diemdanhqr && 
-                             $start->gt($now) && 
-                             $now->diffInHours($start, false) >= 24;
+                            $start->gt($now) && 
+                            $now->diffInHours($start, false) >= 24;
 
                 return (object)[
                     'madangkyhoatdong' => $reg->madangkyhoatdong,
                     'tencuocthi' => $reg->tencuocthi,
                     'tenhoatdong' => $reg->tenhoatdong,
-                    'loaihoatdong' => $reg->loaihoatdong, // Thêm dòng này
+                    'loaihoatdong' => $reg->loaihoatdong,
                     'thoigianbatdau' => $start,
                     'thoigianketthuc' => $end,
                     'diadiem' => $reg->diadiem,
@@ -131,6 +134,7 @@ class ProfileController extends Controller
             $danhSachLop = [];
             $diemRenLuyen = [];
             $registrations = collect([]);
+            $competitionRegistrations = collect([]); // ⭐ Thêm cho giảng viên
         } else {
             $profile = null;
             $activities = [];
@@ -138,6 +142,7 @@ class ProfileController extends Controller
             $danhSachLop = [];
             $diemRenLuyen = [];
             $registrations = collect([]);
+            $competitionRegistrations = collect([]); // ⭐ Thêm cho admin
         }
 
         return view('client.profile.profile', compact(
@@ -147,8 +152,109 @@ class ProfileController extends Controller
             'certificates', 
             'danhSachLop',
             'diemRenLuyen',
-            'registrations'
+            'registrations',
+            'competitionRegistrations' // ⭐ THÊM BIẾN MỚI
         ));
+    }
+
+    /**
+     * ⭐ HÀM MỚI: Lấy danh sách đăng ký dự thi
+     */
+    private function getCompetitionRegistrations($sinhVien)
+    {
+        if (!$sinhVien) return collect([]);
+
+        try {
+            $registrations = collect([]);
+
+            // 1. Đăng ký CÁ NHÂN
+            $caNhan = DB::table('dangkycanhan as dkcn')
+                ->join('cuocthi as ct', 'dkcn.macuocthi', '=', 'ct.macuocthi')
+                ->where('dkcn.masinhvien', $sinhVien->masinhvien)
+                ->select(
+                    'dkcn.madangkycanhan as id',
+                    'ct.tencuocthi',
+                    'ct.thoigianbatdau',
+                    'ct.thoigianketthuc',
+                    'ct.trangthai as trangthaicuocthi',
+                    'dkcn.ngaydangky',
+                    'dkcn.trangthai',
+                    DB::raw("'CaNhan' as loaidangky"),
+                    DB::raw("NULL as tendoithi"),
+                    DB::raw("NULL as vaitro")
+                )
+                ->get();
+
+            // 2. Đăng ký THEO ĐỘI (qua ThanhVienDoiThi)
+            $doiNhom = DB::table('thanhviendoithi as tv')
+                ->join('doithi as dt', 'tv.madoithi', '=', 'dt.madoithi')
+                ->join('dangkydoithi as dkdt', 'dt.madoithi', '=', 'dkdt.madoithi')
+                ->join('cuocthi as ct', 'dt.macuocthi', '=', 'ct.macuocthi')
+                ->where('tv.masinhvien', $sinhVien->masinhvien)
+                ->select(
+                    'dkdt.madangkydoi as id',
+                    'ct.tencuocthi',
+                    'ct.thoigianbatdau',
+                    'ct.thoigianketthuc',
+                    'ct.trangthai as trangthaicuocthi',
+                    'dkdt.ngaydangky',
+                    'dkdt.trangthai',
+                    DB::raw("'DoiNhom' as loaidangky"),
+                    'dt.tendoithi',
+                    'tv.vaitro'
+                )
+                ->get();
+
+            // Gộp lại và sắp xếp
+            $registrations = $caNhan->concat($doiNhom)->sortByDesc('ngaydangky');
+
+            // Thêm thông tin trạng thái và khả năng hủy
+            return $registrations->map(function($reg) {
+                $now = now();
+                $start = \Carbon\Carbon::parse($reg->thoigianbatdau);
+                $end = \Carbon\Carbon::parse($reg->thoigianketthuc);
+
+                // Xác định status
+                if ($end->lt($now)) {
+                    $status = 'ended';
+                    $statusLabel = 'Đã kết thúc';
+                    $statusColor = 'gray';
+                } elseif ($start->lte($now) && $end->gte($now)) {
+                    $status = 'ongoing';
+                    $statusLabel = 'Đang diễn ra';
+                    $statusColor = 'green';
+                } else {
+                    $status = 'upcoming';
+                    $statusLabel = 'Sắp diễn ra';
+                    $statusColor = 'blue';
+                }
+
+                // Có thể hủy không (chỉ hủy được nếu còn >24h và chưa bắt đầu)
+                $canCancel = $start->gt($now) && 
+                            $now->diffInHours($start, false) >= 24 &&
+                            in_array($reg->trangthai, ['Registered']);
+
+                return (object)[
+                    'id' => $reg->id,
+                    'loaidangky' => $reg->loaidangky,
+                    'tencuocthi' => $reg->tencuocthi,
+                    'tendoithi' => $reg->tendoithi,
+                    'vaitro' => $reg->vaitro,
+                    'thoigianbatdau' => $start,
+                    'thoigianketthuc' => $end,
+                    'ngaydangky' => \Carbon\Carbon::parse($reg->ngaydangky),
+                    'trangthai' => $reg->trangthai,
+                    'status' => $status,
+                    'statusLabel' => $statusLabel,
+                    'statusColor' => $statusColor,
+                    'canCancel' => $canCancel,
+                ];
+            })->values();
+
+        } catch (\Exception $e) {
+            Log::error('Error fetching competition registrations: ' . $e->getMessage());
+            return collect([]);
+        }
     }
 
     /**
@@ -161,7 +267,7 @@ class ProfileController extends Controller
         $activities = collect([]);
 
         try {
-            // 1. Lấy các đội thi mà sinh viên tham gia
+            // 1. Lấy các đội thi mà sinh viên tham gia (GIỮ NGUYÊN - ĐÚNG RỒI)
             $doiThis = DB::table('thanhviendoithi as tv')
                 ->join('doithi as dt', 'tv.madoithi', '=', 'dt.madoithi')
                 ->join('cuocthi as ct', 'dt.macuocthi', '=', 'ct.macuocthi')
@@ -179,13 +285,13 @@ class ProfileController extends Controller
 
             foreach ($doiThis as $doi) {
                 $activities->push([
-                    'type' => 'Dự thi',
+                    'type' => 'Dự thi theo đội',
                     'title' => $doi->tencuocthi,
                     'subtitle' => 'Đội: ' . $doi->tendoithi,
                     'date' => $doi->ngaythamgia,
                     'role' => $doi->vaitro === 'TruongDoi' ? 'Trưởng đội' : 'Thành viên',
                     'status' => $doi->trangthai,
-                    'icon' => 'fa-trophy',
+                    'icon' => 'fa-users',
                     'color' => 'blue',
                 ]);
             }
@@ -194,20 +300,18 @@ class ProfileController extends Controller
         }
 
         try {
-            // 2. Lấy đăng ký dự thi cá nhân
-            $dangKyDuThi = DB::table('dangkyduthi as dk')
-                ->join('cuocthi as ct', 'dk.macuocthi', '=', 'ct.macuocthi')
-                ->where('dk.masinhvien', $sinhVien->masinhvien)
-                ->whereNull('dk.madoithi') // Dự thi cá nhân
+            // 2. ⚠️ SỬA ĐÂY: Lấy đăng ký dự thi cá nhân từ bảng DANGKYCANHAN
+            $dangKyCaNhan = DB::table('dangkycanhan as dkcn')
+                ->join('cuocthi as ct', 'dkcn.macuocthi', '=', 'ct.macuocthi')
+                ->where('dkcn.masinhvien', $sinhVien->masinhvien)
                 ->select(
                     'ct.tencuocthi',
-                    'dk.ngaydangky',
-                    'dk.trangthai',
-                    'dk.hinhthucdangky'
+                    'dkcn.ngaydangky',
+                    'dkcn.trangthai'
                 )
                 ->get();
 
-            foreach ($dangKyDuThi as $dk) {
+            foreach ($dangKyCaNhan as $dk) {
                 $activities->push([
                     'type' => 'Dự thi cá nhân',
                     'title' => $dk->tencuocthi,
@@ -224,7 +328,7 @@ class ProfileController extends Controller
         }
 
         try {
-            // 3. Lấy các hoạt động hỗ trợ đã đăng ký
+            // 3. Lấy các hoạt động hỗ trợ đã đăng ký (GIỮ NGUYÊN - ĐÚNG RỒI)
             $hoatDongHoTro = DB::table('dangkyhoatdong as dkhd')
                 ->join('hoatdonghotro as hd', 'dkhd.mahoatdong', '=', 'hd.mahoatdong')
                 ->join('cuocthi as ct', 'hd.macuocthi', '=', 'ct.macuocthi')
@@ -274,22 +378,47 @@ class ProfileController extends Controller
         if (!$sinhVien) return collect([]);
 
         try {
-            $certificates = DB::table('datgiai as dg')
+            $certificates = collect([]);
+
+            // 1. Lấy giải từ đăng ký CÁ NHÂN
+            $giaiCaNhan = DB::table('datgiai as dg')
                 ->join('cuocthi as ct', 'dg.macuocthi', '=', 'ct.macuocthi')
-                ->join('dangkyduthi as dk', 'dg.madangky', '=', 'dk.madangky')
-                ->where('dk.masinhvien', $sinhVien->masinhvien)
+                ->join('dangkycanhan as dkcn', 'dg.madangkycanhan', '=', 'dkcn.madangkycanhan')
+                ->where('dkcn.masinhvien', $sinhVien->masinhvien)
+                ->where('dg.loaidangky', 'CaNhan')
                 ->select(
                     'dg.madatgiai',
                     'ct.tencuocthi',
                     'dg.tengiai',
                     'dg.giaithuong',
                     'dg.diemrenluyen',
-                    'dg.ngaytrao'
+                    'dg.ngaytrao',
+                    DB::raw("'CaNhan' as loai")
                 )
-                ->orderBy('dg.ngaytrao', 'desc')
                 ->get();
 
-            return $certificates->map(function($cert) {
+            // 2. Lấy giải từ ĐĂNG KÝ ĐỘI (qua ThanhVienDoiThi)
+            $giaiDoiNhom = DB::table('datgiai as dg')
+                ->join('cuocthi as ct', 'dg.macuocthi', '=', 'ct.macuocthi')
+                ->join('dangkydoithi as dkdt', 'dg.madangkydoi', '=', 'dkdt.madangkydoi')
+                ->join('thanhviendoithi as tv', 'dkdt.madoithi', '=', 'tv.madoithi')
+                ->where('tv.masinhvien', $sinhVien->masinhvien)
+                ->where('dg.loaidangky', 'DoiNhom')
+                ->select(
+                    'dg.madatgiai',
+                    'ct.tencuocthi',
+                    'dg.tengiai',
+                    'dg.giaithuong',
+                    'dg.diemrenluyen',
+                    'dg.ngaytrao',
+                    DB::raw("'DoiNhom' as loai")
+                )
+                ->get();
+
+            // Gộp 2 loại giải lại
+            $certificates = $giaiCaNhan->concat($giaiDoiNhom);
+
+            return $certificates->sortByDesc('ngaytrao')->map(function($cert) {
                 return [
                     'id' => $cert->madatgiai,
                     'event' => $cert->tencuocthi,
@@ -297,8 +426,10 @@ class ProfileController extends Controller
                     'prize' => $cert->giaithuong,
                     'points' => $cert->diemrenluyen,
                     'date' => $cert->ngaytrao,
+                    'type' => $cert->loai, // Thêm type để biết là cá nhân hay đội
                 ];
-            });
+            })->values();
+
         } catch (\Exception $e) {
             Log::error('Error fetching certificates: ' . $e->getMessage());
             return collect([]);
@@ -605,85 +736,109 @@ class ProfileController extends Controller
         }
     }
 
-    // public function cancelCompetitionRegistration($madangky)
-    // {
-    //     $user = Auth::guard('api')->user();
-    //     if (!$user || $user->vaitro !== 'SinhVien') {
-    //         return back()->with('error', 'Chỉ sinh viên mới được hủy đăng ký dự thi');
-    //     }
+    /**
+     * Hủy đăng ký dự thi (CẢ CÁ NHÂN VÀ ĐỘI)
+     */
+    public function cancelCompetitionRegistration($id)
+    {
+        $user = Auth::guard('api')->user();
+        
+        if (!$user || $user->vaitro !== 'SinhVien') {
+            return back()->with('error', 'Chỉ sinh viên mới được hủy đăng ký dự thi');
+        }
 
-    //     $sinhVien = $user->sinhVien;
-    //     if (!$sinhVien) {
-    //         return back()->with('error', 'Không tìm thấy thông tin sinh viên');
-    //     }
+        $sinhVien = $user->sinhVien;
+        if (!$sinhVien) {
+            return back()->with('error', 'Không tìm thấy thông tin sinh viên');
+        }
 
-    //     try {
-    //         DB::beginTransaction();
+        try {
+            DB::beginTransaction();
 
-    //         $registration = DB::table('dangkyduthi as dk')
-    //             ->join('cuocthi as ct', 'dk.macuocthi', '=', 'ct.macuocthi')
-    //             ->where('dk.madangky', $madangky)
-    //             ->where('dk.masinhvien', $sinhVien->masinhvien)
-    //             ->select('dk.*', 'ct.thoigianbatdau', 'ct.tencuocthi')
-    //             ->first();
+            // ===== XỬ LÝ HỦY ĐĂNG KÝ CÁ NHÂN =====
+            $dangKyCaNhan = DB::table('dangkycanhan as dkcn')
+                ->join('cuocthi as ct', 'dkcn.macuocthi', '=', 'ct.macuocthi')
+                ->where('dkcn.madangkycanhan', $id)
+                ->where('dkcn.masinhvien', $sinhVien->masinhvien)
+                ->select('dkcn.*', 'ct.thoigianbatdau', 'ct.tencuocthi')
+                ->first();
 
-    //         if (!$registration) {
-    //             DB::rollBack();
-    //             return back()->with('error', 'Không tìm thấy đăng ký dự thi');
-    //         }
+            if ($dangKyCaNhan) {
+                $startTime = \Carbon\Carbon::parse($dangKyCaNhan->thoigianbatdau);
 
-    //         $startTime = \Carbon\Carbon::parse($registration->thoigianbatdau);
+                // Kiểm tra thời gian - chỉ được hủy trước khi cuộc thi bắt đầu
+                if ($startTime->lt(now())) {
+                    DB::rollBack();
+                    return back()->with('error', 'Không thể hủy khi cuộc thi đã bắt đầu');
+                }
 
-    //         // Kiểm tra thời gian
-    //         if ($startTime->lt(now())) {
-    //             DB::rollBack();
-    //             return back()->with('error', 'Không thể hủy khi cuộc thi đã bắt đầu');
-    //         }
-    //         if ($startTime->diffInHours(now()) < 24) {
-    //             DB::rollBack();
-    //             return back()->with('error', 'Chỉ được hủy trước 24 giờ bắt đầu cuộc thi');
-    //         }
+                // Xóa đăng ký cá nhân
+                DB::table('dangkycanhan')
+                    ->where('madangkycanhan', $id)
+                    ->delete();
 
-    //         // Nếu là đội
-    //         if ($registration->madoithi) {
-    //             $teamMembers = DB::table('thanhviendoithi')
-    //                 ->where('madoithi', $registration->madoithi)
-    //                 ->count();
+                DB::commit();
+                return back()->with('success', 'Hủy đăng ký cá nhân thành công!');
+            }
 
-    //             $isLeader = DB::table('thanhviendoithi')
-    //                 ->where('madoithi', $registration->madoithi)
-    //                 ->where('masinhvien', $sinhVien->masinhvien)
-    //                 ->where('vaitro', 'TruongDoi')
-    //                 ->exists();
+            // ===== XỬ LÝ HỦY ĐĂNG KÝ ĐỘI =====
+            $dangKyDoi = DB::table('dangkydoithi as dkdt')
+                ->join('doithi as dt', 'dkdt.madoithi', '=', 'dt.madoithi')
+                ->join('cuocthi as ct', 'dkdt.macuocthi', '=', 'ct.macuocthi')
+                ->where('dkdt.madangkydoi', $id)
+                ->select(
+                    'dkdt.*', 
+                    'dt.madoithi', 
+                    'dt.tendoithi',
+                    'dt.matruongdoi', 
+                    'ct.thoigianbatdau', 
+                    'ct.tencuocthi'
+                )
+                ->first();
 
-    //             if ($isLeader && $teamMembers > 1) {
-    //                 DB::rollBack();
-    //                 return back()->with('error', 'Trưởng đội không được rời khi còn thành viên. Vui lòng chuyển quyền!');
-    //             }
+            if ($dangKyDoi) {
+                // Kiểm tra quyền: CHỈ TRƯỞNG ĐỘI MỚI ĐƯỢC HỦY
+                if ($dangKyDoi->matruongdoi !== $sinhVien->masinhvien) {
+                    DB::rollBack();
+                    return back()->with('error', 'Chỉ trưởng đội mới có quyền hủy đăng ký đội thi!');
+                }
 
-    //             // Xóa khỏi đội
-    //             DB::table('thanhviendoithi')
-    //                 ->where('madoithi', $registration->madoithi)
-    //                 ->where('masinhvien', $sinhVien->masinhvien)
-    //                 ->delete();
+                $startTime = \Carbon\Carbon::parse($dangKyDoi->thoigianbatdau);
 
-    //             // Nếu là đội 1 người → xóa luôn đội
-    //             if ($isLeader && $teamMembers === 1) {
-    //                 DB::table('doithi')->where('madoithi', $registration->madoithi)->delete();
-    //             }
-    //         }
+                // Kiểm tra thời gian - chỉ được hủy trước khi cuộc thi bắt đầu
+                if ($startTime->lt(now())) {
+                    DB::rollBack();
+                    return back()->with('error', 'Không thể hủy khi cuộc thi đã bắt đầu');
+                }
 
-    //         // Xóa đăng ký dự thi
-    //         DB::table('dangkyduthi')->where('madangky', $madangky)->delete();
+                // Bước 1: Xóa tất cả thành viên của đội
+                DB::table('thanhviendoithi')
+                    ->where('madoithi', $dangKyDoi->madoithi)
+                    ->delete();
 
-    //         DB::commit();
-    //         return back()->with('success', 'Hủy đăng ký dự thi thành công!');
+                // Bước 2: Xóa đăng ký đội thi
+                DB::table('dangkydoithi')
+                    ->where('madangkydoi', $id)
+                    ->delete();
 
-    //     } catch (\Exception $e) {
-    //         DB::rollBack();
-    //         Log::error('Lỗi hủy đăng ký dự thi: ' . $e->getMessage());
-    //         return back()->with('error', 'Có lỗi xảy ra, vui lòng thử lại');
-    //     }
-    // }
+                // Bước 3: Xóa đội thi
+                DB::table('doithi')
+                    ->where('madoithi', $dangKyDoi->madoithi)
+                    ->delete();
+
+                DB::commit();
+                return back()->with('success', "Hủy đăng ký đội \"{$dangKyDoi->tendoithi}\" thành công!");
+            }
+
+            // Không tìm thấy đăng ký nào
+            DB::rollBack();
+            return back()->with('error', 'Không tìm thấy đăng ký dự thi hoặc bạn không có quyền hủy');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Lỗi hủy đăng ký dự thi: ' . $e->getMessage());
+            return back()->with('error', 'Có lỗi xảy ra: ' . $e->getMessage());
+        }
+    }
 }
     

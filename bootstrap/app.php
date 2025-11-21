@@ -15,6 +15,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // Đăng ký middleware alias
         $middleware->alias([
             'jwt.web' => \App\Http\Middleware\JwtWebMiddleware::class,
+            'role' => \App\Http\Middleware\CheckRole::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

@@ -50,7 +50,7 @@
             {{-- Content --}}
             <div class="flex-1 pt-0.5">
                 <h4 class="font-bold text-gray-900 mb-1">Đăng ký thành công!</h4>
-                <p class="text-sm text-gray-600">{{ session('success') }}</p>
+                <p class="text-sm text-gray-600">{!! session('success') !!}</p>
             </div>
             
             {{-- Close button --}}
@@ -196,10 +196,10 @@
                         Lưu ý khi đăng ký
                     </h3>
                     <ul class="space-y-2 text-gray-700 text-sm">
-                        <li class="flex items-start gap-2">
+                        {{-- <li class="flex items-start gap-2">
                             <i class="fa-solid fa-check text-green-600 mt-1"></i>
                             <span>Bạn có thể đăng ký nhiều hoạt động cổ vũ khác nhau</span>
-                        </li>
+                        </li> --}}
                         <li class="flex items-start gap-2">
                             <i class="fa-solid fa-check text-green-600 mt-1"></i>
                             <span>Vui lòng có mặt đúng giờ để điểm danh và nhận điểm rèn luyện</span>

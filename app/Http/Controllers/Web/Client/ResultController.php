@@ -22,14 +22,25 @@ class ResultController extends Controller
                 'ct.tencuocthi',
                 'ct.thoigianketthuc',
                 'ct.loaicuocthi',
+                'ct.hinhthucthamgia',
                 'bm.tenbomon',
-                DB::raw('(SELECT COUNT(*) FROM dangkyduthi WHERE macuocthi = ct.macuocthi) as soluongthamgia'),
+                // Tổng số lượng tham gia (cả cá nhân và đội)
+                DB::raw('((SELECT COUNT(*) FROM dangkycanhan WHERE macuocthi = ct.macuocthi) + 
+                          (SELECT COUNT(*) FROM dangkydoithi WHERE macuocthi = ct.macuocthi)) as soluongthamgia'),
+                // Số lượng giải
                 DB::raw('(SELECT COUNT(*) FROM datgiai WHERE macuocthi = ct.macuocthi) as soluonggiai'),
-                DB::raw("(SELECT COALESCE(dt.tendoithi, nd.hoten, 'Chưa công bố') 
+                // Người thắng giải nhất
+                DB::raw("(SELECT 
+                            CASE 
+                                WHEN dg.loaidangky = 'DoiNhom' THEN dt.tendoithi
+                                WHEN dg.loaidangky = 'CaNhan' THEN nd.hoten
+                                ELSE 'Chưa công bố'
+                            END
                           FROM datgiai dg 
-                          LEFT JOIN dangkyduthi dk ON dg.madangky = dk.madangky 
-                          LEFT JOIN doithi dt ON dk.madoithi = dt.madoithi
-                          LEFT JOIN sinhvien sv ON dk.masinhvien = sv.masinhvien
+                          LEFT JOIN dangkydoithi dkd ON dg.madangkydoi = dkd.madangkydoi AND dg.loaidangky = 'DoiNhom'
+                          LEFT JOIN doithi dt ON dkd.madoithi = dt.madoithi
+                          LEFT JOIN dangkycanhan dkc ON dg.madangkydoi = dkc.madangkycanhan AND dg.loaidangky = 'CaNhan'
+                          LEFT JOIN sinhvien sv ON dkc.masinhvien = sv.masinhvien
                           LEFT JOIN nguoidung nd ON sv.manguoidung = nd.manguoidung
                           WHERE dg.macuocthi = ct.macuocthi 
                           AND dg.tengiai ILIKE '%nhất%' 
@@ -94,8 +105,11 @@ class ResultController extends Controller
             ->select(
                 'ct.*',
                 'bm.tenbomon',
-                DB::raw('(SELECT COUNT(*) FROM dangkyduthi WHERE macuocthi = ct.macuocthi) as soluongthamgia'),
-                DB::raw('(SELECT COUNT(DISTINCT madoithi) FROM dangkyduthi WHERE macuocthi = ct.macuocthi AND madoithi IS NOT NULL) as soluongdoi')
+                // Tổng số lượng tham gia
+                DB::raw('((SELECT COUNT(*) FROM dangkycanhan WHERE macuocthi = ct.macuocthi) + 
+                          (SELECT COUNT(*) FROM dangkydoithi WHERE macuocthi = ct.macuocthi)) as soluongthamgia'),
+                // Số lượng đội
+                DB::raw('(SELECT COUNT(DISTINCT madoithi) FROM dangkydoithi WHERE macuocthi = ct.macuocthi) as soluongdoi')
             )
             ->first();
 
@@ -116,11 +130,17 @@ class ResultController extends Controller
                 'vt.thutu',
                 'vt.thoigianbatdau',
                 'vt.thoigianketthuc',
-                DB::raw("(SELECT COALESCE(dt.tendoithi, nd.hoten, 'Chưa xác định') 
+                DB::raw("(SELECT 
+                            CASE 
+                                WHEN dg.loaidangky = 'DoiNhom' THEN dt.tendoithi
+                                WHEN dg.loaidangky = 'CaNhan' THEN nd.hoten
+                                ELSE 'Chưa xác định'
+                            END
                           FROM datgiai dg 
-                          LEFT JOIN dangkyduthi dk ON dg.madangky = dk.madangky 
-                          LEFT JOIN doithi dt ON dk.madoithi = dt.madoithi
-                          LEFT JOIN sinhvien sv ON dk.masinhvien = sv.masinhvien
+                          LEFT JOIN dangkydoithi dkd ON dg.madangkydoi = dkd.madangkydoi AND dg.loaidangky = 'DoiNhom'
+                          LEFT JOIN doithi dt ON dkd.madoithi = dt.madoithi
+                          LEFT JOIN dangkycanhan dkc ON dg.madangkydoi = dkc.madangkycanhan AND dg.loaidangky = 'CaNhan'
+                          LEFT JOIN sinhvien sv ON dkc.masinhvien = sv.masinhvien
                           LEFT JOIN nguoidung nd ON sv.manguoidung = nd.manguoidung
                           WHERE dg.macuocthi = vt.macuocthi
                           AND dg.tengiai ILIKE CONCAT('%', vt.tenvongthi, '%')
@@ -139,9 +159,16 @@ class ResultController extends Controller
 
         // Lấy top 3 giải thưởng
         $top3 = DB::table('datgiai as dg')
-            ->join('dangkyduthi as dk', 'dg.madangky', '=', 'dk.madangky')
-            ->leftJoin('doithi as dt', 'dk.madoithi', '=', 'dt.madoithi')
-            ->leftJoin('sinhvien as sv', 'dk.masinhvien', '=', 'sv.masinhvien')
+            ->leftJoin('dangkydoithi as dkd', function($join) {
+                $join->on('dg.madangkydoi', '=', 'dkd.madangkydoi')
+                     ->where('dg.loaidangky', '=', DB::raw("'DoiNhom'"));
+            })
+            ->leftJoin('doithi as dt', 'dkd.madoithi', '=', 'dt.madoithi')
+            ->leftJoin('dangkycanhan as dkc', function($join) {
+                $join->on('dg.madangkydoi', '=', 'dkc.madangkycanhan')
+                     ->where('dg.loaidangky', '=', DB::raw("'CaNhan'"));
+            })
+            ->leftJoin('sinhvien as sv', 'dkc.masinhvien', '=', 'sv.masinhvien')
             ->leftJoin('nguoidung as nd', 'sv.manguoidung', '=', 'nd.manguoidung')
             ->where('dg.macuocthi', $id)
             ->select(
@@ -150,7 +177,12 @@ class ResultController extends Controller
                 'dg.giaithuong',
                 'dg.diemrenluyen',
                 'dg.ngaytrao',
-                DB::raw('COALESCE(dt.tendoithi, nd.hoten, \'Chưa xác định\') as name'),
+                'dg.loaidangky',
+                DB::raw('CASE 
+                    WHEN dg.loaidangky = \'DoiNhom\' THEN dt.tendoithi
+                    WHEN dg.loaidangky = \'CaNhan\' THEN nd.hoten
+                    ELSE \'Chưa xác định\'
+                END as name'),
                 DB::raw('CASE 
                     WHEN dg.tengiai ILIKE \'%nhất%\' OR dg.tengiai ILIKE \'%1%\' THEN 1
                     WHEN dg.tengiai ILIKE \'%nhì%\' OR dg.tengiai ILIKE \'%hai%\' OR dg.tengiai ILIKE \'%2%\' THEN 2
@@ -182,9 +214,16 @@ class ResultController extends Controller
 
         // Lấy danh sách tất cả giải thưởng
         $allAwards = DB::table('datgiai as dg')
-            ->join('dangkyduthi as dk', 'dg.madangky', '=', 'dk.madangky')
-            ->leftJoin('doithi as dt', 'dk.madoithi', '=', 'dt.madoithi')
-            ->leftJoin('sinhvien as sv', 'dk.masinhvien', '=', 'sv.masinhvien')
+            ->leftJoin('dangkydoithi as dkd', function($join) {
+                $join->on('dg.madangkydoi', '=', 'dkd.madangkydoi')
+                     ->where('dg.loaidangky', '=', DB::raw("'DoiNhom'"));
+            })
+            ->leftJoin('doithi as dt', 'dkd.madoithi', '=', 'dt.madoithi')
+            ->leftJoin('dangkycanhan as dkc', function($join) {
+                $join->on('dg.madangkydoi', '=', 'dkc.madangkycanhan')
+                     ->where('dg.loaidangky', '=', DB::raw("'CaNhan'"));
+            })
+            ->leftJoin('sinhvien as sv', 'dkc.masinhvien', '=', 'sv.masinhvien')
             ->leftJoin('nguoidung as nd', 'sv.manguoidung', '=', 'nd.manguoidung')
             ->where('dg.macuocthi', $id)
             ->select(
@@ -192,7 +231,11 @@ class ResultController extends Controller
                 'dg.giaithuong',
                 'dg.diemrenluyen',
                 'dg.ngaytrao',
-                DB::raw('COALESCE(dt.tendoithi, nd.hoten, \'Chưa xác định\') as name')
+                DB::raw('CASE 
+                    WHEN dg.loaidangky = \'DoiNhom\' THEN dt.tendoithi
+                    WHEN dg.loaidangky = \'CaNhan\' THEN nd.hoten
+                    ELSE \'Chưa xác định\'
+                END as name')
             )
             ->orderBy('dg.ngaytrao', 'desc')
             ->get();

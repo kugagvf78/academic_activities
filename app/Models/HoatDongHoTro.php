@@ -9,13 +9,16 @@ class HoatDongHoTro extends Model
 {
     use HasFactory;
 
-    // SỬA LỖI: "hoatdonghot ro" → "hoatdonghotro"
+    // Tên bảng đúng (snake_case)
     protected $table = 'hoatdonghotro';
+
+    // Khóa chính
     protected $primaryKey = 'mahoatdong';
     public $incrementing = false;
     protected $keyType = 'string';
     public $timestamps = false;
 
+    // Các cột có thể fill
     protected $fillable = [
         'mahoatdong',
         'tenhoatdong',
@@ -26,12 +29,15 @@ class HoatDongHoTro extends Model
         'thoigianketthuc',
         'diadiem',
         'mota',
+        'soluong', // ← THÊM MỚI
     ];
 
+    // Cast kiểu dữ liệu
     protected $casts = [
         'diemrenluyen' => 'decimal:2',
         'thoigianbatdau' => 'datetime',
         'thoigianketthuc' => 'datetime',
+        'soluong' => 'integer', // ← Đảm bảo kiểu int
     ];
 
     // === Relationships ===
@@ -69,5 +75,40 @@ class HoatDongHoTro extends Model
     public function scopeHotrokythuat($query)
     {
         return $query->where('loaihoatdong', 'HoTroKyThuat');
+    }
+
+    // === Accessors ===
+    
+    /**
+     * Lấy số lượng đã đăng ký
+     */
+    public function getSoLuongDangKyAttribute()
+    {
+        return $this->dangkyhoatdongs()->count();
+    }
+
+    /**
+     * Kiểm tra còn chỗ không
+     */
+    public function getConChoAttribute()
+    {
+        return $this->soluong > $this->soLuongDangKy;
+    }
+
+    /**
+     * Lấy số chỗ còn lại
+     */
+    public function getChoConLaiAttribute()
+    {
+        return max(0, $this->soluong - $this->soLuongDangKy);
+    }
+
+    /**
+     * Lấy phần trăm đã đăng ký
+     */
+    public function getPhanTramDangKyAttribute()
+    {
+        if ($this->soluong == 0) return 0;
+        return round(($this->soLuongDangKy / $this->soluong) * 100, 1);
     }
 }

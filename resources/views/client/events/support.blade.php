@@ -192,10 +192,6 @@
                     <ul class="space-y-2 text-gray-700 text-sm">
                         <li class="flex items-start gap-2">
                             <i class="fa-solid fa-check text-green-600 mt-1"></i>
-                            <span>Bạn có thể đăng ký nhiều hoạt động hỗ trợ khác nhau</span>
-                        </li>
-                        <li class="flex items-start gap-2">
-                            <i class="fa-solid fa-check text-green-600 mt-1"></i>
                             <span>Vui lòng có mặt đúng giờ để điểm danh và nhận điểm rèn luyện</span>
                         </li>
                         <li class="flex items-start gap-2">

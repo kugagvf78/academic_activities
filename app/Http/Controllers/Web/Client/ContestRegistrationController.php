@@ -5,7 +5,8 @@ namespace App\Http\Controllers\Web\Client;
 use App\Models\CuocThi;
 use App\Models\SinhVien;
 use App\Models\DoiThi;
-use App\Models\DangKyDuThi;
+use App\Models\DangKyCaNhan;
+use App\Models\DangKyDoiThi;
 use App\Models\ThanhVienDoiThi;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -20,22 +21,29 @@ class ContestRegistrationController extends Controller
      */
     public function showRegistrationForm($slug)
     {
-        // Parse slug để lấy macuocthi
         $macuocthi = $this->getMaCuocThiFromSlug($slug);
         
         $cuocthi = CuocThi::where('macuocthi', $macuocthi)->firstOrFail();
         
         // Kiểm tra trạng thái cuộc thi
-        if ($cuocthi->trangthai !== 'Approved' && $cuocthi->trangthai !== 'InProgress') {
+        if (!in_array($cuocthi->trangthai, ['Approved', 'InProgress'])) {
             return redirect()->route('client.events.show', $slug)
-                ->with('error', 'Cuộc thi không trong thời gian đăng ký');
+                ->with('error', 'Cuộc thi không mở đăng ký');
         }
         
-        // Kiểm tra thời gian đăng ký
+        // Kiểm tra thời gian - CHỈ CHO ĐĂNG KÝ KHI CHƯA BẮT ĐẦU
         $now = now();
-        if ($now->lt($cuocthi->thoigianbatdau) || $now->gt($cuocthi->thoigianketthuc)) {
+        $start = $cuocthi->thoigianbatdau;
+        
+        if ($now->gte($start)) {
             return redirect()->route('client.events.show', $slug)
-                ->with('error', 'Cuộc thi không trong thời gian đăng ký');
+                ->with('error', 'Cuộc thi đã bắt đầu, không thể đăng ký thêm');
+        }
+        
+        // Kiểm tra hình thức tham gia có hợp lệ không
+        if (empty($cuocthi->hinhthucthamgia)) {
+            return redirect()->route('client.events.show', $slug)
+                ->with('error', 'Cuộc thi chưa xác định hình thức tham gia');
         }
         
         return view('client.events.register', compact('cuocthi', 'slug'));
@@ -46,36 +54,61 @@ class ContestRegistrationController extends Controller
      */
     public function register(Request $request, $slug)
     {
-        // Parse slug để lấy macuocthi
         $macuocthi = $this->getMaCuocThiFromSlug($slug);
         
-        // Validate dữ liệu
-        $validated = $request->validate([
+        $cuocthi = CuocThi::where('macuocthi', $macuocthi)->firstOrFail();
+        
+        // KIỂM TRA HÌNH THỨC THAM GIA
+        $requestType = $request->input('type');
+        
+        // Validate theo hình thức của cuộc thi
+        if ($cuocthi->hinhthucthamgia === 'CaNhan' && $requestType !== 'individual') {
+            return back()->with('error', 'Cuộc thi này chỉ cho phép đăng ký cá nhân!')
+                        ->withInput();
+        }
+        
+        if ($cuocthi->hinhthucthamgia === 'DoiNhom' && $requestType !== 'team') {
+            return back()->with('error', 'Cuộc thi này chỉ cho phép đăng ký theo đội/nhóm!')
+                        ->withInput();
+        }
+        
+        if ($cuocthi->hinhthucthamgia === 'CaHai' && !in_array($requestType, ['individual', 'team'])) {
+            return back()->with('error', 'Hình thức đăng ký không hợp lệ!')
+                        ->withInput();
+        }
+        
+        // Validate dữ liệu - CẬP NHẬT RULES
+        $rules = [
             'type' => 'required|in:individual,team',
             'main_name' => 'required|string|max:255',
             'main_student_code' => 'required|string|max:50',
             'main_email' => 'required|email|max:255',
             'main_phone' => 'required|string|max:20',
             'team_name' => 'required|string|max:255',
-            'members' => 'required_if:type,team|array|nullable',
-            'members.*.name' => 'required_with:members|string|max:255',
-            'members.*.student_code' => 'required_with:members|string|max:50',
-            'members.*.email' => 'required_with:members|email|max:255',
             'note' => 'nullable|string|max:1000',
-        ], [
+        ];
+        
+        // Thêm validation cho members chỉ khi đăng ký theo đội
+        if ($requestType === 'team') {
+            $rules['members'] = 'required|array|min:1';
+            $rules['members.*.name'] = 'required|string|max:255';
+            $rules['members.*.student_code'] = 'required|string|max:50';
+            $rules['members.*.email'] = 'required|email|max:255';
+        }
+        
+        $validated = $request->validate($rules, [
             'main_name.required' => 'Vui lòng nhập họ và tên',
             'main_student_code.required' => 'Vui lòng nhập mã sinh viên',
             'main_email.required' => 'Vui lòng nhập email',
             'main_phone.required' => 'Vui lòng nhập số điện thoại',
             'team_name.required' => 'Vui lòng nhập tên đội',
-            'members.required_if' => 'Vui lòng thêm thành viên nhóm',
+            'members.required' => 'Vui lòng thêm thành viên nhóm',
+            'members.min' => 'Đội thi phải có ít nhất 1 thành viên ngoài trưởng đội',
         ]);
 
         DB::beginTransaction();
         
         try {
-            $cuocthi = CuocThi::where('macuocthi', $macuocthi)->firstOrFail();
-            
             // Kiểm tra sinh viên chính có tồn tại không
             $sinhvienChinh = SinhVien::where('masinhvien', $validated['main_student_code'])->first();
             
@@ -84,56 +117,103 @@ class ContestRegistrationController extends Controller
                             ->withInput();
             }
 
-            // Kiểm tra đã đăng ký chưa
-            $daDangKy = DangKyDuThi::where('macuocthi', $macuocthi)
-                                   ->where('masinhvien', $sinhvienChinh->masinhvien)
-                                   ->exists();
-            
-            if ($daDangKy) {
-                return back()->with('error', 'Bạn đã đăng ký cuộc thi này rồi!')
-                            ->withInput();
+            // ===== XỬ LÝ ĐĂNG KÝ CÁ NHÂN =====
+            if ($validated['type'] === 'individual') {
+                // Kiểm tra đã đăng ký cá nhân chưa
+                $daDangKyCaNhan = DangKyCaNhan::where('macuocthi', $macuocthi)
+                                            ->where('masinhvien', $sinhvienChinh->masinhvien)
+                                            ->exists();
+                
+                if ($daDangKyCaNhan) {
+                    return back()->with('error', 'Bạn đã đăng ký cá nhân cuộc thi này rồi!')
+                                ->withInput();
+                }
+
+                // Kiểm tra đã tham gia đội nào chưa
+                $daThamGiaDoi = ThanhVienDoiThi::join('doithi', 'thanhviendoithi.madoithi', '=', 'doithi.madoithi')
+                                            ->where('doithi.macuocthi', $macuocthi)
+                                            ->where('thanhviendoithi.masinhvien', $sinhvienChinh->masinhvien)
+                                            ->exists();
+                
+                if ($daThamGiaDoi) {
+                    return back()->with('error', 'Bạn đã tham gia đội thi trong cuộc thi này rồi!')
+                                ->withInput();
+                }
+
+                // Tạo đăng ký cá nhân
+                $madangkycanhan = 'DKCN' . Str::upper(Str::random(8));
+                
+                DangKyCaNhan::create([
+                    'madangkycanhan' => $madangkycanhan,
+                    'macuocthi' => $macuocthi,
+                    'masinhvien' => $sinhvienChinh->masinhvien,
+                    'ngaydangky' => now(),
+                    'trangthai' => 'Registered',
+                    'ghichu' => $validated['note'] ?? null,
+                ]);
+
+                DB::commit();
+                
+                return back()->with('success', 'Đăng ký cá nhân thành công! Chúc bạn thi tốt! 🎉');
             }
 
-            // LUÔN TẠO ĐỘI THI (cho cả cá nhân và nhóm)
-            $madoithi = 'DT' . Str::upper(Str::random(8));
-            
-            // Số thành viên = 1 (trưởng đội) + số thành viên thêm vào (nếu có)
-            $sothanhvien = 1;
-            if ($validated['type'] === 'team' && !empty($validated['members'])) {
-                $sothanhvien += count($validated['members']);
-            }
-            
-            $doithi = DoiThi::create([
-                'madoithi' => $madoithi,
-                'tendoithi' => $validated['team_name'],
-                'macuocthi' => $macuocthi,
-                'matruongdoi' => $sinhvienChinh->masinhvien,
-                'sothanhvien' => $sothanhvien,
-                'ngaydangky' => now(),
-                'trangthai' => 'Active',
-            ]);
-
-            // LƯU TRƯỞNG ĐỘI VÀO BẢNG THANHVIENDOITHI (cho cả cá nhân và nhóm)
-            $mathanhvienTruongDoi = 'TV' . Str::upper(Str::random(8));
-            
-            ThanhVienDoiThi::create([
-                'mathanhvien' => $mathanhvienTruongDoi,
-                'madoithi' => $madoithi,
-                'masinhvien' => $sinhvienChinh->masinhvien,
-                'vaitro' => 'TruongDoi',
-                'ngaythamgia' => now(),
-                'trangthai' => 'Active',
-            ]);
-
-            // Xử lý đăng ký theo nhóm (thêm thành viên)
-            if ($validated['type'] === 'team' && !empty($validated['members'])) {
+            // ===== XỬ LÝ ĐĂNG KÝ THEO ĐỘI =====
+            if ($validated['type'] === 'team') {
                 // Kiểm tra số lượng thành viên
-                if (count($validated['members']) < 1) {
+                if (empty($validated['members']) || count($validated['members']) < 1) {
                     DB::rollBack();
                     return back()->withErrors(['members' => 'Đội thi phải có ít nhất 1 thành viên ngoài trưởng đội'])
                                 ->withInput();
                 }
+
+                // Kiểm tra trưởng đội đã đăng ký cá nhân chưa
+                $daDangKyCaNhan = DangKyCaNhan::where('macuocthi', $macuocthi)
+                                            ->where('masinhvien', $sinhvienChinh->masinhvien)
+                                            ->exists();
                 
+                if ($daDangKyCaNhan) {
+                    return back()->with('error', 'Bạn đã đăng ký cá nhân cuộc thi này rồi, không thể đăng ký đội!')
+                                ->withInput();
+                }
+
+                // Kiểm tra trưởng đội đã tham gia đội khác chưa
+                $daThamGiaDoiKhac = ThanhVienDoiThi::join('doithi', 'thanhviendoithi.madoithi', '=', 'doithi.madoithi')
+                                                ->where('doithi.macuocthi', $macuocthi)
+                                                ->where('thanhviendoithi.masinhvien', $sinhvienChinh->masinhvien)
+                                                ->exists();
+                
+                if ($daThamGiaDoiKhac) {
+                    return back()->with('error', 'Bạn đã tham gia đội thi khác trong cuộc thi này rồi!')
+                                ->withInput();
+                }
+
+                // Tạo đội thi
+                $madoithi = 'DT' . Str::upper(Str::random(8));
+                
+                // Số thành viên = 1 (trưởng đội) + số thành viên thêm vào
+                $sothanhvien = 1 + count($validated['members']);
+                
+                $doithi = DoiThi::create([
+                    'madoithi' => $madoithi,
+                    'tendoithi' => $validated['team_name'],
+                    'macuocthi' => $macuocthi,
+                    'matruongdoi' => $sinhvienChinh->masinhvien,
+                    'sothanhvien' => $sothanhvien,
+                    'ngaydangky' => now(),
+                    'trangthai' => 'Active',
+                ]);
+
+                // Lưu trưởng đội vào bảng ThanhVienDoiThi
+                $mathanhvienTruongDoi = 'TV' . Str::upper(Str::random(8));
+                
+                ThanhVienDoiThi::create([
+                    'mathanhvien' => $mathanhvienTruongDoi,
+                    'madoithi' => $madoithi,
+                    'masinhvien' => $sinhvienChinh->masinhvien,
+                    'vaitro' => 'TruongDoi',
+                    'ngaythamgia' => now(),
+                ]);
+
                 // Thêm thành viên nhóm
                 foreach ($validated['members'] as $member) {
                     // Kiểm tra mã sinh viên thành viên
@@ -145,22 +225,22 @@ class ContestRegistrationController extends Controller
                                     ->withInput();
                     }
 
-                    // Kiểm tra thành viên đã tham gia cuộc thi này chưa
-                    $daThamGiaCuocThi = DangKyDuThi::where('macuocthi', $macuocthi)
-                                                   ->where('masinhvien', $sinhvienThanhVien->masinhvien)
-                                                   ->exists();
+                    // Kiểm tra thành viên đã đăng ký cá nhân chưa
+                    $thanhVienDaDangKyCaNhan = DangKyCaNhan::where('macuocthi', $macuocthi)
+                                                        ->where('masinhvien', $sinhvienThanhVien->masinhvien)
+                                                        ->exists();
                     
-                    if ($daThamGiaCuocThi) {
+                    if ($thanhVienDaDangKyCaNhan) {
                         DB::rollBack();
-                        return back()->withErrors(['members' => "Sinh viên {$member['name']} đã đăng ký cuộc thi này rồi"])
+                        return back()->withErrors(['members' => "Sinh viên {$member['name']} đã đăng ký cá nhân cuộc thi này"])
                                     ->withInput();
                     }
 
                     // Kiểm tra thành viên đã trong đội khác chưa
                     $daTrongDoiKhac = ThanhVienDoiThi::join('doithi', 'thanhviendoithi.madoithi', '=', 'doithi.madoithi')
-                                                     ->where('doithi.macuocthi', $macuocthi)
-                                                     ->where('thanhviendoithi.masinhvien', $sinhvienThanhVien->masinhvien)
-                                                     ->exists();
+                                                    ->where('doithi.macuocthi', $macuocthi)
+                                                    ->where('thanhviendoithi.masinhvien', $sinhvienThanhVien->masinhvien)
+                                                    ->exists();
                     
                     if ($daTrongDoiKhac) {
                         DB::rollBack();
@@ -176,39 +256,25 @@ class ContestRegistrationController extends Controller
                         'masinhvien' => $sinhvienThanhVien->masinhvien,
                         'vaitro' => 'ThanhVien',
                         'ngaythamgia' => now(),
-                        'trangthai' => 'Active',
-                    ]);
-                    
-                    // Tạo đăng ký dự thi cho thành viên
-                    $madangkyThanhVien = 'DK' . Str::upper(Str::random(8));
-                    DangKyDuThi::create([
-                        'madangky' => $madangkyThanhVien,
-                        'macuocthi' => $macuocthi,
-                        'masinhvien' => $sinhvienThanhVien->masinhvien,
-                        'madoithi' => $madoithi,
-                        'hinhthucdangky' => 'DoiNhom',
-                        'ngaydangky' => now(),
-                        'trangthai' => 'Registered',
                     ]);
                 }
+
+                // Tạo đăng ký đội thi
+                $madangkydoi = 'DKDT' . Str::upper(Str::random(8));
+                
+                DangKyDoiThi::create([
+                    'madangkydoi' => $madangkydoi,
+                    'macuocthi' => $macuocthi,
+                    'madoithi' => $madoithi,
+                    'ngaydangky' => now(),
+                    'trangthai' => 'Registered',
+                    'ghichu' => $validated['note'] ?? null,
+                ]);
+
+                DB::commit();
+                
+                return back()->with('success', 'Đăng ký đội thi thành công! Chúc đội bạn thi tốt! 🎉');
             }
-
-            // Tạo đăng ký dự thi cho trưởng đội (cả cá nhân và nhóm đều có đội)
-            $madangky = 'DK' . Str::upper(Str::random(8));
-            
-            DangKyDuThi::create([
-                'madangky' => $madangky,
-                'macuocthi' => $macuocthi,
-                'masinhvien' => $sinhvienChinh->masinhvien,
-                'madoithi' => $madoithi,
-                'hinhthucdangky' => $validated['type'] === 'individual' ? 'CaNhan' : 'DoiNhom',
-                'ngaydangky' => now(),
-                'trangthai' => 'Registered',
-            ]);
-
-            DB::commit();
-            
-            return back()->with('success', 'Đăng ký cuộc thi thành công! Chúc bạn thi tốt! 🎉');
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -217,6 +283,99 @@ class ContestRegistrationController extends Controller
             
             return back()->with('error', 'Có lỗi xảy ra: ' . $e->getMessage())
                         ->withInput();
+        }
+    }
+
+    /**
+     * Huỷ đăng ký cá nhân
+     */
+    public function cancelIndividualRegistration(Request $request, $slug)
+    {
+        $macuocthi = $this->getMaCuocThiFromSlug($slug);
+        $masinhvien = $request->input('masinhvien');
+        
+        DB::beginTransaction();
+        
+        try {
+            $cuocthi = CuocThi::where('macuocthi', $macuocthi)->firstOrFail();
+            
+            // Kiểm tra cuộc thi chưa bắt đầu thì mới cho huỷ
+            if (now()->gte($cuocthi->thoigianbatdau)) {
+                return back()->with('error', 'Không thể huỷ đăng ký sau khi cuộc thi đã bắt đầu!');
+            }
+            
+            $dangky = DangKyCaNhan::where('macuocthi', $macuocthi)
+                                  ->where('masinhvien', $masinhvien)
+                                  ->firstOrFail();
+            
+            // Cập nhật trạng thái thành Cancelled thay vì xoá
+            $dangky->update([
+                'trangthai' => 'Cancelled',
+                'ngayhuy' => now()
+            ]);
+            
+            DB::commit();
+            
+            return back()->with('success', 'Đã huỷ đăng ký cá nhân thành công!');
+            
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Lỗi huỷ đăng ký cá nhân: ' . $e->getMessage());
+            
+            return back()->with('error', 'Có lỗi xảy ra khi huỷ đăng ký: ' . $e->getMessage());
+        }
+    }
+    
+    /**
+     * Huỷ đăng ký đội thi
+     */
+    public function cancelTeamRegistration(Request $request, $slug)
+    {
+        $macuocthi = $this->getMaCuocThiFromSlug($slug);
+        $madoithi = $request->input('madoithi');
+        $masinhvien = $request->input('masinhvien'); // Mã sinh viên người yêu cầu huỷ
+        
+        DB::beginTransaction();
+        
+        try {
+            $cuocthi = CuocThi::where('macuocthi', $macuocthi)->firstOrFail();
+            
+            // Kiểm tra cuộc thi chưa bắt đầu thì mới cho huỷ
+            if (now()->gte($cuocthi->thoigianbatdau)) {
+                return back()->with('error', 'Không thể huỷ đăng ký sau khi cuộc thi đã bắt đầu!');
+            }
+            
+            $doithi = DoiThi::where('madoithi', $madoithi)
+                            ->where('macuocthi', $macuocthi)
+                            ->firstOrFail();
+            
+            // Chỉ trưởng đội mới được huỷ đăng ký
+            if ($doithi->matruongdoi !== $masinhvien) {
+                return back()->with('error', 'Chỉ trưởng đội mới có quyền huỷ đăng ký!');
+            }
+            
+            // Cập nhật trạng thái đội thi
+            $doithi->update([
+                'trangthai' => 'Cancelled'
+            ]);
+            
+            // Cập nhật trạng thái đăng ký đội thi
+            DangKyDoiThi::where('madoithi', $madoithi)
+                        ->where('macuocthi', $macuocthi)
+                        ->update([
+                            'trangthai' => 'Cancelled',
+                            'ngayhuy' => now()
+                        ]);
+            
+            DB::commit();
+            
+            return back()->with('success', 'Đã huỷ đăng ký đội thi thành công!');
+            
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Lỗi huỷ đăng ký đội thi: ' . $e->getMessage());
+            
+            return back()->with('error', 'Có lỗi xảy ra khi huỷ đăng ký: ' . $e->getMessage());
         }
     }
 

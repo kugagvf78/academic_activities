@@ -221,50 +221,42 @@ class AuthController extends Controller
     public function webLogin(Request $request)
     {
         $request->validate([
-            'TenDangNhap' => 'required|string', // Mã sinh viên hoặc mã giảng viên
+            'TenDangNhap' => 'required|string',
             'MatKhau' => 'required|string',
-            'VaiTro' => 'required|in:SinhVien,GiangVien',
         ], [
             'TenDangNhap.required' => 'Vui lòng nhập mã sinh viên/giảng viên',
             'MatKhau.required' => 'Vui lòng nhập mật khẩu',
-            'VaiTro.required' => 'Vui lòng chọn vai trò',
-            'VaiTro.in' => 'Vai trò không hợp lệ',
         ]);
 
-        // ✅ Tìm user bằng tên đăng nhập (là mã sinh viên/giảng viên)
         $user = NguoiDung::where('tendangnhap', $request->TenDangNhap)->first();
 
         if (!$user || !Hash::check($request->MatKhau, $user->matkhau)) {
             return back()->withErrors([
                 'TenDangNhap' => 'Mã sinh viên/giảng viên hoặc mật khẩu không đúng.'
-            ])->withInput($request->only('TenDangNhap', 'VaiTro'));
-        }
-
-        // Kiểm tra vai trò
-        if ($user->vaitro !== $request->VaiTro) {
-            return back()->withErrors([
-                'TenDangNhap' => 'Tài khoản không thuộc vai trò ' . ($request->VaiTro === 'SinhVien' ? 'Sinh viên' : 'Giảng viên') . '.'
-            ])->withInput($request->only('TenDangNhap', 'VaiTro'));
+            ])->withInput($request->only('TenDangNhap'));
         }
 
         if ($user->trangthai !== 'Active') {
             return back()->withErrors([
                 'TenDangNhap' => 'Tài khoản của bạn đã bị khóa.'
-            ])->withInput($request->only('TenDangNhap', 'VaiTro'));
+            ])->withInput($request->only('TenDangNhap'));
         }
 
-        // Tạo JWT token
         $token = Auth::guard('api')->login($user);
         Auth::guard('web')->login($user);
 
-        $cookie = cookie('jwt_token', $token, 60 * 24, '/', null, false, true);
+        $cookie = cookie('jwt_token', $token, 60 * 24 * 7, '/', null, false, true);
 
-        return redirect()->route('client.home')
-            ->with('toast', [
-                'type' => 'success',
-                'title' => 'Đăng nhập thành công!',
-                'message' => 'Chào mừng ' . ($user->hoten ?? $user->tendangnhap) . ' đã quay trở lại!'
-            ])
+        // Redirect theo vai trò
+        $redirectRoute = match($user->vaitro) {
+            'Admin' => 'client.home',
+            'GiangVien' => 'giangvien.profile.index',
+            'SinhVien' => 'profile.index',
+            default => 'client.home',
+        };
+
+        return redirect()->route($redirectRoute)
+            ->with('success', 'Đăng nhập thành công!')
             ->cookie($cookie);
     }
 

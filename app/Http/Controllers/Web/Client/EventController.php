@@ -15,6 +15,49 @@ class EventController extends Controller
      */
     public function index(Request $request)
     {
+        // ===== TÍNH TOÁN THỐNG KÊ CHO HERO SECTION =====
+        // FIXED: Chỉ đếm cuộc thi không phải Draft
+        $totalEvents = DB::table('cuocthi')
+            ->where('trangthai', '!=', 'Draft')
+            ->count();
+        
+        // Đếm tổng sinh viên tham gia từ cả 2 bảng (loại bỏ trùng lặp)
+        try {
+            $totalStudents = DB::table('dangkycanhan')
+                ->join('cuocthi', 'dangkycanhan.macuocthi', '=', 'cuocthi.macuocthi')
+                ->where('cuocthi.trangthai', '!=', 'Draft')
+                ->select('dangkycanhan.masinhvien')
+                ->union(
+                    DB::table('dangkydoithi')
+                        ->join('cuocthi', 'dangkydoithi.macuocthi', '=', 'cuocthi.macuocthi')
+                        ->join('doithi', 'dangkydoithi.madoithi', '=', 'doithi.madoithi')
+                        ->join('thanhviendoithi', 'doithi.madoithi', '=', 'thanhviendoithi.madoithi')
+                        ->where('cuocthi.trangthai', '!=', 'Draft')
+                        ->select('thanhviendoithi.masinhvien')
+                )
+                ->distinct()
+                ->count();
+        } catch (\Exception $e) {
+            // Cách 2: Nếu không có bảng thanhviendoithi
+            $totalStudents = DB::table('dangkycanhan')
+                ->join('cuocthi', 'dangkycanhan.macuocthi', '=', 'cuocthi.macuocthi')
+                ->where('cuocthi.trangthai', '!=', 'Draft')
+                ->distinct('dangkycanhan.masinhvien')
+                ->count() + 
+                DB::table('dangkydoithi')
+                    ->join('cuocthi', 'dangkydoithi.macuocthi', '=', 'cuocthi.macuocthi')
+                    ->where('cuocthi.trangthai', '!=', 'Draft')
+                    ->distinct('dangkydoithi.masinhvien')
+                    ->count();
+        }
+        
+        // FIXED: Chỉ đếm giải thưởng của cuộc thi không phải Draft
+        $totalPrizes = DB::table('datgiai')
+            ->join('cuocthi', 'datgiai.macuocthi', '=', 'cuocthi.macuocthi')
+            ->where('cuocthi.trangthai', '!=', 'Draft')
+            ->count();
+        
+        // ===== QUERY DANH SÁCH CUỘC THI =====
         $query = DB::table('cuocthi as ct')
             ->leftJoin('bomon as bm', 'ct.mabomon', '=', 'bm.mabomon')
             ->select(
@@ -32,15 +75,20 @@ class EventController extends Controller
                 'ct.trangthai',
                 'ct.dutrukinhphi',
                 'bm.tenbomon',
-                DB::raw('(SELECT COUNT(*) FROM dangkyduthi WHERE macuocthi = ct.macuocthi) as soluongdangky')
-            );
+                DB::raw('(
+                    (SELECT COUNT(*) FROM dangkycanhan WHERE macuocthi = ct.macuocthi) + 
+                    (SELECT COUNT(*) FROM dangkydoithi WHERE macuocthi = ct.macuocthi)
+                ) as soluongdangky')
+            )
+            // ✅ THÊM ĐIỀU KIỆN NÀY: Chỉ hiển thị cuộc thi không phải Draft
+            ->where('ct.trangthai', '!=', 'Draft');
 
         // Tìm kiếm theo tên
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function($q) use ($search) {
                 $q->where('ct.tencuocthi', 'ILIKE', "%{$search}%")
-                  ->orWhere('ct.mota', 'ILIKE', "%{$search}%");
+                ->orWhere('ct.mota', 'ILIKE', "%{$search}%");
             });
         }
 
@@ -51,16 +99,13 @@ class EventController extends Controller
 
             switch ($status) {
                 case 'upcoming':
-                    // Sắp diễn ra
                     $query->where('ct.thoigianbatdau', '>', $now);
                     break;
                 case 'ongoing':
-                    // Đang diễn ra
                     $query->where('ct.thoigianbatdau', '<=', $now)
-                          ->where('ct.thoigianketthuc', '>=', $now);
+                        ->where('ct.thoigianketthuc', '>=', $now);
                     break;
                 case 'ended':
-                    // Đã kết thúc
                     $query->where('ct.thoigianketthuc', '<', $now);
                     break;
             }
@@ -95,7 +140,7 @@ class EventController extends Controller
         $perPage = 6;
         $events = $query->paginate($perPage)->appends($request->query());
 
-        // Transform data để thêm các thuộc tính cần thiết
+        // Transform data
         $events->getCollection()->transform(function ($event) {
             $event->status_label = $this->getStatusLabel($event);
             $event->status_color = $this->getStatusColor($event);
@@ -106,14 +151,15 @@ class EventController extends Controller
             return $event;
         });
 
-        // Lấy danh sách loại cuộc thi để hiển thị trong filter
+        // Lấy danh sách loại cuộc thi (không bao gồm Draft)
         $categories = DB::table('cuocthi')
             ->select('loaicuocthi')
             ->distinct()
             ->whereNotNull('loaicuocthi')
+            ->where('trangthai', '!=', 'Draft')
             ->pluck('loaicuocthi');
 
-        return view('client.events.index', compact('events', 'categories'));
+        return view('client.events.index', compact('events', 'categories', 'totalEvents', 'totalStudents', 'totalPrizes'));
     }
 
     /**
@@ -134,8 +180,13 @@ class EventController extends Controller
                 'bm.tenbomon',
                 'bm.mota as motabomon',
                 'nd.hoten as truongbomon',
-                DB::raw('(SELECT COUNT(*) FROM dangkyduthi WHERE macuocthi = ct.macuocthi) as soluongdangky'),
-                DB::raw('(SELECT COUNT(DISTINCT madoithi) FROM dangkyduthi WHERE macuocthi = ct.macuocthi AND madoithi IS NOT NULL) as soluongdoi')
+                // FIXED: Tính tổng đăng ký từ cả 2 bảng
+                DB::raw('(
+                    (SELECT COUNT(*) FROM dangkycanhan WHERE macuocthi = ct.macuocthi) + 
+                    (SELECT COUNT(*) FROM dangkydoithi WHERE macuocthi = ct.macuocthi)
+                ) as soluongdangky'),
+                // FIXED: Đếm số đội từ bảng dangkydoithi
+                DB::raw('(SELECT COUNT(*) FROM dangkydoithi WHERE macuocthi = ct.macuocthi) as soluongdoi')
             )
             ->first();
 
@@ -193,7 +244,7 @@ class EventController extends Controller
         if ($now->lt($start)) {
             return 'Sắp diễn ra';
         } elseif ($now->between($start, $end)) {
-            return 'Đang mở đăng ký';
+            return 'Đang diễn ra';
         } else {
             return 'Đã kết thúc';
         }
@@ -313,12 +364,12 @@ class EventController extends Controller
     {
         $now = Carbon::now();
         $start = Carbon::parse($event->thoigianbatdau);
-        $end = Carbon::parse($event->thoigianketthuc);
-
-        // Chỉ cho đăng ký khi cuộc thi chưa bắt đầu hoặc đang diễn ra
-        // và trạng thái là Approved hoặc InProgress
-        return $now->lte($end) && 
-               in_array($event->trangthai, ['Approved', 'InProgress']);
+        
+        // CHỈ cho đăng ký khi cuộc thi CHƯA BẮT ĐẦU
+        // và trạng thái là Approved và có hình thức tham gia hợp lệ
+        return $now->lt($start) && 
+            in_array($event->trangthai, ['Approved', 'InProgress']) &&
+            !empty($event->hinhthucthamgia);
     }
 
     /**
@@ -337,9 +388,22 @@ class EventController extends Controller
         }
 
         if (!$this->canRegister($event)) {
+            $now = Carbon::now();
+            $start = Carbon::parse($event->thoigianbatdau);
+            $end = Carbon::parse($event->thoigianketthuc);
+            
+            // Tùy chỉnh thông báo theo trạng thái
+            if ($now->gte($start) && $now->lte($end)) {
+                $message = 'Cuộc thi đang diễn ra, không thể đăng ký thêm';
+            } elseif ($now->gt($end)) {
+                $message = 'Cuộc thi đã kết thúc';
+            } else {
+                $message = 'Cuộc thi này hiện không nhận đăng ký';
+            }
+            
             return redirect()
                 ->route('client.events.show', $slug)
-                ->with('error', 'Cuộc thi này hiện không nhận đăng ký');
+                ->with('error', $message);
         }
 
         return view('client.events.register', compact('event', 'slug'));
@@ -409,10 +473,10 @@ class EventController extends Controller
         // LẤY CẢ 2 LOẠI: ToChuc VÀ HoTroKyThuat
         $hoatdongs = DB::table('hoatdonghotro')
             ->where('macuocthi', $macuocthi)
-            ->where('loaihoatdong', 'HoTroKyThuat')  // ← SỬA DÒNG NÀY
+            ->where('loaihoatdong', 'HoTroKyThuat')
             ->where('thoigianketthuc', '>=', now())
-            ->orderBy('loaihoatdong', 'asc')  // Sắp xếp theo loại
-            ->orderBy('thoigianbatdau', 'asc')  // Rồi theo thời gian
+            ->orderBy('loaihoatdong', 'asc')
+            ->orderBy('thoigianbatdau', 'asc')
             ->get();
 
         return view('client.events.support', compact('cuocthi', 'hoatdongs', 'slug'));

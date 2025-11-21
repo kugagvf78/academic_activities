@@ -45,7 +45,7 @@
             
             {{-- Content --}}
             <div class="flex-1 pt-0.5">
-                <h4 class="font-bold text-gray-900 mb-1">Đăng xuất thành công!</h4>
+                <h4 class="font-bold text-gray-900 mb-1">Đăng ký thành công!</h4>
                 <p class="text-sm text-gray-600">{{ session('success') }}</p>
             </div>
             
@@ -105,22 +105,63 @@
                     class="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-600 font-medium">
             </div>
 
-            {{-- Hình thức tham gia --}}
+            {{-- ============================================ --}}
+            {{-- PHẦN SỬA: Hình thức tham gia --}}
+            {{-- ============================================ --}}
             <div class="mb-8">
                 <label class="block font-semibold text-gray-700 mb-3">Hình thức thi</label>
-                <div class="flex gap-6">
-                    <label class="flex items-center gap-2 cursor-pointer">
-                        <input type="radio" name="type" value="individual" x-model="type"
-                            class="text-blue-600 focus:ring-blue-500" required>
-                        <span class="text-gray-700 font-medium">Cá nhân</span>
-                    </label>
-                    <label class="flex items-center gap-2 cursor-pointer">
-                        <input type="radio" name="type" value="team" x-model="type"
-                            class="text-blue-600 focus:ring-blue-500" required>
-                        <span class="text-gray-700 font-medium">Theo nhóm</span>
-                    </label>
-                </div>
+                
+                @if($cuocthi->hinhthucthamgia === 'CaHai')
+                    {{-- Hiển thị cả 2 lựa chọn nếu cuộc thi cho phép cả hai --}}
+                    <div class="flex gap-6">
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="radio" name="type" value="individual" x-model="type"
+                                class="text-blue-600 focus:ring-blue-500" required>
+                            <span class="text-gray-700 font-medium">Cá nhân</span>
+                        </label>
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="radio" name="type" value="team" x-model="type"
+                                class="text-blue-600 focus:ring-blue-500" required>
+                            <span class="text-gray-700 font-medium">Theo nhóm</span>
+                        </label>
+                    </div>
+                @elseif($cuocthi->hinhthucthamgia === 'CaNhan')
+                    {{-- Chỉ cho phép đăng ký cá nhân --}}
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <input type="hidden" name="type" value="individual" x-model="type">
+                        <div class="flex items-center gap-2">
+                            <i class="fas fa-user text-blue-600"></i>
+                            <span class="text-gray-700 font-medium">Cuộc thi này chỉ cho phép đăng ký cá nhân</span>
+                        </div>
+                    </div>
+                @elseif($cuocthi->hinhthucthamgia === 'DoiNhom')
+                    {{-- Chỉ cho phép đăng ký theo đội --}}
+                    <div class="bg-green-50 border border-green-200 rounded-lg p-4">
+                        <input type="hidden" name="type" value="team" x-model="type">
+                        <div class="flex items-center gap-2">
+                            <i class="fas fa-users text-green-600"></i>
+                            <span class="text-gray-700 font-medium">Cuộc thi này chỉ cho phép đăng ký theo đội/nhóm</span>
+                        </div>
+                    </div>
+                @else
+                    {{-- Trường hợp không xác định (mặc định cho cả hai) --}}
+                    <div class="flex gap-6">
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="radio" name="type" value="individual" x-model="type"
+                                class="text-blue-600 focus:ring-blue-500" required>
+                            <span class="text-gray-700 font-medium">Cá nhân</span>
+                        </label>
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="radio" name="type" value="team" x-model="type"
+                                class="text-blue-600 focus:ring-blue-500" required>
+                            <span class="text-gray-700 font-medium">Theo nhóm</span>
+                        </label>
+                    </div>
+                @endif
             </div>
+            {{-- ============================================ --}}
+            {{-- HẾT PHẦN SỬA --}}
+            {{-- ============================================ --}}
 
             {{-- Tên đội (BẮT BUỘC cho cả cá nhân và nhóm) --}}
             <div class="mb-8">
@@ -252,9 +293,17 @@ function registrationForm() {
         studentCodeError: '',
 
         init() {
-            @if(old('type'))
+            // ============================================
+            // PHẦN SỬA: Set giá trị mặc định theo hình thức tham gia
+            // ============================================
+            @if($cuocthi->hinhthucthamgia === 'CaNhan')
+                this.type = 'individual';
+            @elseif($cuocthi->hinhthucthamgia === 'DoiNhom')
+                this.type = 'team';
+            @elseif(old('type'))
                 this.type = '{{ old('type') }}';
             @endif
+            // ============================================
             
             @if(old('team_name'))
                 this.teamName = '{{ old('team_name') }}';
@@ -279,6 +328,16 @@ function registrationForm() {
                     this.members = [];
                 }
             });
+            
+            // ============================================
+            // PHẦN SỬA: Tự động thêm thành viên nếu bắt buộc đăng ký theo đội
+            // ============================================
+            @if($cuocthi->hinhthucthamgia === 'DoiNhom')
+                if (this.members.length === 0) {
+                    this.addMember();
+                }
+            @endif
+            // ============================================
         },
 
         addMember() {

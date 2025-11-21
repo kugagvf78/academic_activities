@@ -394,7 +394,7 @@ class GiangVienDeThiController extends Controller
                     ($validated['trangthai'] === 'Draft' ? 'nháp' : 'đã lưu trữ');
 
         return redirect()->route('giangvien.dethi.show', $id)
-            ->with('success', "Cập nhật đề thi thành công! Trạng thái hiện tại: <strong>$statusLabel</strong>");
+            ->with('success', "Cập nhật đề thi thành công!");
     }
 
     /**

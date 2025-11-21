@@ -206,7 +206,7 @@
             {{-- Cột phải - Trạng thái & Hành động --}}
             <div class="space-y-6">
                 {{-- Trạng thái --}}
-                <div class="bg-white rounded-lg shadow-md p-6">
+                {{-- <div class="bg-white rounded-lg shadow-md p-6">
                     <h2 class="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2">
                         <i class="fas fa-toggle-on text-blue-600"></i>
                         Trạng thái
@@ -236,7 +236,7 @@
                             </ul>
                         </div>
                     </div>
-                </div>
+                </div> --}}
 
                 {{-- Hành động --}}
                 <div class="bg-white rounded-lg shadow-md p-6">

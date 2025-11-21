@@ -96,26 +96,35 @@ class GiangVienCuocThiController extends Controller
         $user = jwt_user();
         $giangvien = DB::table('giangvien')->where('manguoidung', $user->manguoidung)->first();
 
-        // Tạo mã cuộc thi tự động
-        $lastCuocthi = DB::table('cuocthi')
-            ->where('macuocthi', 'LIKE', 'CT%')
-            ->orderBy('macuocthi', 'desc')
-            ->first();
-        
-        if ($lastCuocthi && preg_match('/CT(\d+)/', $lastCuocthi->macuocthi, $matches)) {
-            $lastNumber = intval($matches[1]);
-            $newNumber = $lastNumber + 1;
-        } else {
-            $newNumber = 1;
-        }
-        
-        $validated['macuocthi'] = 'CT' . str_pad($newNumber, 4, '0', STR_PAD_LEFT);
-        $validated['mabomon'] = $giangvien->mabomon;
-        $validated['trangthai'] = 'Draft';
-        $validated['ngaytao'] = now();
-        $validated['ngaycapnhat'] = now();
+        // Tạo mã cuộc thi tự động - FIX: Sử dụng DB transaction và lock
+        DB::beginTransaction();
+        try {
+            // Lấy số cuối cùng với FOR UPDATE để tránh duplicate
+            $lastCuocthi = DB::table('cuocthi')
+                ->where('macuocthi', 'LIKE', 'CT%')
+                ->orderByRaw('CAST(SUBSTRING(macuocthi FROM 3) AS INTEGER) DESC')
+                ->lockForUpdate()
+                ->first();
+            
+            if ($lastCuocthi && preg_match('/CT(\d+)/', $lastCuocthi->macuocthi, $matches)) {
+                $newNumber = intval($matches[1]) + 1;
+            } else {
+                $newNumber = 1;
+            }
+            
+            $validated['macuocthi'] = 'CT' . str_pad($newNumber, 4, '0', STR_PAD_LEFT);
+            $validated['mabomon'] = $giangvien->mabomon;
+            $validated['trangthai'] = 'Draft';
+            $validated['ngaytao'] = now();
+            $validated['ngaycapnhat'] = now();
 
-        DB::table('cuocthi')->insert($validated);
+            DB::table('cuocthi')->insert($validated);
+            
+            DB::commit();
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->withInput()->with('error', 'Có lỗi xảy ra khi tạo cuộc thi. Vui lòng thử lại!');
+        }
 
         return redirect()->route('giangvien.cuocthi.index')
             ->with('success', 'Tạo cuộc thi thành công!');
@@ -231,6 +240,11 @@ class GiangVienCuocThiController extends Controller
     // Helper methods
     private function getStatusLabel($event)
     {
+        // Nếu trạng thái là Draft -> hiển thị "Nháp"
+        if ($event->trangthai == 'Draft') {
+            return 'Nháp';
+        }
+        
         $now = Carbon::now();
         $start = Carbon::parse($event->thoigianbatdau);
         $end = Carbon::parse($event->thoigianketthuc);
@@ -246,6 +260,11 @@ class GiangVienCuocThiController extends Controller
 
     private function getStatusColor($event)
     {
+        // Nếu trạng thái là Draft -> màu xám
+        if ($event->trangthai == 'Draft') {
+            return 'gray';
+        }
+        
         $now = Carbon::now();
         $start = Carbon::parse($event->thoigianbatdau);
         $end = Carbon::parse($event->thoigianketthuc);

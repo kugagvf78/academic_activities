@@ -2,7 +2,7 @@
 @section('title', 'Danh sách bài cần chấm')
 
 @section('content')
-{{-- HERO SECTION - ĐÃ ĐẸP --}}
+{{-- HERO SECTION --}}
 <section class="relative bg-gradient-to-br from-blue-700 via-blue-600 to-cyan-500 text-white py-24 overflow-hidden">
     <div class="absolute inset-0 opacity-10">
         <div class="absolute inset-0" style="background-image: url('data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'%23ffffff\' fill-opacity=\'1\'%3E%3Cpath d=\'M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6z\'/%3E%3C/g%3E%3C/svg%3E');"></div>
@@ -48,7 +48,7 @@
             <div class="lg:col-span-2 relative">
                 <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
                 <input type="text" name="search" value="{{ request('search') }}" 
-                    placeholder="Tìm theo mã sinh viên, tên sinh viên..." 
+                    placeholder="Tìm theo mã sinh viên, tên sinh viên, tên đội..." 
                     class="w-full pl-12 pr-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition">
             </div>
 
@@ -85,11 +85,11 @@
 <section class="container mx-auto px-6 py-12">
     @if($ketquaList->count() > 0)
         <div class="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
-            {{-- Header - đổi từ tím sang xanh dương nhạt --}}
+            {{-- Header --}}
             <div class="bg-gradient-to-r from-blue-50 to-cyan-50 px-6 py-4 border-b border-gray-200">
                 <div class="grid lg:grid-cols-12 gap-4 text-sm font-semibold text-gray-700">
                     <div class="lg:col-span-1">STT</div>
-                    <div class="lg:col-span-2">Sinh viên</div>
+                    <div class="lg:col-span-2">Thí sinh</div>
                     <div class="lg:col-span-3">Cuộc thi</div>
                     <div class="lg:col-span-2">Đề thi</div>
                     <div class="lg:col-span-2">Thời gian nộp</div>
@@ -99,6 +99,27 @@
 
             <div class="divide-y divide-gray-100">
                 @foreach ($ketquaList as $index => $ketqua)
+                @php
+                    // Xử lý hiển thị tên thí sinh (Cá nhân hoặc Đội)
+                    $tenThiSinh = 'N/A';
+                    $maThiSinh = 'N/A';
+                    $loaiDangKy = $ketqua->baithi->loaidangky ?? 'CaNhan';
+                    
+                    if ($loaiDangKy == 'CaNhan' && $ketqua->baithi->dangkycanhan) {
+                        $sinhvien = $ketqua->baithi->dangkycanhan->sinhvien;
+                        if ($sinhvien && $sinhvien->nguoiDung) {
+                            $tenThiSinh = $sinhvien->nguoiDung->hoten;
+                            $maThiSinh = $sinhvien->masinhvien;
+                        }
+                    } elseif ($loaiDangKy == 'DoiNhom' && $ketqua->baithi->dangkydoi) {
+                        $doithi = $ketqua->baithi->dangkydoi->doithi;
+                        if ($doithi) {
+                            $tenThiSinh = $doithi->tendoi;
+                            $maThiSinh = $doithi->madoi;
+                        }
+                    }
+                @endphp
+                
                 <div class="px-6 py-4 hover:bg-blue-50/50 transition group">
                     <div class="grid lg:grid-cols-12 gap-4 items-center">
                         <div class="lg:col-span-1">
@@ -110,11 +131,20 @@
                         <div class="lg:col-span-2">
                             <div class="flex items-center gap-3">
                                 <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-full flex items-center justify-center text-white font-bold shadow-md">
-                                    {{ strtoupper(substr($ketqua->baithi->sinhvien->nguoiDung->hoten ?? 'SV', 0, 2)) }}
+                                    @if($loaiDangKy == 'CaNhan')
+                                        <i class="fas fa-user"></i>
+                                    @else
+                                        <i class="fas fa-users"></i>
+                                    @endif
                                 </div>
                                 <div>
-                                    <div class="font-semibold text-gray-800">{{ $ketqua->baithi->sinhvien->nguoiDung->hoten ?? 'N/A' }}</div>
-                                    <div class="text-sm text-gray-500">{{ $ketqua->baithi->sinhvien->masinhvien ?? 'N/A' }}</div>
+                                    <div class="font-semibold text-gray-800">{{ $tenThiSinh }}</div>
+                                    <div class="text-sm text-gray-500">{{ $maThiSinh }}</div>
+                                    @if($loaiDangKy == 'DoiNhom')
+                                    <div class="text-xs text-blue-600 mt-0.5">
+                                        <i class="fas fa-users mr-1"></i>Đội thi
+                                    </div>
+                                    @endif
                                 </div>
                             </div>
                         </div>
@@ -125,7 +155,11 @@
                             </div>
                             <div class="text-sm text-gray-500 mt-1">
                                 <i class="fas fa-calendar text-blue-500 mr-1"></i>
-                                {{ $ketqua->baithi->dethi->cuocthi->thoigianbatdau ? \Carbon\Carbon::parse($ketqua->baithi->dethi->cuocthi->thoigianbatdau)->format('d/m/Y') : 'N/A' }}
+                                @if($ketqua->baithi->dethi->cuocthi && $ketqua->baithi->dethi->cuocthi->thoigianbatdau)
+                                    {{ \Carbon\Carbon::parse($ketqua->baithi->dethi->cuocthi->thoigianbatdau)->format('d/m/Y') }}
+                                @else
+                                    N/A
+                                @endif
                             </div>
                         </div>
 
@@ -141,7 +175,11 @@
                         <div class="lg:col-span-2">
                             <div class="text-gray-700">
                                 <i class="far fa-clock text-gray-400 mr-1"></i>
-                                {{ $ketqua->created_at ? \Carbon\Carbon::parse($ketqua->created_at)->format('H:i d/m/Y') : 'N/A' }}
+                                @if($ketqua->baithi->thoigiannop)
+                                    {{ \Carbon\Carbon::parse($ketqua->baithi->thoigiannop)->format('H:i d/m/Y') }}
+                                @else
+                                    N/A
+                                @endif
                             </div>
                         </div>
 
@@ -191,4 +229,5 @@
         </div>
     @endif
 </section>
+
 @endsection

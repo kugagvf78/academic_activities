@@ -663,14 +663,20 @@
                                 <div class="flex items-start justify-between mb-3">
                                     <div class="flex-1">
                                         <div class="flex items-center gap-2 mb-1">
-                                            <h3 class="text-lg font-semibold 
-                                                {{ $reg->loaidangky === 'CaNhan' ? 'text-blue-700' : 'text-blue-700' }}">
+                                            <h3 class="text-lg font-semibold text-blue-700">
                                                 {{ $reg->tencuocthi }}
                                             </h3>
                                             <span class="px-2 py-0.5 text-xs font-medium rounded-full
                                                 {{ $reg->loaidangky === 'CaNhan' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700' }}">
                                                 {{ $reg->loaidangky === 'CaNhan' ? 'Cá nhân' : 'Đội nhóm' }}
                                             </span>
+
+                                            {{-- Badge NỘP BÀI --}}
+                                            @if($reg->mabaithi)
+                                                <span class="px-2 py-0.5 text-xs font-medium rounded-full bg-green-100 text-green-700">
+                                                    <i class="fa-solid fa-check-circle"></i> Đã nộp bài
+                                                </span>
+                                            @endif
                                         </div>
 
                                         @if($reg->loaidangky === 'DoiNhom')
@@ -709,41 +715,70 @@
                                         <span>Đăng ký: {{ $reg->ngaydangky->format('d/m/Y H:i') }}</span>
                                     </div>
                                     <div class="flex items-center gap-2">
-                                        <i class="fa-solid fa-circle-info w-4 text-orange-500"></i>
-                                        <span class="font-medium
-                                            {{ $reg->trangthai === 'Registered' ? 'text-blue-600' : '' }}
-                                            {{ $reg->trangthai === 'Confirmed' ? 'text-green-600' : '' }}
-                                            {{ $reg->trangthai === 'Cancelled' ? 'text-red-600' : '' }}">
-                                            {{ $reg->trangthai }}
-                                        </span>
+                                        <i class="fa-solid fa-hourglass-end w-4 text-orange-500"></i>
+                                        <span class="font-medium">Hạn nộp: {{ $reg->submitDeadline->format('d/m/Y H:i') }}</span>
                                     </div>
                                 </div>
 
-                                {{-- Cancel Button --}}
-                                @if($reg->canCancel && $reg->trangthai !== 'Cancelled')
-                                    <div class="border-t border-gray-200 pt-3 mt-3 flex justify-end">
-                                        @if($reg->loaidangky === 'CaNhan')
-                                            <form action="{{ route('profile.competition.cancel', $reg->id) }}" 
-                                                method="POST" 
-                                                onsubmit="return confirm('Bạn có chắc muốn hủy đăng ký này?');">
-                                                @csrf @method('DELETE')
-                                                <button type="submit" 
-                                                        class="text-sm px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 font-medium rounded-md transition flex items-center gap-1">
-                                                    <i class="fa-solid fa-xmark"></i> Hủy đăng ký
-                                                </button>
-                                            </form>
+                                {{-- Thông tin NỘP BÀI --}}
+                                @if($reg->mabaithi)
+                                    <div class="border-t border-gray-200 pt-3 mt-3">
+                                        <div class="flex items-center gap-2 text-green-600">
+                                            <i class="fa-solid fa-file-circle-check"></i>
+                                            <span class="font-medium">Đã nộp bài</span>
+                                            <span class="text-xs text-gray-500">
+                                                ({{ $reg->thoigiannop->format('d/m/Y H:i') }})
+                                            </span>
+                                        </div>
+                                    </div>
+                                @endif
+
+                                {{-- Actions: NỘP BÀI hoặc HỦY --}}
+                                @if(!$reg->mabaithi && $reg->trangthai !== 'Cancelled')
+                                    <div class="border-t border-gray-200 pt-3 mt-3 flex justify-between items-center">
+                                        {{-- Nút NỘP BÀI (hiện SAU KHI cuộc thi kết thúc) --}}
+                                        @if($reg->canSubmit)
+                                            <a href="{{ route('profile.competition.submit.form', ['id' => $reg->id, 'loaidangky' => $reg->loaidangky]) }}"
+                                            class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-md text-sm transition flex items-center gap-2">
+                                                <i class="fa-solid fa-file-arrow-up"></i> Nộp bài thi
+                                            </a>
+                                        @else
+                                            @if($reg->status === 'ended')
+                                                <span class="text-sm text-red-600 font-medium">
+                                                    <i class="fa-solid fa-exclamation-circle"></i> Đã hết hạn nộp bài
+                                                </span>
+                                            @else
+                                                <span class="text-sm text-gray-500">
+                                                    <i class="fa-solid fa-clock"></i> Nộp bài sau khi cuộc thi kết thúc
+                                                </span>
+                                            @endif
                                         @endif
 
-                                        @if($reg->loaidangky === 'DoiNhom' && $reg->vaitro === 'TruongDoi')
-                                            <form action="{{ route('profile.competition.cancel', $reg->id) }}" 
-                                                method="POST" 
-                                                onsubmit="return confirm('⚠️ HỦY ĐĂNG KÝ ĐỘI\n\nToàn bộ đội sẽ bị hủy. Bạn có chắc chắn?');">
-                                                @csrf @method('DELETE')
-                                                <button type="submit" 
-                                                        class="text-sm px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 font-medium rounded-md transition flex items-center gap-1">
-                                                    <i class="fa-solid fa-user-xmark"></i> Hủy đội
-                                                </button>
-                                            </form>
+                                        {{-- Nút HỦY ĐĂNG KÝ (chỉ trước khi thi) --}}
+                                        @if($reg->canCancel)
+                                            @if($reg->loaidangky === 'CaNhan')
+                                                <form action="{{ route('profile.competition.cancel', $reg->id) }}" 
+                                                    method="POST" 
+                                                    onsubmit="return confirm('Bạn có chắc muốn hủy đăng ký này?');">
+                                                    @csrf @method('DELETE')
+                                                    <button type="submit" 
+                                                            class="text-sm px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 font-medium rounded-md transition flex items-center gap-1">
+                                                        <i class="fa-solid fa-xmark"></i> Hủy đăng ký
+                                                    </button>
+                                                </form>
+                                            @endif
+
+                                            @if($reg->loaidangky === 'DoiNhom' && $reg->vaitro === 'TruongDoi')
+                                                <form action="{{ route('profile.competition.cancel', $reg->id) }}" 
+                                                    method="POST" 
+                                                    onsubmit="return confirm('⚠️ HỦY ĐĂNG KÝ ĐỘI\n\nToàn bộ đội sẽ bị hủy. Bạn có chắc chắn?');">
+                                                    @csrf @method('DELETE')
+                                                    <button type="submit" 
+                                                            class="text-sm px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-700 font-medium rounded-md transition flex items-center gap-1">
+                                                        <i class="fa-solid fa-user-xmark"></i> Hủy đội
+                                                    </button>
+                                                </form>
+                                            @endif
                                         @endif
                                     </div>
                                 @endif
@@ -753,14 +788,6 @@
                                     <div class="mt-3 p-2 bg-blue-50 border border-blue-200 rounded text-xs text-blue-700">
                                         <i class="fa-solid fa-info-circle mr-1"></i>
                                         Chỉ trưởng đội mới có thể hủy đăng ký đội.
-                                    </div>
-                                @endif
-
-                                {{-- Không thể hủy --}}
-                                @if($reg->status === 'upcoming' && !$reg->canCancel && $reg->trangthai !== 'Cancelled')
-                                    <div class="mt-3 p-2 bg-amber-50 border border-amber-200 rounded text-xs text-amber-700">
-                                        <i class="fa-solid fa-exclamation-triangle mr-1"></i>
-                                        Không thể hủy vì cuộc thi đã bắt đầu hoặc sắp diễn ra.
                                     </div>
                                 @endif
 
@@ -782,9 +809,10 @@
                             </h4>
                             <ul class="space-y-1 text-gray-600">
                                 <li>• Chỉ hủy được <strong>trước khi cuộc thi bắt đầu</strong>.</li>
+                                <li>• <strong>Nộp bài:</strong> Sau khi cuộc thi kết thúc, bạn có <strong>24 giờ</strong> để nộp bài.</li>
                                 <li>• <strong>Cá nhân:</strong> Tự hủy bất kỳ lúc nào.</li>
                                 <li>• <strong>Đội nhóm:</strong> Chỉ trưởng đội mới được hủy toàn đội.</li>
-                                <li>• Khi hủy đội, <strong>toàn bộ thành viên</strong> sẽ bị xóa đăng ký.</li>
+                                <li>• Sau khi hết hạn nộp bài, hệ thống sẽ <strong>không cho nộp</strong> nữa.</li>
                             </ul>
                         </div>
                     @endif

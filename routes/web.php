@@ -185,6 +185,9 @@ Route::middleware(['jwt.web', 'role:SinhVien'])
         Route::get('/diem-ren-luyen/export', 'exportDiemRenLuyenPDF')->name('diem.export');
         Route::delete('/activity/cancel/{madangkyhoatdong}', 'cancelActivityRegistration')->name('activity.cancel');
         Route::delete('/competition/cancel/{id}', 'cancelCompetitionRegistration')->name('competition.cancel');
+    
+        Route::get('/competition/{id}/{loaidangky}/submit', 'showSubmitExam')->name('competition.submit.form');
+        Route::post('/competition/{id}/{loaidangky}/submit', 'submitExam')->name('competition.submit');
     });
 
 /*
@@ -232,6 +235,10 @@ Route::middleware(['jwt.web', 'role:GiangVien'])
 
             // Route::get('/{id}/view-file', 'viewFile')->name('view-file');
             Route::get('/{id}/download-file', 'downloadFile')->name('download-file');
+
+            // THÊM 2 ROUTES MỚI
+            Route::get('/{id}/bai-thi/{baithiId}/download', 'downloadBaiThi')->name('download-baithi');
+            Route::post('/{id}/download-multiple', 'downloadMultipleBaiThi')->name('download-multiple');
             
             // API lấy vòng thi
             Route::get('/api/vongthi/{macuocthi}', 'getVongThi')->name('api.vongthi');

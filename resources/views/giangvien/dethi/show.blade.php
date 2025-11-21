@@ -176,73 +176,170 @@
             {{-- Danh sách bài thi --}}
             <div class="bg-white rounded-lg shadow-md overflow-hidden">
                 <div class="bg-gray-50 px-6 py-4 border-b border-gray-200">
-                    <h2 class="text-xl font-bold text-gray-800 flex items-center gap-2">
-                        <i class="fas fa-file-invoice"></i>
-                        Danh sách bài thi
-                        <span class="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-sm font-medium ml-2">
-                            {{ $dethi->sobaithi }} bài
-                        </span>
-                    </h2>
+                    <div class="flex items-center justify-between">
+                        <h2 class="text-xl font-bold text-gray-800 flex items-center gap-2">
+                            <i class="fas fa-file-invoice"></i>
+                            Danh sách bài thi
+                            <span class="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-sm font-medium ml-2">
+                                {{ $dethi->sobaithi }} bài
+                            </span>
+                        </h2>
+                        
+                        @if($baithiList->count() > 0)
+                            <button type="button" 
+                                id="downloadSelectedBtn"
+                                onclick="downloadSelected()"
+                                class="hidden px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition flex items-center gap-2">
+                                <i class="fas fa-download"></i>
+                                Tải đã chọn (<span id="selectedCount">0</span>)
+                            </button>
+                        @endif
+                    </div>
                 </div>
 
                 @if($baithiList->count() > 0)
-                    <div class="overflow-x-auto">
-                        <table class="min-w-full divide-y divide-gray-200">
-                            <thead class="bg-gray-50">
-                                <tr>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Sinh viên</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Đội thi</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Thời gian nộp</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Điểm</th>
-                                    <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Thao tác</th>
-                                </tr>
-                            </thead>
-                            <tbody class="bg-white divide-y divide-gray-200">
-                                @foreach($baithiList as $bt)
-                                    <tr class="hover:bg-gray-50">
-                                        <td class="px-6 py-4">
-                                            @if($bt->masinhvien)
-                                                <div class="font-medium text-gray-800">{{ $bt->sinhvien_ten }}</div>
-                                                <div class="text-sm text-gray-500">{{ $bt->masinhvien }}</div>
-                                            @else
-                                                <span class="text-gray-400">--</span>
-                                            @endif
-                                        </td>
-                                        <td class="px-6 py-4">
-                                            @if($bt->tendoithi)
-                                                <span class="text-gray-800">{{ $bt->tendoithi }}</span>
-                                            @else
-                                                <span class="text-gray-400">Cá nhân</span>
-                                            @endif
-                                        </td>
-                                        <td class="px-6 py-4 text-sm text-gray-600">
-                                            @if($bt->thoigiannop)
-                                                {{ \Carbon\Carbon::parse($bt->thoigiannop)->format('d/m/Y H:i') }}
-                                            @else
-                                                <span class="text-yellow-600">Chưa nộp</span>
-                                            @endif
-                                        </td>
-                                        <td class="px-6 py-4">
-                                            @if($bt->diemso !== null)
-                                                <span class="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium">
-                                                    {{ $bt->diemso }} điểm
-                                                </span>
-                                            @else
-                                                <span class="text-gray-400">Chưa chấm</span>
-                                            @endif
-                                        </td>
-                                        <td class="px-6 py-4 text-center">
-                                            <a href="#" 
-                                                class="text-blue-600 hover:text-blue-800" 
-                                                title="Xem chi tiết">
-                                                <i class="fas fa-eye"></i>
-                                            </a>
-                                        </td>
+                    <form id="downloadForm" action="{{ route('giangvien.dethi.download-multiple', $dethi->madethi) }}" method="POST">
+                        @csrf
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50">
+                                    <tr>
+                                        <th class="px-6 py-3 text-left">
+                                            <input type="checkbox" 
+                                                id="selectAll" 
+                                                onchange="toggleSelectAll(this)"
+                                                class="w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500">
+                                        </th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Sinh viên</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Đội thi</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Thời gian nộp</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Điểm</th>
+                                        <th class="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Thao tác</th>
                                     </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    </div>
+                                </thead>
+                                <tbody class="bg-white divide-y divide-gray-200">
+                                    @foreach($baithiList as $bt)
+                                        <tr class="hover:bg-gray-50">
+                                            <td class="px-6 py-4">
+                                                @if($bt->filebaithi)
+                                                    <input type="checkbox" 
+                                                        name="baithi_ids[]" 
+                                                        value="{{ $bt->mabaithi }}"
+                                                        onchange="updateSelectedCount()"
+                                                        class="baithi-checkbox w-4 h-4 text-blue-600 rounded focus:ring-2 focus:ring-blue-500">
+                                                @else
+                                                    <span class="text-gray-300" title="Không có file">
+                                                        <i class="fas fa-minus"></i>
+                                                    </span>
+                                                @endif
+                                            </td>
+                                            <td class="px-6 py-4">
+                                                @if($bt->masinhvien)
+                                                    <div class="font-medium text-gray-800">{{ $bt->sinhvien_ten }}</div>
+                                                    <div class="text-sm text-gray-500">{{ $bt->masinhvien }}</div>
+                                                @else
+                                                    <span class="text-gray-400">--</span>
+                                                @endif
+                                            </td>
+                                            <td class="px-6 py-4">
+                                                @if($bt->tendoithi)
+                                                    <span class="text-gray-800">{{ $bt->tendoithi }}</span>
+                                                @else
+                                                    <span class="text-gray-400">Cá nhân</span>
+                                                @endif
+                                            </td>
+                                            <td class="px-6 py-4 text-sm text-gray-600">
+                                                @if($bt->thoigiannop)
+                                                    {{ \Carbon\Carbon::parse($bt->thoigiannop)->format('d/m/Y H:i') }}
+                                                @else
+                                                    <span class="text-yellow-600">Chưa nộp</span>
+                                                @endif
+                                            </td>
+                                            <td class="px-6 py-4">
+                                                @if($bt->diemso !== null)
+                                                    <span class="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium">
+                                                        {{ $bt->diemso }} điểm
+                                                    </span>
+                                                @else
+                                                    <span class="text-gray-400">Chưa chấm</span>
+                                                @endif
+                                            </td>
+                                            <td class="px-6 py-4 text-center">
+                                                @if($bt->filebaithi)
+                                                    <a href="{{ route('giangvien.dethi.download-baithi', [$dethi->madethi, $bt->mabaithi]) }}" 
+                                                        class="inline-flex items-center gap-1 px-3 py-1 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded transition"
+                                                        title="Tải file bài thi">
+                                                        <i class="fas fa-download"></i>
+                                                        <span class="text-sm">Tải</span>
+                                                    </a>
+                                                @else
+                                                    <span class="text-gray-400 text-sm">Không có file</span>
+                                                @endif
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    </form>
+
+                    {{-- JavaScript cho checkbox --}}
+                    <script>
+                        function toggleSelectAll(checkbox) {
+                            const checkboxes = document.querySelectorAll('.baithi-checkbox');
+                            checkboxes.forEach(cb => {
+                                cb.checked = checkbox.checked;
+                            });
+                            updateSelectedCount();
+                        }
+
+                        function updateSelectedCount() {
+                            const checkedBoxes = document.querySelectorAll('.baithi-checkbox:checked');
+                            const count = checkedBoxes.length;
+                            const downloadBtn = document.getElementById('downloadSelectedBtn');
+                            const countSpan = document.getElementById('selectedCount');
+                            
+                            countSpan.textContent = count;
+                            
+                            if (count > 0) {
+                                downloadBtn.classList.remove('hidden');
+                                downloadBtn.classList.add('flex');
+                            } else {
+                                downloadBtn.classList.add('hidden');
+                                downloadBtn.classList.remove('flex');
+                            }
+
+                            // Cập nhật trạng thái checkbox "Chọn tất cả"
+                            const allCheckboxes = document.querySelectorAll('.baithi-checkbox');
+                            const selectAllCheckbox = document.getElementById('selectAll');
+                            selectAllCheckbox.checked = allCheckboxes.length > 0 && 
+                                                    allCheckboxes.length === checkedBoxes.length;
+                        }
+
+                        function downloadSelected() {
+                            const checkedBoxes = document.querySelectorAll('.baithi-checkbox:checked');
+                            
+                            if (checkedBoxes.length === 0) {
+                                alert('Vui lòng chọn ít nhất một bài thi để tải');
+                                return;
+                            }
+
+                            // Hiển thị loading
+                            const btn = document.getElementById('downloadSelectedBtn');
+                            const originalHTML = btn.innerHTML;
+                            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang tạo file...';
+                            btn.disabled = true;
+
+                            // Submit form
+                            document.getElementById('downloadForm').submit();
+
+                            // Reset button sau 3 giây
+                            setTimeout(() => {
+                                btn.innerHTML = originalHTML;
+                                btn.disabled = false;
+                            }, 3000);
+                        }
+                    </script>
                 @else
                     <div class="px-6 py-12 text-center text-gray-500">
                         <i class="fas fa-inbox text-6xl text-gray-300 mb-4"></i>

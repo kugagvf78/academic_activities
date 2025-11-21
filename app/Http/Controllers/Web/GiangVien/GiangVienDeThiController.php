@@ -7,6 +7,10 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Storage;
+use ZipArchive;
+use Illuminate\Support\Facades\Response;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Log;
 
 class GiangVienDeThiController extends Controller
 {
@@ -107,48 +111,63 @@ class GiangVienDeThiController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'tendethi' => 'required|string|max:255',
-            'macuocthi' => 'required|string|exists:cuocthi,macuocthi',
-            'loaidethi' => 'required|in:LyThuyet,ThucHanh,VietBao,Khac',
+            'tendethi'       => 'required|string|max:255',
+            'macuocthi'      => 'required|string|exists:cuocthi,macuocthi',
+            'loaidethi'      => 'required|in:LyThuyet,ThucHanh,VietBao,Khac',
             'thoigianlambai' => 'required|integer|min:1|max:999',
-            'diemtoida' => 'required|numeric|min:0|max:100',
-            'trangthai' => 'required|in:Draft,Active,Archived',
-            'file_dethi' => 'nullable|file|mimes:pdf,docx,doc,zip|max:20480',
+            'diemtoida'      => 'required|numeric|min:0|max:100',
+            'trangthai'      => 'sometimes|in:Draft,Published,Archived', // Không bắt buộc nữa
+            'file_dethi'     => 'nullable|file|mimes:pdf,docx,doc,zip|max:20480',
         ]);
 
         $user = jwt_user();
         $giangvien = DB::table('giangvien')->where('manguoidung', $user->manguoidung)->first();
+        if (!$giangvien) {
+            return redirect()->route('login')->with('error', 'Không tìm thấy thông tin giảng viên!');
+        }
 
         // Tạo mã đề thi tự động
         $lastDethi = DB::table('dethi')
             ->where('madethi', 'LIKE', 'DT%')
             ->orderByRaw("CAST(SUBSTRING(madethi FROM 3) AS INTEGER) DESC")
             ->first();
-        
+
+        $newNumber = 1;
         if ($lastDethi && preg_match('/DT(\d+)/', $lastDethi->madethi, $matches)) {
             $newNumber = intval($matches[1]) + 1;
-        } else {
-            $newNumber = 1;
         }
-        
-        $validated['madethi'] = 'DT' . str_pad($newNumber, 4, '0', STR_PAD_LEFT);
-        $validated['nguoitao'] = $giangvien->magiangvien;
-        $validated['ngaytao'] = now();
+
+        $madethi = 'DT' . str_pad($newNumber, 4, '0', STR_PAD_LEFT);
 
         // Upload file nếu có
+        $filePath = null;
         if ($request->hasFile('file_dethi')) {
             $file = $request->file('file_dethi');
             $filename = time() . '_' . preg_replace('/[^A-Za-z0-9._-]/', '_', $file->getClientOriginalName());
-            $path = $file->storeAs('dethi', $filename, 'public');
-            $validated['filedethi'] = $path;
+            $filePath = $file->storeAs('dethi', $filename, 'public');
         }
 
-        unset($validated['file_dethi']);
+        // TỰ ĐỘNG: Nếu có file → trạng thái = Published
+        // Nếu không có file → dùng trạng thái người dùng chọn, mặc định Draft
+        $trangthai = $filePath ? 'Published' : ($request->trangthai ?? 'Draft');
 
-        DB::table('dethi')->insert($validated);
+        DB::table('dethi')->insert([
+            'madethi'         => $madethi,
+            'tendethi'        => $validated['tendethi'],
+            'macuocthi'       => $validated['macuocthi'],
+            'loaidethi'       => $validated['loaidethi'],
+            'thoigianlambai'  => $validated['thoigianlambai'],
+            'diemtoida'       => $validated['diemtoida'],
+            'trangthai'       => $trangthai,
+            'filedethi'       => $filePath,
+            'nguoitao'        => $giangvien->magiangvien,
+            'ngaytao'         => now(),
+        ]);
+
+        $statusLabel = $trangthai === 'Published' ? 'đã công khai' : 'nháp';
 
         return redirect()->route('giangvien.dethi.index')
-            ->with('success', 'Tạo đề thi thành công!');
+            ->with('success', "Tạo đề thi thành công! Đề thi hiện đang ở trạng thái: <strong>$statusLabel</strong>");
     }
 
     /**
@@ -187,18 +206,21 @@ class GiangVienDeThiController extends Controller
             ->where('madethi', $id)
             ->count();
 
+        // SỬA: JOIN với bảng ketquathi để lấy điểm
         $baithiList = DB::table('baithi as bt')
             ->leftJoin('dangkycanhan as dkcn', 'bt.madangkycanhan', '=', 'dkcn.madangkycanhan')
             ->leftJoin('dangkydoithi as dkdt', 'bt.madangkydoi', '=', 'dkdt.madangkydoi')
             ->leftJoin('sinhvien as sv', 'dkcn.masinhvien', '=', 'sv.masinhvien')
             ->leftJoin('doithi as d', 'dkdt.madoithi', '=', 'd.madoithi')
             ->leftJoin('nguoidung as nd', 'sv.manguoidung', '=', 'nd.manguoidung')
+            ->leftJoin('ketquathi as kq', 'bt.mabaithi', '=', 'kq.mabaithi') // JOIN thêm bảng ketquathi
             ->where('bt.madethi', $id)
             ->select(
                 'bt.*',
                 'sv.masinhvien',
                 'nd.hoten as sinhvien_ten',
-                'd.tendoithi'
+                'd.tendoithi',
+                'kq.diem as diemso' // Lấy điểm từ bảng ketquathi
             )
             ->orderBy('bt.thoigiannop', 'desc')
             ->get();
@@ -273,7 +295,15 @@ class GiangVienDeThiController extends Controller
         $user = jwt_user();
         $giangvien = DB::table('giangvien')->where('manguoidung', $user->manguoidung)->first();
         
-        $dethi = DB::table('dethi')->where('madethi', $id)->first();
+        $dethi = DB::table('dethi as dt')
+        ->leftJoin('giangvien as gv', 'dt.nguoitao', '=', 'gv.magiangvien')
+        ->leftJoin('nguoidung as nd', 'gv.manguoidung', '=', 'nd.manguoidung')
+        ->where('dt.madethi', $id)
+        ->select(
+            'dt.*',
+            'nd.hoten as nguoitao_ten'
+        )
+        ->first();
         
         if (!$dethi) {
             abort(404, 'Không tìm thấy đề thi');
@@ -306,20 +336,22 @@ class GiangVienDeThiController extends Controller
     public function update(Request $request, $id)
     {
         $validated = $request->validate([
-            'tendethi' => 'required|string|max:255',
-            'macuocthi' => 'required|string|exists:cuocthi,macuocthi',
-            'loaidethi' => 'required|in:LyThuyet,ThucHanh,VietBao,Khac',
+            'tendethi'       => 'required|string|max:255',
+            'macuocthi'      => 'required|string|exists:cuocthi,macuocthi',
+            'loaidethi'      => 'required|in:LyThuyet,ThucHanh,VietBao,Khac',
             'thoigianlambai' => 'required|integer|min:1|max:999',
-            'diemtoida' => 'required|numeric|min:0|max:100',
-            'trangthai' => 'required|in:Draft,Active,Archived',
-            'file_dethi' => 'nullable|file|mimes:pdf,docx,doc,zip|max:20480',
+            'diemtoida'      => 'required|numeric|min:0|max:100',
+            'trangthai'      => 'sometimes|in:Draft,Published,Archived', // Không bắt buộc nếu có file
+            'file_dethi'     => 'nullable|file|mimes:pdf,docx,doc,zip|max:20480',
         ]);
 
         $user = jwt_user();
         $giangvien = DB::table('giangvien')->where('manguoidung', $user->manguoidung)->first();
-        
+        if (!$giangvien) {
+            return redirect()->route('login')->with('error', 'Không tìm thấy thông tin giảng viên!');
+        }
+
         $dethi = DB::table('dethi')->where('madethi', $id)->first();
-        
         if (!$dethi) {
             abort(404, 'Không tìm thấy đề thi');
         }
@@ -328,32 +360,41 @@ class GiangVienDeThiController extends Controller
             abort(403, 'Bạn không có quyền chỉnh sửa đề thi này');
         }
 
-        $hasBaiThi = DB::table('baithi')
-            ->where('madethi', $id)
-            ->exists();
-
+        $hasBaiThi = DB::table('baithi')->where('madethi', $id)->exists();
         if ($hasBaiThi) {
             return redirect()->route('giangvien.dethi.show', $id)
                 ->with('error', 'Không thể chỉnh sửa đề thi đã có bài thi nộp!');
         }
 
+        // Xử lý file mới (nếu có)
         if ($request->hasFile('file_dethi')) {
             $file = $request->file('file_dethi');
             $filename = time() . '_' . preg_replace('/[^A-Za-z0-9._-]/', '_', $file->getClientOriginalName());
             $path = $file->storeAs('dethi', $filename, 'public');
             $validated['filedethi'] = $path;
-            
+
+            // Xóa file cũ
             if ($dethi->filedethi && Storage::disk('public')->exists($dethi->filedethi)) {
                 Storage::disk('public')->delete($dethi->filedethi);
             }
+
+            // TỰ ĐỘNG: Có file mới → chuyển thành Published
+            $validated['trangthai'] = 'Published';
+        } else {
+            // Không upload file mới → dùng trạng thái người dùng chọn (mặc định giữ cũ nếu không gửi)
+            $validated['trangthai'] = $request->trangthai ?? $dethi->trangthai;
         }
 
+        // Xóa key file_dethi khỏi validated vì không có cột này
         unset($validated['file_dethi']);
 
         DB::table('dethi')->where('madethi', $id)->update($validated);
 
+        $statusLabel = $validated['trangthai'] === 'Published' ? 'đã công khai' : 
+                    ($validated['trangthai'] === 'Draft' ? 'nháp' : 'đã lưu trữ');
+
         return redirect()->route('giangvien.dethi.show', $id)
-            ->with('success', 'Cập nhật đề thi thành công!');
+            ->with('success', "Cập nhật đề thi thành công! Trạng thái hiện tại: <strong>$statusLabel</strong>");
     }
 
     /**
@@ -396,10 +437,10 @@ class GiangVienDeThiController extends Controller
     private function getStatusColor($status)
     {
         return match($status) {
-            'Active' => 'green',
-            'Draft' => 'yellow',
-            'Archived' => 'gray',
-            default => 'gray',
+            'Published' => 'green',
+            'Draft'     => 'yellow',
+            'Archived'  => 'gray',
+            default     => 'gray',
         };
     }
 
@@ -409,10 +450,155 @@ class GiangVienDeThiController extends Controller
     private function getStatusLabel($status)
     {
         return match($status) {
-            'Active' => 'Đang hoạt động',
-            'Draft' => 'Nháp',
-            'Archived' => 'Đã lưu trữ',
-            default => $status,
+            'Published' => 'Đã công khai',
+            'Draft'     => 'Nháp',
+            'Archived'  => 'Đã lưu trữ',
+            default     => $status,
         };
+    }
+
+
+    /**
+     * Tải xuống file bài thi
+     */
+    public function downloadBaiThi($id, $baithiId)
+    {
+        $user = jwt_user();
+        $giangvien = DB::table('giangvien')->where('manguoidung', $user->manguoidung)->first();
+
+        if (!$giangvien) {
+            abort(403, 'Không tìm thấy thông tin giảng viên');
+        }
+
+        // Lấy thông tin bài thi và kiểm tra quyền
+        $baithi = DB::table('baithi as bt')
+            ->join('dethi as dt', 'bt.madethi', '=', 'dt.madethi')
+            ->where('bt.mabaithi', $baithiId)
+            ->where('dt.madethi', $id) // Kiểm tra đúng đề thi
+            ->select('bt.*', 'dt.nguoitao')
+            ->first();
+
+        if (!$baithi) {
+            abort(404, 'Không tìm thấy bài thi');
+        }
+
+        // Kiểm tra giảng viên có quyền không
+        if ($baithi->nguoitao != $giangvien->magiangvien) {
+            abort(403, 'Bạn không có quyền tải bài thi này');
+        }
+
+        // Kiểm tra file tồn tại
+        if (!$baithi->filebaithi) {
+            abort(404, 'Bài thi chưa có file đính kèm');
+        }
+
+        // File path đã đúng format: baithis/filename.ext
+        if (!Storage::disk('public')->exists($baithi->filebaithi)) {
+            Log::error('File not found: ' . $baithi->filebaithi);
+            Log::error('Full path: ' . Storage::disk('public')->path($baithi->filebaithi));
+            abort(404, 'Không tìm thấy file bài thi trên server');
+        }
+
+        return Storage::disk('public')->download($baithi->filebaithi);
+    }
+
+    /**
+     * Tải xuống nhiều file bài thi (nén thành ZIP)
+     */
+    public function downloadMultipleBaiThi(Request $request, $id)
+    {
+        $validated = $request->validate([
+            'baithi_ids' => 'required|array|min:1',
+            'baithi_ids.*' => 'required|string',
+        ]);
+
+        $user = jwt_user();
+        $giangvien = DB::table('giangvien')->where('manguoidung', $user->manguoidung)->first();
+
+        if (!$giangvien) {
+            return back()->with('error', 'Không tìm thấy thông tin giảng viên');
+        }
+
+        // Kiểm tra quyền với đề thi
+        $dethi = DB::table('dethi')->where('madethi', $id)->first();
+        
+        if (!$dethi || $dethi->nguoitao != $giangvien->magiangvien) {
+            return back()->with('error', 'Bạn không có quyền tải bài thi này');
+        }
+
+        // Lấy danh sách bài thi có file
+        $baithiList = DB::table('baithi as bt')
+            ->leftJoin('dangkycanhan as dkcn', 'bt.madangkycanhan', '=', 'dkcn.madangkycanhan')
+            ->leftJoin('dangkydoithi as dkdt', 'bt.madangkydoi', '=', 'dkdt.madangkydoi')
+            ->leftJoin('sinhvien as sv', 'dkcn.masinhvien', '=', 'sv.masinhvien')
+            ->leftJoin('nguoidung as nd', 'sv.manguoidung', '=', 'nd.manguoidung')
+            ->leftJoin('doithi as d', 'dkdt.madoithi', '=', 'd.madoithi')
+            ->whereIn('bt.mabaithi', $validated['baithi_ids'])
+            ->where('bt.madethi', $id)
+            ->whereNotNull('bt.filebaithi')
+            ->select(
+                'bt.mabaithi',
+                'bt.filebaithi',
+                'bt.loaidangky',
+                'sv.masinhvien',
+                'nd.hoten as sinhvien_ten',
+                'd.tendoithi'
+            )
+            ->get();
+
+        if ($baithiList->isEmpty()) {
+            return back()->with('error', 'Không tìm thấy bài thi nào có file để tải');
+        }
+
+        // Tạo file ZIP
+        $zipFileName = 'BaiThi_' . $dethi->tendethi . '_' . date('YmdHis') . '.zip';
+        $zipFilePath = storage_path('app/temp/' . $zipFileName);
+        
+        // Tạo thư mục temp nếu chưa có
+        if (!file_exists(storage_path('app/temp'))) {
+            mkdir(storage_path('app/temp'), 0755, true);
+        }
+
+        $zip = new \ZipArchive();
+        if ($zip->open($zipFilePath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
+            return back()->with('error', 'Không thể tạo file ZIP');
+        }
+
+        $fileCount = 0;
+        $missingFiles = [];
+
+        foreach ($baithiList as $baithi) {
+            if (Storage::disk('public')->exists($baithi->filebaithi)) {
+                $fullPath = Storage::disk('public')->path($baithi->filebaithi);
+                $extension = pathinfo($baithi->filebaithi, PATHINFO_EXTENSION);
+                
+                // Tạo tên file có ý nghĩa
+                if ($baithi->loaidangky === 'CaNhan') {
+                    $fileName = ($baithi->masinhvien ?? 'Unknown') . '_' . 
+                            preg_replace('/[^A-Za-z0-9]/', '_', $baithi->sinhvien_ten ?? 'Unknown') . '.' . $extension;
+                } else {
+                    $fileName = preg_replace('/[^A-Za-z0-9._-]/', '_', $baithi->tendoithi ?? 'Team') . '.' . $extension;
+                }
+                
+                $zip->addFile($fullPath, $fileName);
+                $fileCount++;
+            } else {
+                $missingFiles[] = $baithi->mabaithi;
+            }
+        }
+
+        $zip->close();
+
+        if ($fileCount === 0) {
+            unlink($zipFilePath);
+            return back()->with('error', 'Không có file nào tồn tại để tải');
+        }
+
+        // Log nếu có file thiếu
+        if (!empty($missingFiles)) {
+            Log::warning('Missing files for bai thi: ' . implode(', ', $missingFiles));
+        }
+
+        return response()->download($zipFilePath)->deleteFileAfterSend(true);
     }
 }

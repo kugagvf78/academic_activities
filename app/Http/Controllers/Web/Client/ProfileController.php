@@ -170,6 +170,10 @@ class ProfileController extends Controller
             // 1. Đăng ký CÁ NHÂN
             $caNhan = DB::table('dangkycanhan as dkcn')
                 ->join('cuocthi as ct', 'dkcn.macuocthi', '=', 'ct.macuocthi')
+                ->leftJoin('baithi as bt', function($join) {
+                    $join->on('dkcn.madangkycanhan', '=', 'bt.madangkycanhan')
+                        ->where('bt.loaidangky', '=', 'CaNhan');
+                })
                 ->where('dkcn.masinhvien', $sinhVien->masinhvien)
                 ->select(
                     'dkcn.madangkycanhan as id',
@@ -181,15 +185,22 @@ class ProfileController extends Controller
                     'dkcn.trangthai',
                     DB::raw("'CaNhan' as loaidangky"),
                     DB::raw("NULL as tendoithi"),
-                    DB::raw("NULL as vaitro")
+                    DB::raw("NULL as vaitro"),
+                    'bt.mabaithi',
+                    'bt.thoigiannop',
+                    'bt.trangthai as trangthainop'
                 )
                 ->get();
 
-            // 2. Đăng ký THEO ĐỘI (qua ThanhVienDoiThi)
+            // 2. Đăng ký THEO ĐỘI
             $doiNhom = DB::table('thanhviendoithi as tv')
                 ->join('doithi as dt', 'tv.madoithi', '=', 'dt.madoithi')
                 ->join('dangkydoithi as dkdt', 'dt.madoithi', '=', 'dkdt.madoithi')
                 ->join('cuocthi as ct', 'dt.macuocthi', '=', 'ct.macuocthi')
+                ->leftJoin('baithi as bt', function($join) {
+                    $join->on('dkdt.madangkydoi', '=', 'bt.madangkydoi')
+                        ->where('bt.loaidangky', '=', 'DoiNhom');
+                })
                 ->where('tv.masinhvien', $sinhVien->masinhvien)
                 ->select(
                     'dkdt.madangkydoi as id',
@@ -201,18 +212,20 @@ class ProfileController extends Controller
                     'dkdt.trangthai',
                     DB::raw("'DoiNhom' as loaidangky"),
                     'dt.tendoithi',
-                    'tv.vaitro'
+                    'tv.vaitro',
+                    'bt.mabaithi',
+                    'bt.thoigiannop',
+                    'bt.trangthai as trangthainop'
                 )
                 ->get();
 
-            // Gộp lại và sắp xếp
             $registrations = $caNhan->concat($doiNhom)->sortByDesc('ngaydangky');
 
-            // Thêm thông tin trạng thái và khả năng hủy
             return $registrations->map(function($reg) {
                 $now = now();
                 $start = \Carbon\Carbon::parse($reg->thoigianbatdau);
                 $end = \Carbon\Carbon::parse($reg->thoigianketthuc);
+                $submitDeadline = $end->copy()->addDay(); // +1 ngày sau khi kết thúc
 
                 // Xác định status
                 if ($end->lt($now)) {
@@ -229,10 +242,16 @@ class ProfileController extends Controller
                     $statusColor = 'blue';
                 }
 
-                // Có thể hủy không (chỉ hủy được nếu còn >24h và chưa bắt đầu)
+                // Có thể hủy không
                 $canCancel = $start->gt($now) && 
                             $now->diffInHours($start, false) >= 24 &&
                             in_array($reg->trangthai, ['Registered']);
+
+                // Có thể nộp bài không (SAU KHI kết thúc và TRONG 1 NGÀY)
+                $canSubmit = $end->lt($now) && 
+                            $submitDeadline->gt($now) && 
+                            !$reg->mabaithi &&
+                            in_array($reg->trangthai, ['Registered', 'Confirmed']);
 
                 return (object)[
                     'id' => $reg->id,
@@ -242,12 +261,17 @@ class ProfileController extends Controller
                     'vaitro' => $reg->vaitro,
                     'thoigianbatdau' => $start,
                     'thoigianketthuc' => $end,
+                    'submitDeadline' => $submitDeadline,
                     'ngaydangky' => \Carbon\Carbon::parse($reg->ngaydangky),
                     'trangthai' => $reg->trangthai,
                     'status' => $status,
                     'statusLabel' => $statusLabel,
                     'statusColor' => $statusColor,
                     'canCancel' => $canCancel,
+                    'canSubmit' => $canSubmit,
+                    'mabaithi' => $reg->mabaithi,
+                    'thoigiannop' => $reg->thoigiannop ? \Carbon\Carbon::parse($reg->thoigiannop) : null,
+                    'trangthainop' => $reg->trangthainop,
                 ];
             })->values();
 
@@ -839,6 +863,291 @@ class ProfileController extends Controller
             Log::error('Lỗi hủy đăng ký dự thi: ' . $e->getMessage());
             return back()->with('error', 'Có lỗi xảy ra: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Hiển thị form nộp bài thi
+     */
+    public function showSubmitExam($id, $loaidangky)
+    {
+        $user = Auth::guard('api')->user();
+        
+        if (!$user || $user->vaitro !== 'SinhVien') {
+            return back()->with('error', 'Chỉ sinh viên mới được nộp bài');
+        }
+
+        $sinhVien = $user->sinhVien;
+        if (!$sinhVien) {
+            return back()->with('error', 'Không tìm thấy thông tin sinh viên');
+        }
+
+        try {
+            // Lấy thông tin đăng ký và cuộc thi
+            if ($loaidangky === 'CaNhan') {
+                $dangky = DB::table('dangkycanhan as dkcn')
+                    ->join('cuocthi as ct', 'dkcn.macuocthi', '=', 'ct.macuocthi')
+                    ->leftJoin('dethi as dt', 'ct.macuocthi', '=', 'dt.macuocthi')
+                    ->where('dkcn.madangkycanhan', $id)
+                    ->where('dkcn.masinhvien', $sinhVien->masinhvien)
+                    ->select(
+                        'dkcn.*',
+                        'ct.tencuocthi',
+                        'ct.thoigianbatdau',
+                        'ct.thoigianketthuc',
+                        'ct.trangthai as trangthaicuocthi',
+                        'dt.madethi',
+                        'dt.tendethi',
+                        'dt.thoigianlambai',
+                        'dt.diemtoida',
+                        'dt.filedethi'
+                    )
+                    ->first();
+            } else {
+                $dangky = DB::table('dangkydoithi as dkdt')
+                    ->join('doithi as doi', 'dkdt.madoithi', '=', 'doi.madoithi')
+                    ->join('cuocthi as ct', 'dkdt.macuocthi', '=', 'ct.macuocthi')
+                    ->leftJoin('dethi as dt', 'ct.macuocthi', '=', 'dt.macuocthi')
+                    ->join('thanhviendoithi as tv', 'doi.madoithi', '=', 'tv.madoithi')
+                    ->where('dkdt.madangkydoi', $id)
+                    ->where('tv.masinhvien', $sinhVien->masinhvien)
+                    ->select(
+                        'dkdt.*',
+                        'doi.tendoithi',
+                        'ct.tencuocthi',
+                        'ct.thoigianbatdau',
+                        'ct.thoigianketthuc',
+                        'ct.trangthai as trangthaicuocthi',
+                        'dt.madethi',
+                        'dt.tendethi',
+                        'dt.thoigianlambai',
+                        'dt.diemtoida',
+                        'dt.filedethi'
+                    )
+                    ->first();
+            }
+
+            if (!$dangky) {
+                return back()->with('error', 'Không tìm thấy đăng ký dự thi');
+            }
+
+            // Kiểm tra thời gian nộp bài
+            $now = now();
+            $endTime = \Carbon\Carbon::parse($dangky->thoigianketthuc);
+            $submitDeadline = $endTime->copy()->addDay(); // Thêm 1 ngày sau khi kết thúc
+
+            // Chỉ cho nộp bài SAU KHI cuộc thi KẾT THÚC và TRONG VÒNG 1 NGÀY
+            if ($now->lt($endTime)) {
+                return back()->with('error', 'Chưa thể nộp bài. Cuộc thi chưa kết thúc!');
+            }
+
+            if ($now->gt($submitDeadline)) {
+                return back()->with('error', 'Đã hết hạn nộp bài! (24h sau khi kết thúc)');
+            }
+
+            // Kiểm tra đã nộp bài chưa
+            $baiThi = DB::table('baithi')
+                ->where($loaidangky === 'CaNhan' ? 'madangkycanhan' : 'madangkydoi', $id)
+                ->where('loaidangky', $loaidangky)
+                ->first();
+
+            if ($baiThi) {
+                return back()->with('info', 'Bạn đã nộp bài cho cuộc thi này rồi!');
+            }
+
+            return view('client.profile.submit-exam', compact(
+                'dangky',
+                'loaidangky',
+                'id',
+                'submitDeadline'
+            ));
+
+        } catch (\Exception $e) {
+            Log::error('Error showing submit exam form: ' . $e->getMessage());
+            return back()->with('error', 'Có lỗi xảy ra: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Xử lý nộp bài thi
+     */
+    public function submitExam(Request $request, $id, $loaidangky)
+    {
+        $user = Auth::guard('api')->user();
+        
+        if (!$user || $user->vaitro !== 'SinhVien') {
+            return back()->with('error', 'Chỉ sinh viên mới được nộp bài');
+        }
+
+        $sinhVien = $user->sinhVien;
+        if (!$sinhVien) {
+            return back()->with('error', 'Không tìm thấy thông tin sinh viên');
+        }
+
+        $request->validate([
+            'filebaithi' => 'required|file|mimes:pdf,doc,docx,zip,rar|max:10240', // Max 10MB
+        ], [
+            'filebaithi.required' => 'Vui lòng chọn file bài thi',
+            'filebaithi.file' => 'File không hợp lệ',
+            'filebaithi.mimes' => 'File phải có định dạng: pdf, doc, docx, zip, rar',
+            'filebaithi.max' => 'Kích thước file không được vượt quá 10MB',
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            // Lấy thông tin đăng ký và cuộc thi
+            if ($loaidangky === 'CaNhan') {
+                $dangky = DB::table('dangkycanhan as dkcn')
+                    ->join('cuocthi as ct', 'dkcn.macuocthi', '=', 'ct.macuocthi')
+                    ->leftJoin('dethi as dt', 'ct.macuocthi', '=', 'dt.macuocthi')
+                    ->leftJoin('sinhvien as sv', 'dkcn.masinhvien', '=', 'sv.masinhvien')
+                    ->leftJoin('nguoidung as nd', 'sv.manguoidung', '=', 'nd.manguoidung')
+                    ->where('dkcn.madangkycanhan', $id)
+                    ->where('dkcn.masinhvien', $sinhVien->masinhvien)
+                    ->select(
+                        'dkcn.*', 
+                        'ct.thoigianketthuc', 
+                        'ct.tencuocthi',
+                        'ct.macuocthi',
+                        'dt.madethi',
+                        'dt.tendethi',
+                        'sv.masinhvien',
+                        'nd.hoten'
+                    )
+                    ->first();
+            } else {
+                $dangky = DB::table('dangkydoithi as dkdt')
+                    ->join('cuocthi as ct', 'dkdt.macuocthi', '=', 'ct.macuocthi')
+                    ->leftJoin('dethi as dt', 'ct.macuocthi', '=', 'dt.macuocthi')
+                    ->join('doithi as doi', 'dkdt.madoithi', '=', 'doi.madoithi')
+                    ->join('thanhviendoithi as tv', 'doi.madoithi', '=', 'tv.madoithi')
+                    ->leftJoin('sinhvien as sv', 'tv.masinhvien', '=', 'sv.masinhvien')
+                    ->leftJoin('nguoidung as nd', 'sv.manguoidung', '=', 'nd.manguoidung')
+                    ->where('dkdt.madangkydoi', $id)
+                    ->where('tv.masinhvien', $sinhVien->masinhvien)
+                    ->select(
+                        'dkdt.*', 
+                        'ct.thoigianketthuc',
+                        'ct.tencuocthi',
+                        'ct.macuocthi',
+                        'dt.madethi',
+                        'dt.tendethi',
+                        'doi.tendoithi',
+                        'doi.madoithi',
+                        'sv.masinhvien',
+                        'nd.hoten'
+                    )
+                    ->first();
+            }
+
+            if (!$dangky) {
+                DB::rollBack();
+                return back()->with('error', 'Không tìm thấy đăng ký dự thi');
+            }
+
+            // Kiểm tra thời gian nộp bài
+            $now = now();
+            $endTime = \Carbon\Carbon::parse($dangky->thoigianketthuc);
+            $submitDeadline = $endTime->copy()->addDay();
+
+            if ($now->lt($endTime) || $now->gt($submitDeadline)) {
+                DB::rollBack();
+                return back()->with('error', 'Không trong thời gian nộp bài!');
+            }
+
+            // Kiểm tra đã nộp bài chưa
+            $existingBaiThi = DB::table('baithi')
+                ->where($loaidangky === 'CaNhan' ? 'madangkycanhan' : 'madangkydoi', $id)
+                ->where('loaidangky', $loaidangky)
+                ->exists();
+
+            if ($existingBaiThi) {
+                DB::rollBack();
+                return back()->with('error', 'Bạn đã nộp bài cho cuộc thi này rồi!');
+            }
+
+            // Upload file với tên có ý nghĩa
+            if ($request->hasFile('filebaithi')) {
+                $file = $request->file('filebaithi');
+                $extension = $file->getClientOriginalExtension();
+                
+                // Tạo mã bài thi trước để đưa vào tên file
+                $maBaiThi = 'BT' . time() . rand(1000, 9999);
+                
+                // Tạo tên file theo format:
+                // [MaCuocThi]_[MaSV/MaDoi]_[TenNguoi/TenDoi]_[MaBaiThi].[ext]
+                if ($loaidangky === 'CaNhan') {
+                    // Format: CT001_SV001_NguyenVanA_BT17637466001234.pdf
+                    $fileName = sprintf(
+                        '%s_%s_%s_%s.%s',
+                        $dangky->macuocthi,
+                        $dangky->masinhvien,
+                        $this->slugify($dangky->hoten),
+                        $maBaiThi,
+                        $extension
+                    );
+                } else {
+                    // Format: CT001_DOI001_TenDoi_BT17637466001234.pdf
+                    $fileName = sprintf(
+                        '%s_%s_%s_%s.%s',
+                        $dangky->macuocthi,
+                        $dangky->madoithi,
+                        $this->slugify($dangky->tendoithi),
+                        $maBaiThi,
+                        $extension
+                    );
+                }
+                
+                // Lưu file với tên đã format
+                $filePath = $file->storeAs('baithis', $fileName, 'public');
+
+                // Lưu bài thi vào database
+                DB::table('baithi')->insert([
+                    'mabaithi' => $maBaiThi,
+                    'madethi' => $dangky->madethi,
+                    'madangkycanhan' => $loaidangky === 'CaNhan' ? $id : null,
+                    'madangkydoi' => $loaidangky === 'DoiNhom' ? $id : null,
+                    'loaidangky' => $loaidangky,
+                    'filebaithi' => $filePath,
+                    'thoigiannop' => now(),
+                    'trangthai' => 'Submitted',
+                ]);
+
+                DB::commit();
+
+                return redirect()->route('profile.index')
+                    ->with('success', 'Nộp bài thi thành công! Vui lòng chờ giảng viên chấm điểm.');
+            }
+
+            DB::rollBack();
+            return back()->with('error', 'Có lỗi khi upload file');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Error submitting exam: ' . $e->getMessage());
+            return back()->with('error', 'Có lỗi xảy ra: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Helper function: Chuyển đổi chuỗi tiếng Việt thành slug
+     */
+    private function slugify($string)
+    {
+        // Loại bỏ dấu tiếng Việt
+        $string = preg_replace('/[àáạảãâầấậẩẫăằắặẳẵ]/u', 'a', $string);
+        $string = preg_replace('/[èéẹẻẽêềếệểễ]/u', 'e', $string);
+        $string = preg_replace('/[ìíịỉĩ]/u', 'i', $string);
+        $string = preg_replace('/[òóọỏõôồốộổỗơờớợởỡ]/u', 'o', $string);
+        $string = preg_replace('/[ùúụủũưừứựửữ]/u', 'u', $string);
+        $string = preg_replace('/[ỳýỵỷỹ]/u', 'y', $string);
+        $string = preg_replace('/[đ]/u', 'd', $string);
+        
+        // Loại bỏ ký tự đặc biệt, chỉ giữ chữ, số, dấu gạch ngang
+        $string = preg_replace('/[^A-Za-z0-9\-]/', '', $string);
+        
+        // Giới hạn độ dài (tối đa 50 ký tự)
+        return substr($string, 0, 50);
     }
 }
     

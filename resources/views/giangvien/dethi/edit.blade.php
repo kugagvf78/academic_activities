@@ -220,7 +220,7 @@
                             class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 @error('trangthai') border-red-500 @enderror"
                             required>
                             <option value="Draft" {{ old('trangthai', $dethi->trangthai) == 'Draft' ? 'selected' : '' }}>Nháp</option>
-                            <option value="Active" {{ old('trangthai', $dethi->trangthai) == 'Active' ? 'selected' : '' }}>Đang hoạt động</option>
+                            <option value="Active" {{ old('trangthai', $dethi->trangthai) == 'Published' ? 'selected' : '' }}>Đang hoạt động</option>
                             <option value="Archived" {{ old('trangthai', $dethi->trangthai) == 'Archived' ? 'selected' : '' }}>Đã lưu trữ</option>
                         </select>
                         @error('trangthai')

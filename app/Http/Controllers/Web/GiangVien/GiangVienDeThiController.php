@@ -167,7 +167,7 @@ class GiangVienDeThiController extends Controller
         $statusLabel = $trangthai === 'Published' ? 'đã công khai' : 'nháp';
 
         return redirect()->route('giangvien.dethi.index')
-            ->with('success', "Tạo đề thi thành công! Đề thi hiện đang ở trạng thái: <strong>$statusLabel</strong>");
+            ->with('success', "Tạo đề thi thành công!");
     }
 
     /**

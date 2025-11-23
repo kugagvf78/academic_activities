@@ -29,7 +29,7 @@
         </div>
     @endif
 
-    <div class="grid lg:grid-cols-4 gap-8 relative" x-data="{ tab: 'info' }">
+    <div class="grid lg:grid-cols-4 gap-8 relative" x-data="profileTabs()">
 
         {{-- 👤 LEFT SIDEBAR --}}
         <aside class="lg:col-span-1 sticky top-28 self-start">
@@ -68,23 +68,23 @@
 
                 {{-- Navigation Menu --}}
                 <nav class="flex flex-col text-left mt-3">
-                    <button @click="tab='info'"
-                        :class="tab==='info' ? 'bg-blue-50 text-blue-700 border-l-4 border-blue-600' : 'text-gray-700 hover:bg-gray-50'"
-                        class="w-full px-6 py-4 flex items-center gap-3 font-medium transition">
+                    <button @click="changeTab('info')"
+                        class="w-full px-6 py-4 flex items-center gap-3 font-medium transition"
+                        :class="tab==='info' ? 'bg-blue-50 text-blue-700 border-blue-600' : 'text-gray-700 hover:bg-gray-50'">
                         <i class="fas fa-user w-5"></i>
                         <span>Thông tin cá nhân</span>
                     </button>
 
-                    <button @click="tab='stats'"
-                        :class="tab==='stats' ? 'bg-blue-50 text-blue-700 border-l-4 border-blue-600' : 'text-gray-700 hover:bg-gray-50'"
-                        class="w-full px-6 py-4 flex items-center gap-3 font-medium transition border-t border-gray-100">
-                        <i class="fas fa-chart-bar w-5"></i>
-                        <span>Thống kê</span>
+                    <button @click="changeTab('work')"
+                        class="w-full px-6 py-4 flex items-center gap-3 font-medium transition border-t border-gray-100"
+                        :class="tab==='work' ? 'bg-blue-50 text-blue-700 border-l-4 border-blue-600' : 'text-gray-700 hover:bg-gray-50'">
+                        <i class="fas fa-briefcase w-5"></i>
+                        <span>Công việc</span>
                     </button>
 
-                    <button @click="tab='settings'"
-                        :class="tab==='settings' ? 'bg-blue-50 text-blue-700 border-l-4 border-blue-600' : 'text-gray-700 hover:bg-gray-50'"
-                        class="w-full px-6 py-4 flex items-center gap-3 font-medium transition border-t border-gray-100">
+                    <button @click="changeTab('settings')"
+                        class="w-full px-6 py-4 flex items-center gap-3 font-medium transition border-t border-gray-100"
+                        :class="tab==='settings' ? 'bg-blue-50 text-blue-700 border-l-4 border-blue-600' : 'text-gray-700 hover:bg-gray-50'">
                         <i class="fas fa-cog w-5"></i>
                         <span>Cài đặt</span>
                     </button>
@@ -220,100 +220,133 @@
                 </div>
             </div>
 
-            {{-- 📊 THỐNG KÊ --}}
-            <div x-show="tab==='stats'" x-transition>
+            {{-- 💼 CÔNG VIỆC --}}
+            <div x-show="tab==='work'" x-transition>
                 <div class="bg-white rounded-2xl shadow-md border border-gray-100 p-8">
                     <div class="flex items-center justify-between mb-6 pb-4 border-b border-gray-100">
-                        <h3 class="text-2xl font-bold text-gray-800">Thống kê công việc</h3>
+                        <h3 class="text-2xl font-bold text-gray-800">Quản lý Công việc</h3>
                     </div>
 
-                    {{-- Statistics Cards --}}
-                    <div class="grid md:grid-cols-2 gap-6 mb-8">
-                        <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-6 text-white">
-                            <div class="flex items-center justify-between">
-                                <div>
-                                    <p class="text-blue-100 text-sm mb-1">Cuộc Thi Tạo</p>
-                                    <p class="text-3xl font-bold">{{ $stats['tong_cuoc_thi'] }}</p>
-                                    <p class="text-blue-100 text-xs mt-2">Tổng số cuộc thi đã tạo</p>
-                                </div>
-                                <i class="fas fa-trophy text-5xl text-blue-200"></i>
-                            </div>
-                        </div>
-
-                        <div class="bg-gradient-to-br from-green-500 to-green-600 rounded-xl p-6 text-white">
-                            <div class="flex items-center justify-between">
-                                <div>
-                                    <p class="text-green-100 text-sm mb-1">Đề Thi</p>
-                                    <p class="text-3xl font-bold">{{ $stats['tong_de_thi'] }}</p>
-                                    <p class="text-green-100 text-xs mt-2">Tổng số đề thi đã tạo</p>
-                                </div>
-                                <i class="fas fa-file-alt text-5xl text-green-200"></i>
-                            </div>
-                        </div>
-
-                        <div class="bg-gradient-to-br from-yellow-500 to-orange-600 rounded-xl p-6 text-white">
-                            <div class="flex items-center justify-between">
-                                <div>
-                                    <p class="text-yellow-100 text-sm mb-1">Cần Chấm</p>
-                                    <p class="text-3xl font-bold">{{ $stats['tong_bai_can_cham'] }}</p>
-                                    <p class="text-yellow-100 text-xs mt-2">Bài thi đang chờ chấm điểm</p>
-                                </div>
-                                <i class="fas fa-edit text-5xl text-yellow-200"></i>
-                            </div>
-                        </div>
-
-                        <div class="bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl p-6 text-white">
-                            <div class="flex items-center justify-between">
-                                <div>
-                                    <p class="text-purple-100 text-sm mb-1">Công Việc</p>
-                                    <p class="text-3xl font-bold">{{ $stats['tong_phan_cong'] }}</p>
-                                    <p class="text-purple-100 text-xs mt-2">Tổng số công việc được giao</p>
-                                </div>
-                                <i class="fas fa-tasks text-5xl text-purple-200"></i>
-                            </div>
-                        </div>
-                    </div>
-
-                    {{-- Quick Links --}}
+                    {{-- Menu công việc --}}
                     <div class="grid md:grid-cols-2 gap-4">
-                        <a href="{{ route('giangvien.cuocthi.index') }}" class="flex items-center justify-between p-4 border border-gray-200 rounded-xl hover:border-blue-300 hover:bg-blue-50 transition group">
-                            <div class="flex items-center gap-3">
-                                <div class="w-10 h-10 bg-blue-100 group-hover:bg-blue-600 rounded-lg flex items-center justify-center transition">
-                                    <i class="fas fa-trophy text-blue-600 group-hover:text-white transition"></i>
+                        {{-- Quản lý Cuộc thi --}}
+                        <a href="{{ route('giangvien.cuocthi.index') }}" 
+                            class="flex items-center justify-between p-5 border-2 border-gray-200 rounded-xl hover:border-blue-500 hover:bg-blue-50 transition-all duration-200 group">
+                            <div class="flex items-center gap-4">
+                                <div class="w-14 h-14 bg-blue-100 group-hover:bg-blue-600 rounded-xl flex items-center justify-center transition-all duration-200">
+                                    <i class="fas fa-trophy text-blue-600 group-hover:text-white text-2xl transition-all duration-200"></i>
                                 </div>
-                                <span class="font-medium text-gray-700 group-hover:text-blue-600 transition">Quản lý Cuộc thi</span>
+                                <div>
+                                    <p class="font-bold text-gray-800 group-hover:text-blue-600 transition-all duration-200">Quản lý Cuộc thi</p>
+                                    <p class="text-sm text-gray-500">Tạo và quản lý các cuộc thi</p>
+                                </div>
                             </div>
-                            <i class="fas fa-chevron-right text-gray-400 group-hover:text-blue-600 transition"></i>
+                            <i class="fas fa-chevron-right text-gray-400 group-hover:text-blue-600 transition-all duration-200"></i>
                         </a>
 
-                        <a href="{{ route('giangvien.dethi.index') }}" class="flex items-center justify-between p-4 border border-gray-200 rounded-xl hover:border-green-300 hover:bg-green-50 transition group">
-                            <div class="flex items-center gap-3">
-                                <div class="w-10 h-10 bg-green-100 group-hover:bg-green-600 rounded-lg flex items-center justify-center transition">
-                                    <i class="fas fa-file-alt text-green-600 group-hover:text-white transition"></i>
+                        {{-- Quản lý Đề thi --}}
+                        <a href="{{ route('giangvien.dethi.index') }}" 
+                            class="flex items-center justify-between p-5 border-2 border-gray-200 rounded-xl hover:border-green-500 hover:bg-green-50 transition-all duration-200 group">
+                            <div class="flex items-center gap-4">
+                                <div class="w-14 h-14 bg-green-100 group-hover:bg-green-600 rounded-xl flex items-center justify-center transition-all duration-200">
+                                    <i class="fas fa-file-alt text-green-600 group-hover:text-white text-2xl transition-all duration-200"></i>
                                 </div>
-                                <span class="font-medium text-gray-700 group-hover:text-green-600 transition">Quản lý Đề thi</span>
+                                <div>
+                                    <p class="font-bold text-gray-800 group-hover:text-green-600 transition-all duration-200">Quản lý Đề thi</p>
+                                    <p class="text-sm text-gray-500">Tạo và quản lý đề thi</p>
+                                </div>
                             </div>
-                            <i class="fas fa-chevron-right text-gray-400 group-hover:text-green-600 transition"></i>
+                            <i class="fas fa-chevron-right text-gray-400 group-hover:text-green-600 transition-all duration-200"></i>
                         </a>
 
-                        <a href="{{ route('giangvien.chamdiem.index') }}" class="flex items-center justify-between p-4 border border-gray-200 rounded-xl hover:border-orange-300 hover:bg-orange-50 transition group">
-                            <div class="flex items-center gap-3">
-                                <div class="w-10 h-10 bg-orange-100 group-hover:bg-orange-600 rounded-lg flex items-center justify-center transition">
-                                    <i class="fas fa-edit text-orange-600 group-hover:text-white transition"></i>
+                        {{-- Chấm điểm --}}
+                        <a href="{{ route('giangvien.chamdiem.index') }}" 
+                            class="flex items-center justify-between p-5 border-2 border-gray-200 rounded-xl hover:border-orange-500 hover:bg-orange-50 transition-all duration-200 group">
+                            <div class="flex items-center gap-4">
+                                <div class="w-14 h-14 bg-orange-100 group-hover:bg-orange-600 rounded-xl flex items-center justify-center transition-all duration-200">
+                                    <i class="fas fa-edit text-orange-600 group-hover:text-white text-2xl transition-all duration-200"></i>
                                 </div>
-                                <span class="font-medium text-gray-700 group-hover:text-orange-600 transition">Chấm bài thi</span>
+                                <div>
+                                    <p class="font-bold text-gray-800 group-hover:text-orange-600 transition-all duration-200">Chấm điểm</p>
+                                    <p class="text-sm text-gray-500">Chấm bài thi của sinh viên</p>
+                                </div>
                             </div>
-                            <i class="fas fa-chevron-right text-gray-400 group-hover:text-orange-600 transition"></i>
+                            <i class="fas fa-chevron-right text-gray-400 group-hover:text-orange-600 transition-all duration-200"></i>
                         </a>
 
-                        <a href="{{ route('giangvien.phancong.index') }}" class="flex items-center justify-between p-4 border border-gray-200 rounded-xl hover:border-purple-300 hover:bg-purple-50 transition group">
-                            <div class="flex items-center gap-3">
-                                <div class="w-10 h-10 bg-purple-100 group-hover:bg-purple-600 rounded-lg flex items-center justify-center transition">
-                                    <i class="fas fa-tasks text-purple-600 group-hover:text-white transition"></i>
+                        {{-- Phân công --}}
+                        <a href="{{ route('giangvien.phancong.index') }}" 
+                            class="flex items-center justify-between p-5 border-2 border-gray-200 rounded-xl hover:border-purple-500 hover:bg-purple-50 transition-all duration-200 group">
+                            <div class="flex items-center gap-4">
+                                <div class="w-14 h-14 bg-purple-100 group-hover:bg-purple-600 rounded-xl flex items-center justify-center transition-all duration-200">
+                                    <i class="fas fa-tasks text-purple-600 group-hover:text-white text-2xl transition-all duration-200"></i>
                                 </div>
-                                <span class="font-medium text-gray-700 group-hover:text-purple-600 transition">Phân công</span>
+                                <div>
+                                    <p class="font-bold text-gray-800 group-hover:text-purple-600 transition-all duration-200">Phân công</p>
+                                    <p class="text-sm text-gray-500">Xem công việc được phân công</p>
+                                </div>
                             </div>
-                            <i class="fas fa-chevron-right text-gray-400 group-hover:text-purple-600 transition"></i>
+                            <i class="fas fa-chevron-right text-gray-400 group-hover:text-purple-600 transition-all duration-200"></i>
+                        </a>
+
+                        {{-- Kế hoạch --}}
+                        <a href="{{ route('giangvien.profile.kehoach.index') }}" 
+                            class="flex items-center justify-between p-5 border-2 border-gray-200 rounded-xl hover:border-indigo-500 hover:bg-indigo-50 transition-all duration-200 group">
+                            <div class="flex items-center gap-4">
+                                <div class="w-14 h-14 bg-indigo-100 group-hover:bg-indigo-600 rounded-xl flex items-center justify-center transition-all duration-200">
+                                    <i class="fas fa-calendar-alt text-indigo-600 group-hover:text-white text-2xl transition-all duration-200"></i>
+                                </div>
+                                <div>
+                                    <p class="font-bold text-gray-800 group-hover:text-indigo-600 transition-all duration-200">Kế hoạch</p>
+                                    <p class="text-sm text-gray-500">Quản lý kế hoạch cuộc thi</p>
+                                </div>
+                            </div>
+                            <i class="fas fa-chevron-right text-gray-400 group-hover:text-indigo-600 transition-all duration-200"></i>
+                        </a>
+
+                        {{-- Chi phí --}}
+                        <a href="{{ route('giangvien.profile.chiphi.index') }}" 
+                            class="flex items-center justify-between p-5 border-2 border-gray-200 rounded-xl hover:border-red-500 hover:bg-red-50 transition-all duration-200 group">
+                            <div class="flex items-center gap-4">
+                                <div class="w-14 h-14 bg-red-100 group-hover:bg-red-600 rounded-xl flex items-center justify-center transition-all duration-200">
+                                    <i class="fas fa-dollar-sign text-red-600 group-hover:text-white text-2xl transition-all duration-200"></i>
+                                </div>
+                                <div>
+                                    <p class="font-bold text-gray-800 group-hover:text-red-600 transition-all duration-200">Chi phí</p>
+                                    <p class="text-sm text-gray-500">Quản lý chi phí cuộc thi</p>
+                                </div>
+                            </div>
+                            <i class="fas fa-chevron-right text-gray-400 group-hover:text-red-600 transition-all duration-200"></i>
+                        </a>
+
+                        {{-- Quyết toán --}}
+                        <a href="{{ route('giangvien.profile.quyettoan.index') }}" 
+                            class="flex items-center justify-between p-5 border-2 border-gray-200 rounded-xl hover:border-pink-500 hover:bg-pink-50 transition-all duration-200 group">
+                            <div class="flex items-center gap-4">
+                                <div class="w-14 h-14 bg-pink-100 group-hover:bg-pink-600 rounded-xl flex items-center justify-center transition-all duration-200">
+                                    <i class="fas fa-receipt text-pink-600 group-hover:text-white text-2xl transition-all duration-200"></i>
+                                </div>
+                                <div>
+                                    <p class="font-bold text-gray-800 group-hover:text-pink-600 transition-all duration-200">Quyết toán</p>
+                                    <p class="text-sm text-gray-500">Quản lý quyết toán</p>
+                                </div>
+                            </div>
+                            <i class="fas fa-chevron-right text-gray-400 group-hover:text-pink-600 transition-all duration-200"></i>
+                        </a>
+
+                        {{-- Tin tức --}}
+                        <a href="{{ route('giangvien.profile.tintuc.index') }}" 
+                            class="flex items-center justify-between p-5 border-2 border-gray-200 rounded-xl hover:border-teal-500 hover:bg-teal-50 transition-all duration-200 group">
+                            <div class="flex items-center gap-4">
+                                <div class="w-14 h-14 bg-teal-100 group-hover:bg-teal-600 rounded-xl flex items-center justify-center transition-all duration-200">
+                                    <i class="fas fa-newspaper text-teal-600 group-hover:text-white text-2xl transition-all duration-200"></i>
+                                </div>
+                                <div>
+                                    <p class="font-bold text-gray-800 group-hover:text-teal-600 transition-all duration-200">Tin tức</p>
+                                    <p class="text-sm text-gray-500">Quản lý tin tức đã đăng</p>
+                                </div>
+                            </div>
+                            <i class="fas fa-chevron-right text-gray-400 group-hover:text-teal-600 transition-all duration-200"></i>
                         </a>
                     </div>
                 </div>
@@ -368,5 +401,25 @@
         </main>
     </div>
 </section>
+
+<script>
+function profileTabs() {
+    return {
+        tab: 'info',
+        init() {
+            // Lấy tab từ localStorage khi trang load
+            const savedTab = localStorage.getItem('giangvien_profile_tab');
+            if (savedTab) {
+                this.tab = savedTab;
+            }
+        },
+        changeTab(newTab) {
+            this.tab = newTab;
+            // Lưu tab vào localStorage
+            localStorage.setItem('giangvien_profile_tab', newTab);
+        }
+    }
+}
+</script>
 
 @endsection

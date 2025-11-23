@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Illuminate\Support\Facades\Log;
 
 class CheckRole
 {
@@ -17,8 +18,16 @@ class CheckRole
                 ->with('error', 'Vui lòng đăng nhập!');
         }
 
-        if (!in_array($user->vaitro, $roles)) {
-            return $this->redirectToOwnProfile($user->vaitro);
+        // Lấy vai trò từ field 'vaitro'
+        $userRole = $user->vaitro;
+
+        if (!$userRole || !in_array($userRole, $roles)) {
+            Log::warning('Access denied', [
+                'user_role' => $userRole,
+                'required_roles' => $roles,
+                'user_id' => $user->manguoidung,
+            ]);
+            return $this->redirectToOwnProfile($userRole);
         }
 
         return $next($request);

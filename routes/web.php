@@ -246,26 +246,29 @@ Route::middleware(['jwt.web', 'role:GiangVien'])
 
 
         Route::prefix('cham-diem')->name('chamdiem.')->controller(\App\Http\Controllers\Web\GiangVien\GiangVienChamDiemController::class)->group(function () {
-            // Danh sách bài cần chấm
+            // Danh sách cuộc thi cần chấm
             Route::get('/', 'index')->name('index');
             
-            // Xem chi tiết để chấm điểm
+            // Chi tiết cuộc thi - Xem danh sách bài thi
+            Route::get('/cuoc-thi/{macuocthi}', 'showCuocThi')->name('show-cuocthi');
+            
+            // Bảng xếp hạng cuộc thi
+            Route::get('/cuoc-thi/{macuocthi}/xep-hang', 'showRankings')->name('rankings');
+            
+            // API lấy bảng xếp hạng (JSON)
+            Route::get('/api/cuoc-thi/{macuocthi}/rankings', 'getRankings')->name('api.rankings');
+            
+            // Export file Excel mẫu
+            Route::get('/cuoc-thi/{macuocthi}/export-template', 'exportTemplate')->name('export-template');
+            
+            // Import điểm từ Excel
+            Route::post('/cuoc-thi/{macuocthi}/import', 'importDiem')->name('import');
+            
+            // Xem chi tiết bài thi để chấm điểm thủ công (từng bài)
             Route::get('/{id}/chi-tiet', 'show')->name('show');
             
-            // Cập nhật điểm
+            // Cập nhật điểm thủ công
             Route::put('/{id}', 'update')->name('update');
-            
-            // Xóa điểm (để chấm lại)
-            Route::delete('/{id}', 'destroy')->name('destroy');
-            
-            // Download bài làm
-            Route::get('/{id}/download-bai-lam', 'downloadBaiLam')->name('download-bailam');
-            
-            // API lấy danh sách cuộc thi (cho filter)
-            Route::get('/api/cuocthi', 'getCuocThi')->name('api.cuocthi');
-            
-            // Chấm hàng loạt (optional)
-            Route::post('/bulk-update', 'bulkUpdate')->name('bulk-update');
         });
 
         Route::prefix('phan-cong')
@@ -286,3 +289,14 @@ Route::middleware(['jwt.web', 'role:GiangVien'])
             });
 
     });
+
+//     Route::get('/test-vaitro', function () {
+//     $user = jwt_user();
+//     return [
+//         'user_exists' => $user ? 'YES' : 'NO',
+//         'manguoidung' => $user->manguoidung ?? null,
+//         'vaitro' => $user->vaitro ?? 'NULL',
+//         'vaitro_raw' => $user->attributes['vaitro'] ?? 'NULL',
+//         'is_giangvien' => is_giangvien() ? 'YES' : 'NO',
+//     ];
+// })->middleware('jwt.web');

@@ -102,15 +102,15 @@ class NguoiDung extends Authenticatable implements JWTSubject
         $this->attributes['sodienthoai'] = $value;
     }
 
-    public function getVaiTroAttribute()
-    {
-        return $this->attributes['vaitro'] ?? null;
-    }
+    // public function getVaiTroAttribute()
+    // {
+    //     return $this->attributes['vaitro'] ?? null;
+    // }
 
-    public function setVaiTroAttribute($value)
-    {
-        $this->attributes['vaitro'] = $value;
-    }
+    // public function setVaiTroAttribute($value)
+    // {
+    //     $this->attributes['vaitro'] = $value;
+    // }
 
     public function getTrangThaiAttribute()
     {

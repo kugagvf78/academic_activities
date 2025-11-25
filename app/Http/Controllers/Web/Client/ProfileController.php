@@ -485,7 +485,10 @@ class ProfileController extends Controller
                     'drl.mota',
                     'drl.ngaycong',
                     'ct.tencuocthi',
-                    'hd.tenhoatdong'
+                    'hd.tenhoatdong',
+                    'hd.loaihoatdong as loai_hoatdong_hotro', // ✅ THÊM loại hoạt động
+                    'hd.thoigianbatdau',  // ✅ THÊM thời gian
+                    'hd.diadiem'           // ✅ THÊM địa điểm
                 )
                 ->orderBy('drl.ngaycong', 'desc')
                 ->get();
@@ -494,21 +497,65 @@ class ProfileController extends Controller
             $totalPoints = 0;
 
             foreach ($diemRenLuyen as $diem) {
+                // ✅ Map loại hoạt động chi tiết hơn
                 $loaiMap = [
                     'DatGiai' => 'Đạt giải',
                     'DuThi' => 'Dự thi',
                     'HoTro' => 'Hỗ trợ',
                     'ToChuc' => 'Tổ chức',
+                    'CoVu' => 'Cổ vũ',
                 ];
 
+                // ✅ Xác định loại và icon
+                $loaiHoatDong = $loaiMap[$diem->loaihoatdong] ?? $diem->loaihoatdong;
+                $icon = 'fa-star';
+                $color = 'blue';
+
+                if ($diem->loaihoatdong === 'DatGiai') {
+                    $icon = 'fa-trophy';
+                    $color = 'yellow';
+                } elseif ($diem->loaihoatdong === 'DuThi') {
+                    $icon = 'fa-user-graduate';
+                    $color = 'green';
+                } elseif ($diem->loaihoatdong === 'HoTro') {
+                    $icon = 'fa-hands-helping';
+                    $color = 'purple';
+                } elseif ($diem->loaihoatdong === 'ToChuc') {
+                    $icon = 'fa-users-cog';
+                    $color = 'blue';
+                } elseif ($diem->loaihoatdong === 'CoVu') {
+                    $icon = 'fa-hands-clapping';
+                    $color = 'pink';
+                }
+
+                // ✅ Xây dựng title đầy đủ
                 $title = $diem->tencuocthi ?? $diem->tenhoatdong ?? $diem->mota;
+                
+                // ✅ Thêm chi tiết nếu là hoạt động hỗ trợ
+                $chiTiet = null;
+                if ($diem->tenhoatdong) {
+                    $loaiHD = '';
+                    if ($diem->loai_hoatdong_hotro === 'CoVu') $loaiHD = 'Cổ vũ';
+                    elseif ($diem->loai_hoatdong_hotro === 'HoTroKyThuat') $loaiHD = 'Hỗ trợ kỹ thuật';
+                    elseif ($diem->loai_hoatdong_hotro === 'ToChuc') $loaiHD = 'Tổ chức';
+
+                    $chiTiet = [
+                        'ten_hoat_dong' => $diem->tenhoatdong,
+                        'loai' => $loaiHD,
+                        'thoi_gian' => $diem->thoigianbatdau ? \Carbon\Carbon::parse($diem->thoigianbatdau)->format('d/m/Y H:i') : null,
+                        'dia_diem' => $diem->diadiem,
+                    ];
+                }
 
                 $details[] = [
-                    'loai' => $loaiMap[$diem->loaihoatdong] ?? $diem->loaihoatdong,
+                    'loai' => $loaiHoatDong,
                     'title' => $title,
                     'diem' => $diem->diem,
                     'ngay' => $diem->ngaycong,
                     'mota' => $diem->mota,
+                    'icon' => $icon,      // ✅ THÊM icon
+                    'color' => $color,    // ✅ THÊM màu
+                    'chi_tiet' => $chiTiet, // ✅ THÊM chi tiết hoạt động
                 ];
 
                 $totalPoints += $diem->diem;

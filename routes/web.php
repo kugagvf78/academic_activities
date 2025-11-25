@@ -212,7 +212,7 @@ Route::middleware(['jwt.web', 'role:GiangVien'])
             Route::get('/tin-tuc', 'danhSachTinTuc')->name('tintuc.index');
         });
 
-        // Quản lý cuộc thi - GỘP VÀO ĐÂY
+        // Quản lý cuộc thi
         Route::prefix('cuoc-thi')->name('cuocthi.')->controller(GiangVienCuocThiController::class)->group(function () {
             Route::get('/', 'index')->name('index');
             Route::get('/tao-moi', 'create')->name('create');
@@ -233,10 +233,7 @@ Route::middleware(['jwt.web', 'role:GiangVien'])
             Route::put('/{id}', 'update')->name('update');
             Route::delete('/{id}', 'destroy')->name('destroy');
 
-            // Route::get('/{id}/view-file', 'viewFile')->name('view-file');
             Route::get('/{id}/download-file', 'downloadFile')->name('download-file');
-
-            // THÊM 2 ROUTES MỚI
             Route::get('/{id}/bai-thi/{baithiId}/download', 'downloadBaiThi')->name('download-baithi');
             Route::post('/{id}/download-multiple', 'downloadMultipleBaiThi')->name('download-multiple');
             
@@ -244,59 +241,84 @@ Route::middleware(['jwt.web', 'role:GiangVien'])
             Route::get('/api/vongthi/{macuocthi}', 'getVongThi')->name('api.vongthi');
         });
 
-
+        // Chấm điểm
         Route::prefix('cham-diem')->name('chamdiem.')->controller(\App\Http\Controllers\Web\GiangVien\GiangVienChamDiemController::class)->group(function () {
-            // Danh sách cuộc thi cần chấm
             Route::get('/', 'index')->name('index');
-            
-            // Chi tiết cuộc thi - Xem danh sách bài thi
             Route::get('/cuoc-thi/{macuocthi}', 'showCuocThi')->name('show-cuocthi');
-            
-            // Bảng xếp hạng cuộc thi
             Route::get('/cuoc-thi/{macuocthi}/xep-hang', 'showRankings')->name('rankings');
-            
-            // API lấy bảng xếp hạng (JSON)
             Route::get('/api/cuoc-thi/{macuocthi}/rankings', 'getRankings')->name('api.rankings');
-            
-            // Export file Excel mẫu
             Route::get('/cuoc-thi/{macuocthi}/export-template', 'exportTemplate')->name('export-template');
-            
-            // Import điểm từ Excel
             Route::post('/cuoc-thi/{macuocthi}/import', 'importDiem')->name('import');
-            
-            // Xem chi tiết bài thi để chấm điểm thủ công (từng bài)
             Route::get('/{id}/chi-tiet', 'show')->name('show');
-            
-            // Cập nhật điểm thủ công
             Route::put('/{id}', 'update')->name('update');
         });
 
+        // Phân công
         Route::prefix('phan-cong')
             ->name('phancong.')
             ->controller(\App\Http\Controllers\Web\GiangVien\GiangVienPhanCongController::class)
             ->group(function () {
-                // Danh sách phân công
                 Route::get('/', 'index')->name('index');
-                
-                // Chi tiết phân công
                 Route::get('/{id}/chi-tiet', 'show')->name('show');
-                
-                // API thống kê
                 Route::get('/api/statistics', 'statistics')->name('api.statistics');
-                
-                // Export Excel
                 Route::get('/export', 'export')->name('export');
             });
 
+        // Quản lý Kế hoạch Cuộc thi
+        Route::prefix('ke-hoach')->name('kehoach.')->controller(\App\Http\Controllers\Web\GiangVien\GiangVienKeHoachController::class)->group(function () {
+            Route::get('/', 'index')->name('index');
+            Route::get('/tao-moi', 'create')->name('create');
+            Route::post('/tao-moi', 'store')->name('store');
+            Route::get('/{id}/chi-tiet', 'show')->name('show');
+            Route::get('/{id}/sua', 'edit')->name('edit');
+            Route::put('/{id}', 'update')->name('update');
+            Route::delete('/{id}', 'destroy')->name('destroy');
+            Route::post('/{id}/gui-lai', 'resubmit')->name('resubmit');
+            Route::get('/{id}/export', 'export')->name('export');
+            Route::get('/api/statistics', 'statistics')->name('statistics');
+        });
+
+        // ✨ THÊM MỚI: Quản lý Hoạt động Hỗ trợ
+        Route::prefix('hoat-dong')->name('hoatdong.')->controller(\App\Http\Controllers\Web\GiangVien\GiangVienHoatDongController::class)->group(function () {
+            // Danh sách hoạt động
+            Route::get('/', 'index')->name('index');
+            
+            // Tạo hoạt động mới
+            Route::get('/tao-moi', 'create')->name('create');
+            Route::post('/tao-moi', 'store')->name('store');
+            
+            // Chi tiết hoạt động
+            Route::get('/{id}/chi-tiet', 'show')->name('show');
+            
+            // Chỉnh sửa hoạt động
+            Route::get('/{id}/sua', 'edit')->name('edit');
+            Route::put('/{id}', 'update')->name('update');
+            
+            // Xóa hoạt động
+            Route::delete('/{id}', 'destroy')->name('destroy');
+            
+            // Tạo mã QR điểm danh
+            Route::get('/{id}/tao-qr', 'generateQR')->name('generate-qr');
+            
+            // Export danh sách điểm danh
+            Route::get('/{id}/export', 'exportAttendance')->name('export-attendance');
+
+            Route::post('/{id}/import-google-form', 'importFromGoogleForm')->name('import-google-form');
+        });
     });
 
-//     Route::get('/test-vaitro', function () {
-//     $user = jwt_user();
-//     return [
-//         'user_exists' => $user ? 'YES' : 'NO',
-//         'manguoidung' => $user->manguoidung ?? null,
-//         'vaitro' => $user->vaitro ?? 'NULL',
-//         'vaitro_raw' => $user->attributes['vaitro'] ?? 'NULL',
-//         'is_giangvien' => is_giangvien() ? 'YES' : 'NO',
-//     ];
-// })->middleware('jwt.web');
+/*
+|--------------------------------------------------------------------------
+| ⚠️ QUAN TRỌNG: Routes CÔNG KHAI cho Điểm danh QR (KHÔNG middleware)
+| Đặt NGOÀI group middleware để sinh viên quét QR có thể truy cập
+|--------------------------------------------------------------------------
+*/
+Route::prefix('hoat-dong')->name('hoatdong.')->group(function () {
+    // Form điểm danh (public - sinh viên quét QR)
+    Route::get('/{id}/diem-danh', [\App\Http\Controllers\Web\GiangVien\GiangVienHoatDongController::class, 'scanQR'])
+        ->name('scan-qr');
+    
+    // Xử lý điểm danh (public)
+    Route::post('/{id}/diem-danh', [\App\Http\Controllers\Web\GiangVien\GiangVienHoatDongController::class, 'checkIn'])
+        ->name('check-in');
+});

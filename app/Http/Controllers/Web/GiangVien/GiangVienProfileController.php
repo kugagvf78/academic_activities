@@ -99,20 +99,20 @@ class GiangVienProfileController extends Controller
         return back()->with('success', 'Cập nhật avatar thành công!');
     }
     
-    public function danhSachKeHoach()
-    {
-        $user = jwt_user();
-        $giangvien = GiangVien::where('manguoidung', $user->manguoidung)->firstOrFail();
+    // public function danhSachKeHoach()
+    // {
+    //     $user = jwt_user();
+    //     $giangvien = GiangVien::where('manguoidung', $user->manguoidung)->firstOrFail();
         
-        $kehoachList = KeHoachCuocThi::with(['cuocthi', 'nguoiduyet'])
-            ->whereHas('cuocthi', function($q) use ($giangvien) {
-                $q->where('mabomon', $giangvien->mabomon);
-            })
-            ->orderBy('ngaynopkehoach', 'desc')
-            ->paginate(10);
+    //     $kehoachList = KeHoachCuocThi::with(['cuocthi', 'nguoiduyet'])
+    //         ->whereHas('cuocthi', function($q) use ($giangvien) {
+    //             $q->where('mabomon', $giangvien->mabomon);
+    //         })
+    //         ->orderBy('ngaynopkehoach', 'desc')
+    //         ->paginate(10);
         
-        return view('giangvien.profile.kehoach.index', compact('kehoachList', 'giangvien'));
-    }
+    //     return view('giangvien.kehoach.index', compact('kehoachList', 'giangvien'));
+    // }
     
     public function danhSachDeThi()
     {

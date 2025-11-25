@@ -290,7 +290,7 @@
                         </a>
 
                         {{-- Kế hoạch --}}
-                        <a href="{{ route('giangvien.profile.kehoach.index') }}" 
+                        <a href="{{ route('giangvien.kehoach.index') }}" 
                             class="flex items-center justify-between p-5 border-2 border-gray-200 rounded-xl hover:border-indigo-500 hover:bg-indigo-50 transition-all duration-200 group">
                             <div class="flex items-center gap-4">
                                 <div class="w-14 h-14 bg-indigo-100 group-hover:bg-indigo-600 rounded-xl flex items-center justify-center transition-all duration-200">
@@ -304,49 +304,19 @@
                             <i class="fas fa-chevron-right text-gray-400 group-hover:text-indigo-600 transition-all duration-200"></i>
                         </a>
 
-                        {{-- Chi phí --}}
-                        <a href="{{ route('giangvien.profile.chiphi.index') }}" 
-                            class="flex items-center justify-between p-5 border-2 border-gray-200 rounded-xl hover:border-red-500 hover:bg-red-50 transition-all duration-200 group">
+                        {{-- Hoạt động hỗ trợ --}}
+                        <a href="{{ route('giangvien.hoatdong.index') }}" 
+                            class="flex items-center justify-between p-5 border-2 border-gray-200 rounded-xl hover:border-cyan-500 hover:bg-cyan-50 transition-all duration-200 group">
                             <div class="flex items-center gap-4">
-                                <div class="w-14 h-14 bg-red-100 group-hover:bg-red-600 rounded-xl flex items-center justify-center transition-all duration-200">
-                                    <i class="fas fa-dollar-sign text-red-600 group-hover:text-white text-2xl transition-all duration-200"></i>
+                                <div class="w-14 h-14 bg-cyan-100 group-hover:bg-cyan-600 rounded-xl flex items-center justify-center transition-all duration-200">
+                                    <i class="fas fa-hands-helping text-cyan-600 group-hover:text-white text-2xl transition-all duration-200"></i>
                                 </div>
                                 <div>
-                                    <p class="font-bold text-gray-800 group-hover:text-red-600 transition-all duration-200">Chi phí</p>
-                                    <p class="text-sm text-gray-500">Quản lý chi phí cuộc thi</p>
+                                    <p class="font-bold text-gray-800 group-hover:text-cyan-600 transition-all duration-200">Hoạt động hỗ trợ</p>
+                                    <p class="text-sm text-gray-500">Quản lý hoạt động hỗ trợ</p>
                                 </div>
                             </div>
-                            <i class="fas fa-chevron-right text-gray-400 group-hover:text-red-600 transition-all duration-200"></i>
-                        </a>
-
-                        {{-- Quyết toán --}}
-                        <a href="{{ route('giangvien.profile.quyettoan.index') }}" 
-                            class="flex items-center justify-between p-5 border-2 border-gray-200 rounded-xl hover:border-pink-500 hover:bg-pink-50 transition-all duration-200 group">
-                            <div class="flex items-center gap-4">
-                                <div class="w-14 h-14 bg-pink-100 group-hover:bg-pink-600 rounded-xl flex items-center justify-center transition-all duration-200">
-                                    <i class="fas fa-receipt text-pink-600 group-hover:text-white text-2xl transition-all duration-200"></i>
-                                </div>
-                                <div>
-                                    <p class="font-bold text-gray-800 group-hover:text-pink-600 transition-all duration-200">Quyết toán</p>
-                                    <p class="text-sm text-gray-500">Quản lý quyết toán</p>
-                                </div>
-                            </div>
-                            <i class="fas fa-chevron-right text-gray-400 group-hover:text-pink-600 transition-all duration-200"></i>
-                        </a>
-
-                        {{-- Tin tức --}}
-                        <a href="{{ route('giangvien.profile.tintuc.index') }}" 
-                            class="flex items-center justify-between p-5 border-2 border-gray-200 rounded-xl hover:border-teal-500 hover:bg-teal-50 transition-all duration-200 group">
-                            <div class="flex items-center gap-4">
-                                <div class="w-14 h-14 bg-teal-100 group-hover:bg-teal-600 rounded-xl flex items-center justify-center transition-all duration-200">
-                                    <i class="fas fa-newspaper text-teal-600 group-hover:text-white text-2xl transition-all duration-200"></i>
-                                </div>
-                                <div>
-                                    <p class="font-bold text-gray-800 group-hover:text-teal-600 transition-all duration-200">Tin tức</p>
-                                    <p class="text-sm text-gray-500">Quản lý tin tức đã đăng</p>
-                                </div>
-                            </div>
-                            <i class="fas fa-chevron-right text-gray-400 group-hover:text-teal-600 transition-all duration-200"></i>
+                            <i class="fas fa-chevron-right text-gray-400 group-hover:text-cyan-600 transition-all duration-200"></i>
                         </a>
                     </div>
                 </div>

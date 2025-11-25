@@ -401,19 +401,70 @@
                         <h4 class="font-bold text-lg text-gray-800 mb-4">Chi tiết điểm cộng</h4>
                         <div class="space-y-3">
                             @foreach($diemRenLuyen['details'] as $detail)
-                                <div class="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 transition">
-                                    <div class="flex-1">
-                                        <p class="font-semibold text-gray-800">{{ $detail['title'] }}</p>
-                                        <div class="flex items-center gap-3 mt-1">
-                                            <span class="text-xs text-gray-500">
-                                                <i class="fas fa-calendar mr-1"></i>{{ \Carbon\Carbon::parse($detail['ngay'])->format('d/m/Y') }}
-                                            </span>
-                                            <span class="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
-                                                {{ $detail['loai'] }}
-                                            </span>
+                                <div class="border border-gray-200 rounded-lg hover:border-{{ $detail['color'] }}-300 hover:bg-{{ $detail['color'] }}-50 transition overflow-hidden">
+                                    {{-- Header --}}
+                                    <div class="flex items-center justify-between p-4 bg-white">
+                                        <div class="flex items-center gap-3 flex-1">
+                                            {{-- Icon --}}
+                                            <div class="w-10 h-10 bg-{{ $detail['color'] }}-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                                                <i class="fas {{ $detail['icon'] }} text-{{ $detail['color'] }}-600"></i>
+                                            </div>
+                                            
+                                            {{-- Thông tin chính --}}
+                                            <div class="flex-1">
+                                                <p class="font-semibold text-gray-800">{{ $detail['title'] }}</p>
+                                                <div class="flex items-center gap-3 mt-1">
+                                                    <span class="text-xs text-gray-500">
+                                                        <i class="fas fa-calendar mr-1"></i>{{ \Carbon\Carbon::parse($detail['ngay'])->format('d/m/Y') }}
+                                                    </span>
+                                                    <span class="text-xs px-2 py-0.5 rounded-full bg-{{ $detail['color'] }}-100 text-{{ $detail['color'] }}-700">
+                                                        {{ $detail['loai'] }}
+                                                    </span>
+                                                </div>
+                                            </div>
                                         </div>
+                                        
+                                        {{-- Điểm --}}
+                                        <span class="text-lg font-bold text-green-600 ml-4">+{{ $detail['diem'] }}</span>
                                     </div>
-                                    <span class="text-lg font-bold text-green-600">+{{ $detail['diem'] }}</span>
+
+                                    {{-- Chi tiết hoạt động (nếu có) --}}
+                                    @if($detail['chi_tiet'])
+                                        <div class="px-4 py-3 bg-gray-50 border-t border-gray-200">
+                                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm text-gray-600">
+                                                <div class="flex items-center gap-2">
+                                                    <i class="fas fa-tag w-4 text-purple-500"></i>
+                                                    <span><strong>Hoạt động:</strong> {{ $detail['chi_tiet']['ten_hoat_dong'] }}</span>
+                                                </div>
+                                                @if($detail['chi_tiet']['loai'])
+                                                    <div class="flex items-center gap-2">
+                                                        <i class="fas fa-list w-4 text-blue-500"></i>
+                                                        <span><strong>Loại:</strong> {{ $detail['chi_tiet']['loai'] }}</span>
+                                                    </div>
+                                                @endif
+                                                @if($detail['chi_tiet']['thoi_gian'])
+                                                    <div class="flex items-center gap-2">
+                                                        <i class="fas fa-clock w-4 text-green-500"></i>
+                                                        <span><strong>Thời gian:</strong> {{ $detail['chi_tiet']['thoi_gian'] }}</span>
+                                                    </div>
+                                                @endif
+                                                @if($detail['chi_tiet']['dia_diem'])
+                                                    <div class="flex items-center gap-2">
+                                                        <i class="fas fa-map-marker-alt w-4 text-red-500"></i>
+                                                        <span><strong>Địa điểm:</strong> {{ $detail['chi_tiet']['dia_diem'] }}</span>
+                                                    </div>
+                                                @endif
+                                            </div>
+                                            
+                                            @if($detail['mota'])
+                                                <div class="mt-2 pt-2 border-t border-gray-200">
+                                                    <p class="text-xs text-gray-500">
+                                                        <i class="fas fa-info-circle mr-1"></i>{{ $detail['mota'] }}
+                                                    </p>
+                                                </div>
+                                            @endif
+                                        </div>
+                                    @endif
                                 </div>
                             @endforeach
                         </div>

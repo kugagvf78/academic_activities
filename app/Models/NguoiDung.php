@@ -184,4 +184,11 @@ class NguoiDung extends Authenticatable implements JWTSubject
     {
         return $query->where('trangthai', 'Active');
     }
+
+    public function isAdmin()
+    {
+        return $this->vaitro === 'GiangVien' 
+            && $this->giangVien 
+            && $this->giangVien->is_admin;
+    }
 }

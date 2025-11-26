@@ -351,3 +351,19 @@ Route::prefix('hoat-dong')->name('hoatdong.')->group(function () {
     Route::post('/{id}/diem-danh', [\App\Http\Controllers\Web\GiangVien\GiangVienHoatDongController::class, 'checkIn'])
         ->name('check-in');
 });
+
+
+
+
+
+
+// Admin Routes
+Route::prefix('admin')->middleware(['jwt.web', 'admin'])->group(function () {
+    Route::get('/dashboard', [App\Http\Controllers\Admin\AdminController::class, 'dashboard'])
+        ->name('admin.dashboard');
+    
+    // Thêm các route admin khác ở đây
+    // Route::get('/users', ...)->name('admin.users');
+    // Route::get('/departments', ...)->name('admin.departments');
+    // ...
+});

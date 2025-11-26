@@ -22,6 +22,7 @@ class GiangVien extends Model
         'chucvu',
         'hocvi',
         'chuyenmon',
+        'is_admin',
     ];
 
     // Accessors & Mutators để dùng PascalCase trong code

@@ -247,13 +247,16 @@ class AuthController extends Controller
 
         $cookie = cookie('jwt_token', $token, 60 * 24 * 7, '/', null, false, true);
 
-        // Redirect theo vai trò
-        $redirectRoute = match($user->vaitro) {
-            'Admin' => 'client.home',
-            'GiangVien' => 'giangvien.profile.index',
-            'SinhVien' => 'profile.index',
-            default => 'client.home',
-        };
+        // Redirect theo vai trò, ưu tiên admin
+        if ($user->isAdmin()) {
+            $redirectRoute = 'admin.dashboard';
+        } else {
+            $redirectRoute = match($user->vaitro) {
+                'GiangVien' => 'giangvien.profile.index',
+                'SinhVien' => 'profile.index',
+                default => 'client.home',
+            };
+        }
 
         return redirect()->route($redirectRoute)
             ->with('success', 'Đăng nhập thành công!')

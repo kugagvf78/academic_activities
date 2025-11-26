@@ -22,19 +22,33 @@ class GiangVienKeHoachController extends Controller
             return redirect()->route('login')->with('error', 'Không tìm thấy thông tin giảng viên!');
         }
 
-        // Query kế hoạch của bộ môn
+        // Kiểm tra xem có phải trưởng bộ môn không
+        $isTruongBoMon = DB::table('bomon')
+            ->where('mabomon', $giangvien->mabomon)
+            ->where('matruongbomon', $giangvien->magiangvien)
+            ->exists();
+
+        // Query kế hoạch - SỬA LẠI ĐỂ KHÔNG BỊ DUPLICATE
         $query = DB::table('kehoachcuocthi as kh')
             ->join('cuocthi as ct', 'kh.macuocthi', '=', 'ct.macuocthi')
             ->leftJoin('bomon as bm', 'ct.mabomon', '=', 'bm.mabomon')
-            ->leftJoin('giangvien as gv', 'kh.nguoiduyet', '=', 'gv.magiangvien')
-            ->leftJoin('nguoidung as nd', 'gv.manguoidung', '=', 'nd.manguoidung')
+            ->leftJoin('giangvien as gv_nguoiduyet', 'kh.nguoiduyet', '=', 'gv_nguoiduyet.magiangvien')
+            ->leftJoin('nguoidung as nd_nguoiduyet', 'gv_nguoiduyet.manguoidung', '=', 'nd_nguoiduyet.manguoidung')
             ->where('ct.mabomon', $giangvien->mabomon)
             ->select(
-                'kh.*',
+                'kh.makehoach',
+                'kh.macuocthi',
+                'kh.namhoc',
+                'kh.hocky',
+                'kh.ngaynopkehoach',
+                'kh.trangthaiduyet',
+                'kh.ngayduyet',
+                'kh.nguoiduyet',
+                'kh.ghichu',
                 'ct.tencuocthi',
                 'ct.loaicuocthi',
                 'bm.tenbomon',
-                'nd.hoten as tennguoiduyet'
+                'nd_nguoiduyet.hoten as tennguoiduyet'
             );
 
         // Tìm kiếm
@@ -61,13 +75,15 @@ class GiangVienKeHoachController extends Controller
         $kehoachs = $query->orderBy('kh.ngaynopkehoach', 'desc')->paginate(10);
 
         // Lấy danh sách năm học để filter
-        $namhocs = DB::table('kehoachcuocthi')
+        $namhocs = DB::table('kehoachcuocthi as kh')
+            ->join('cuocthi as ct', 'kh.macuocthi', '=', 'ct.macuocthi')
+            ->where('ct.mabomon', $giangvien->mabomon)
             ->distinct()
-            ->pluck('namhoc')
+            ->pluck('kh.namhoc')
             ->sort()
             ->values();
 
-        return view('giangvien.kehoach.index', compact('kehoachs', 'namhocs', 'giangvien'));
+        return view('giangvien.kehoach.index', compact('kehoachs', 'namhocs', 'giangvien', 'isTruongBoMon'));
     }
 
     /**
@@ -146,6 +162,9 @@ class GiangVienKeHoachController extends Controller
      */
     public function show($id)
     {
+        $user = jwt_user();
+        $giangvien = DB::table('giangvien')->where('manguoidung', $user->manguoidung)->first();
+
         $kehoach = DB::table('kehoachcuocthi as kh')
             ->join('cuocthi as ct', 'kh.macuocthi', '=', 'ct.macuocthi')
             ->leftJoin('bomon as bm', 'ct.mabomon', '=', 'bm.mabomon')
@@ -156,6 +175,7 @@ class GiangVienKeHoachController extends Controller
                 'kh.*',
                 'ct.*',
                 'bm.tenbomon',
+                'bm.matruongbomon',
                 'nd.hoten as tennguoiduyet'
             )
             ->first();
@@ -163,6 +183,9 @@ class GiangVienKeHoachController extends Controller
         if (!$kehoach) {
             abort(404, 'Không tìm thấy kế hoạch');
         }
+
+        // Kiểm tra xem có phải trưởng bộ môn không
+        $isTruongBoMon = ($kehoach->matruongbomon == $giangvien->magiangvien);
 
         // Lấy danh sách ban của cuộc thi
         $bans = DB::table('ban')
@@ -175,7 +198,7 @@ class GiangVienKeHoachController extends Controller
             ->orderBy('thoigianbatdau')
             ->get();
 
-        return view('giangvien.kehoach.show', compact('kehoach', 'bans', 'congviecs'));
+        return view('giangvien.kehoach.show', compact('kehoach', 'bans', 'congviecs', 'isTruongBoMon'));
     }
 
     /**
@@ -286,6 +309,95 @@ class GiangVienKeHoachController extends Controller
     }
 
     /**
+     * ✨ Duyệt kế hoạch (chỉ trưởng bộ môn)
+     */
+    public function approve(Request $request, $id)
+    {
+        $user = jwt_user();
+        $giangvien = DB::table('giangvien')->where('manguoidung', $user->manguoidung)->first();
+
+        // Kiểm tra kế hoạch
+        $kehoach = DB::table('kehoachcuocthi as kh')
+            ->join('cuocthi as ct', 'kh.macuocthi', '=', 'ct.macuocthi')
+            ->join('bomon as bm', 'ct.mabomon', '=', 'bm.mabomon')
+            ->where('kh.makehoach', $id)
+            ->select('kh.*', 'bm.matruongbomon')
+            ->first();
+
+        if (!$kehoach) {
+            abort(404, 'Không tìm thấy kế hoạch');
+        }
+
+        // Kiểm tra quyền trưởng bộ môn
+        if ($kehoach->matruongbomon != $giangvien->magiangvien) {
+            return back()->with('error', 'Chỉ trưởng bộ môn mới có quyền duyệt kế hoạch!');
+        }
+
+        // Kiểm tra trạng thái
+        if ($kehoach->trangthaiduyet != 'Pending') {
+            return back()->with('error', 'Kế hoạch này không ở trạng thái chờ duyệt!');
+        }
+
+        DB::table('kehoachcuocthi')->where('makehoach', $id)->update([
+            'trangthaiduyet' => 'Approved',
+            'nguoiduyet' => $giangvien->magiangvien,
+            'ngayduyet' => now(),
+        ]);
+
+        return redirect()->route('giangvien.kehoach.show', $id)
+            ->with('success', 'Duyệt kế hoạch thành công!');
+    }
+
+    /**
+     * ✨ Từ chối kế hoạch (chỉ trưởng bộ môn)
+     */
+    public function reject(Request $request, $id)
+    {
+        $request->validate([
+            'lydotuchoi' => 'required|string|min:10',
+        ], [
+            'lydotuchoi.required' => 'Vui lòng nhập lý do từ chối',
+            'lydotuchoi.min' => 'Lý do từ chối phải có ít nhất 10 ký tự',
+        ]);
+
+        $user = jwt_user();
+        $giangvien = DB::table('giangvien')->where('manguoidung', $user->manguoidung)->first();
+
+        // Kiểm tra kế hoạch
+        $kehoach = DB::table('kehoachcuocthi as kh')
+            ->join('cuocthi as ct', 'kh.macuocthi', '=', 'ct.macuocthi')
+            ->join('bomon as bm', 'ct.mabomon', '=', 'bm.mabomon')
+            ->where('kh.makehoach', $id)
+            ->select('kh.*', 'bm.matruongbomon')
+            ->first();
+
+        if (!$kehoach) {
+            abort(404, 'Không tìm thấy kế hoạch');
+        }
+
+        // Kiểm tra quyền trưởng bộ môn
+        if ($kehoach->matruongbomon != $giangvien->magiangvien) {
+            return back()->with('error', 'Chỉ trưởng bộ môn mới có quyền từ chối kế hoạch!');
+        }
+
+        // Kiểm tra trạng thái
+        if ($kehoach->trangthaiduyet != 'Pending') {
+            return back()->with('error', 'Kế hoạch này không ở trạng thái chờ duyệt!');
+        }
+
+        DB::table('kehoachcuocthi')->where('makehoach', $id)->update([
+            'trangthaiduyet' => 'Rejected',
+            'nguoiduyet' => $giangvien->magiangvien,
+            'ngayduyet' => now(),
+            'ghichu' => ($kehoach->ghichu ? $kehoach->ghichu . "\n\n" : '') . 
+                        "LÝ DO TỪ CHỐI: " . $request->lydotuchoi,
+        ]);
+
+        return redirect()->route('giangvien.kehoach.show', $id)
+            ->with('success', 'Đã từ chối kế hoạch!');
+    }
+
+    /**
      * Export kế hoạch ra PDF
      */
     public function export($id)
@@ -311,7 +423,7 @@ class GiangVienKeHoachController extends Controller
             ->orderBy('thoigianbatdau')
             ->get();
 
-        // Tạo PDF (sử dụng dompdf hoặc thư viện khác)
+        // Tạo PDF
         $pdf = PDF::loadView('giangvien.kehoach.pdf', compact('kehoach', 'bans', 'congviecs'));
         
         return $pdf->download('ke-hoach-' . $kehoach->makehoach . '.pdf');

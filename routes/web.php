@@ -253,16 +253,23 @@ Route::middleware(['jwt.web', 'role:GiangVien'])
             Route::put('/{id}', 'update')->name('update');
         });
 
-        // Phân công
         Route::prefix('phan-cong')
-            ->name('phancong.')
-            ->controller(\App\Http\Controllers\Web\GiangVien\GiangVienPhanCongController::class)
-            ->group(function () {
-                Route::get('/', 'index')->name('index');
-                Route::get('/{id}/chi-tiet', 'show')->name('show');
-                Route::get('/api/statistics', 'statistics')->name('api.statistics');
-                Route::get('/export', 'export')->name('export');
-            });
+        ->name('phancong.')
+        ->controller(\App\Http\Controllers\Web\GiangVien\GiangVienPhanCongController::class)
+        ->group(function () {
+            // Tất cả giảng viên
+            Route::get('/', 'index')->name('index');
+            Route::get('/{id}/chi-tiet', 'show')->name('show');
+            Route::get('/export', 'export')->name('export');
+            Route::get('/api/statistics', 'statistics')->name('api.statistics');
+            
+            // Chỉ trưởng bộ môn
+            Route::get('/tao-moi', 'create')->name('create');
+            Route::post('/tao-moi', 'store')->name('store');
+            Route::get('/{id}/sua', 'edit')->name('edit');
+            Route::put('/{id}', 'update')->name('update');
+            Route::delete('/{id}', 'destroy')->name('destroy');
+        });
 
         // Quản lý Kế hoạch Cuộc thi
         Route::prefix('ke-hoach')->name('kehoach.')->controller(\App\Http\Controllers\Web\GiangVien\GiangVienKeHoachController::class)->group(function () {
@@ -276,6 +283,10 @@ Route::middleware(['jwt.web', 'role:GiangVien'])
             Route::post('/{id}/gui-lai', 'resubmit')->name('resubmit');
             Route::get('/{id}/export', 'export')->name('export');
             Route::get('/api/statistics', 'statistics')->name('statistics');
+
+            // THÊM MỚI: Routes duyệt/từ chối kế hoạch (chỉ trưởng bộ môn)
+            Route::post('/{id}/duyet', 'approve')->name('approve');
+            Route::post('/{id}/tu-choi', 'reject')->name('reject');
         });
 
         // ✨ THÊM MỚI: Quản lý Hoạt động Hỗ trợ

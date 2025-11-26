@@ -14,6 +14,9 @@
             <div>
                 <h1 class="text-4xl font-black mb-2">
                     Quản lý Kế hoạch Cuộc thi
+                    @if($isTruongBoMon)
+                        <span class="text-sm font-normal bg-white/20 px-3 py-1 rounded-full ml-2">Trưởng bộ môn</span>
+                    @endif
                 </h1>
                 <p class="text-purple-100">Đề xuất và theo dõi kế hoạch tổ chức cuộc thi</p>
             </div>

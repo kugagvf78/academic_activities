@@ -1,12 +1,12 @@
 @extends('layouts.client')
 
-@section('title', 'Chi tiết Hoạt động')
+@section('title', 'Chi tiết Kế hoạch Cuộc thi')
 
 @section('content')
 <div class="container mx-auto px-6 py-8">
     {{-- Back button --}}
     <div class="mb-6">
-        <a href="{{ route('giangvien.hoatdong.index') }}" 
+        <a href="{{ route('giangvien.kehoach.index') }}" 
             class="inline-flex items-center gap-2 text-gray-600 hover:text-gray-800 font-semibold transition">
             <i class="fas fa-arrow-left"></i>
             <span>Quay lại danh sách</span>
@@ -18,7 +18,7 @@
         <div class="mb-6 bg-gradient-to-r from-green-50 to-emerald-100 border-l-4 border-green-500 text-green-700 px-6 py-4 rounded-xl shadow-md">
             <div class="flex items-center gap-3">
                 <i class="fas fa-check-circle text-2xl"></i>
-                <span class="font-semibold">{!! session('success') !!}</span>
+                <span class="font-semibold">{{ session('success') }}</span>
             </div>
         </div>
     @endif
@@ -33,66 +33,60 @@
     @endif
 
     <div class="grid md:grid-cols-3 gap-6 mb-8">
-        {{-- Thông tin hoạt động --}}
+        {{-- Thông tin kế hoạch --}}
         <div class="md:col-span-2">
             <div class="bg-white rounded-2xl shadow-xl border border-gray-100 p-8">
                 <div class="flex items-start justify-between mb-6">
                     <div>
-                        <h2 class="text-3xl font-black text-gray-800 mb-2">{{ $hoatdong->tenhoatdong }}</h2>
+                        <div class="text-sm text-gray-500 mb-1">Mã kế hoạch</div>
+                        <h2 class="text-3xl font-black text-gray-800 mb-3">{{ $kehoach->makehoach }}</h2>
+                        <h3 class="text-xl font-bold text-purple-600 mb-2">{{ $kehoach->tencuocthi }}</h3>
                         <div class="flex items-center gap-4 text-sm flex-wrap">
-                            @if($hoatdong->loaihoatdong == 'CoVu')
-                                <span class="px-3 py-1 bg-pink-100 text-pink-700 rounded-full font-semibold">
-                                    <i class="fas fa-bullhorn mr-1"></i>Cổ vũ
+                            <span class="px-3 py-1 bg-blue-100 text-blue-700 rounded-full font-semibold">
+                                {{ $kehoach->loaicuocthi }}
+                            </span>
+                            
+                            @if($kehoach->trangthaiduyet == 'Pending')
+                                <span class="px-3 py-1 rounded-full text-sm font-semibold bg-yellow-100 text-yellow-700">
+                                    <i class="fas fa-clock mr-1"></i>Chờ duyệt
                                 </span>
-                            @else
-                                <span class="px-3 py-1 bg-blue-100 text-blue-700 rounded-full font-semibold">
-                                    <i class="fas fa-tools mr-1"></i>Hỗ trợ Kỹ thuật
+                            @elseif($kehoach->trangthaiduyet == 'Approved')
+                                <span class="px-3 py-1 rounded-full text-sm font-semibold bg-green-100 text-green-700">
+                                    <i class="fas fa-check-circle mr-1"></i>Đã duyệt
+                                </span>
+                            @elseif($kehoach->trangthaiduyet == 'Rejected')
+                                <span class="px-3 py-1 rounded-full text-sm font-semibold bg-red-100 text-red-700">
+                                    <i class="fas fa-times-circle mr-1"></i>Từ chối
                                 </span>
                             @endif
-                            
-                            @php
-                                $now = now();
-                                $start = $hoatdong->thoigianbatdau;
-                                $end = $hoatdong->thoigianketthuc;
-                                
-                                if ($now->lt($start)) {
-                                    $statusColor = 'yellow';
-                                    $statusLabel = 'Sắp diễn ra';
-                                } elseif ($now->between($start, $end)) {
-                                    $statusColor = 'green';
-                                    $statusLabel = 'Đang diễn ra';
-                                } else {
-                                    $statusColor = 'gray';
-                                    $statusLabel = 'Đã kết thúc';
-                                }
-                            @endphp
-                            
-                            <span class="px-3 py-1 rounded-full font-semibold
-                                @if($statusColor == 'green') bg-green-100 text-green-700
-                                @elseif($statusColor == 'yellow') bg-yellow-100 text-yellow-700
-                                @else bg-gray-100 text-gray-700
-                                @endif">
-                                {{ $statusLabel }}
-                            </span>
                         </div>
                     </div>
                     
                     <div class="flex gap-2 flex-wrap">
-                        {{-- Nút Tạo QR Google Form --}}
-                        <a href="{{ route('giangvien.hoatdong.generate-qr', $hoatdong->mahoatdong) }}" 
-                            class="px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl hover:from-blue-600 hover:to-blue-700 transition shadow-lg flex items-center gap-2">
-                            <i class="fab fa-google"></i>
-                            <span>Tạo QR</span>
-                        </a>
+                        {{-- ✨ Nút duyệt/từ chối cho trưởng bộ môn --}}
+                        @if($isTruongBoMon && $kehoach->trangthaiduyet == 'Pending')
+                            <button onclick="approveModal()" 
+                                class="px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl hover:from-green-600 hover:to-green-700 transition shadow-lg">
+                                <i class="fas fa-check mr-2"></i>Duyệt
+                            </button>
+                            
+                            <button onclick="rejectModal()" 
+                                class="px-4 py-2 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl hover:from-red-600 hover:to-red-700 transition shadow-lg">
+                                <i class="fas fa-times mr-2"></i>Từ chối
+                            </button>
+                        @endif
+
+                        {{-- Các nút khác --}}
+                        @if(in_array($kehoach->trangthaiduyet, ['Pending', 'Rejected']))
+                            <a href="{{ route('giangvien.kehoach.edit', $kehoach->makehoach) }}" 
+                                class="px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition">
+                                <i class="fas fa-edit mr-2"></i>Sửa
+                            </a>
+                        @endif
                         
-                        <a href="{{ route('giangvien.hoatdong.edit', $hoatdong->mahoatdong) }}" 
-                            class="px-4 py-2 bg-green-600 text-white rounded-xl hover:bg-green-700 transition">
-                            <i class="fas fa-edit mr-2"></i>Sửa
-                        </a>
-                        
-                        <a href="{{ route('giangvien.hoatdong.export-attendance', $hoatdong->mahoatdong) }}" 
+                        <a href="{{ route('giangvien.kehoach.export', $kehoach->makehoach) }}" 
                             class="px-4 py-2 bg-orange-600 text-white rounded-xl hover:bg-orange-700 transition">
-                            <i class="fas fa-file-excel mr-2"></i>Export
+                            <i class="fas fa-file-pdf mr-2"></i>Export PDF
                         </a>
                     </div>
                 </div>
@@ -100,11 +94,11 @@
                 <div class="space-y-4 border-t pt-6">
                     <div class="flex items-start gap-4">
                         <div class="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                            <i class="fas fa-trophy text-purple-600"></i>
+                            <i class="fas fa-building text-purple-600"></i>
                         </div>
                         <div class="flex-1">
-                            <div class="text-sm text-gray-500 mb-1">Cuộc thi</div>
-                            <div class="font-bold text-gray-800">{{ $hoatdong->cuocthi->tencuocthi }}</div>
+                            <div class="text-sm text-gray-500 mb-1">Bộ môn</div>
+                            <div class="font-bold text-gray-800">{{ $kehoach->tenbomon }}</div>
                         </div>
                     </div>
 
@@ -113,45 +107,42 @@
                             <i class="fas fa-calendar-alt text-blue-600"></i>
                         </div>
                         <div class="flex-1">
-                            <div class="text-sm text-gray-500 mb-1">Thời gian</div>
-                            <div class="font-bold text-gray-800">
-                                {{ $hoatdong->thoigianbatdau->format('d/m/Y H:i') }} - {{ $hoatdong->thoigianketthuc->format('d/m/Y H:i') }}
-                            </div>
+                            <div class="text-sm text-gray-500 mb-1">Năm học / Học kỳ</div>
+                            <div class="font-bold text-gray-800">{{ $kehoach->namhoc }} - Học kỳ {{ $kehoach->hocky }}</div>
                         </div>
                     </div>
 
-                    @if($hoatdong->diadiem)
                     <div class="flex items-start gap-4">
-                        <div class="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                            <i class="fas fa-map-marker-alt text-red-600"></i>
+                        <div class="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                            <i class="fas fa-clock text-green-600"></i>
                         </div>
                         <div class="flex-1">
-                            <div class="text-sm text-gray-500 mb-1">Địa điểm</div>
-                            <div class="font-bold text-gray-800">{{ $hoatdong->diadiem }}</div>
+                            <div class="text-sm text-gray-500 mb-1">Ngày nộp kế hoạch</div>
+                            <div class="font-bold text-gray-800">{{ \Carbon\Carbon::parse($kehoach->ngaynopkehoach)->format('d/m/Y H:i') }}</div>
                         </div>
                     </div>
-                    @endif
 
-                    @if($hoatdong->diemrenluyen)
+                    @if($kehoach->ngayduyet)
                     <div class="flex items-start gap-4">
                         <div class="w-10 h-10 bg-yellow-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                            <i class="fas fa-star text-yellow-600"></i>
+                            <i class="fas fa-user-check text-yellow-600"></i>
                         </div>
                         <div class="flex-1">
-                            <div class="text-sm text-gray-500 mb-1">Điểm rèn luyện</div>
-                            <div class="font-bold text-gray-800">{{ $hoatdong->diemrenluyen }} điểm</div>
+                            <div class="text-sm text-gray-500 mb-1">Người duyệt / Ngày duyệt</div>
+                            <div class="font-bold text-gray-800">{{ $kehoach->tennguoiduyet ?? 'N/A' }}</div>
+                            <div class="text-sm text-gray-600">{{ \Carbon\Carbon::parse($kehoach->ngayduyet)->format('d/m/Y H:i') }}</div>
                         </div>
                     </div>
                     @endif
 
-                    @if($hoatdong->mota)
+                    @if($kehoach->ghichu)
                     <div class="flex items-start gap-4">
                         <div class="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                            <i class="fas fa-info-circle text-gray-600"></i>
+                            <i class="fas fa-sticky-note text-gray-600"></i>
                         </div>
                         <div class="flex-1">
-                            <div class="text-sm text-gray-500 mb-1">Mô tả</div>
-                            <div class="text-gray-700">{{ $hoatdong->mota }}</div>
+                            <div class="text-sm text-gray-500 mb-1">Ghi chú</div>
+                            <div class="text-gray-700 whitespace-pre-line">{{ $kehoach->ghichu }}</div>
                         </div>
                     </div>
                     @endif
@@ -162,90 +153,178 @@
         {{-- Thống kê --}}
         <div class="space-y-6">
             <div class="bg-gradient-to-br from-purple-600 to-pink-600 rounded-2xl shadow-xl p-6 text-white">
-                <div class="text-sm font-semibold mb-2 opacity-90">Tổng đăng ký</div>
-                <div class="text-5xl font-black mb-2">{{ $stats['total'] }}</div>
-                <div class="text-sm opacity-90">/ {{ $hoatdong->soluong }} chỗ</div>
-                <div class="mt-4 bg-white/20 rounded-full h-2">
-                    <div class="bg-white rounded-full h-2 transition-all duration-500" 
-                        style="width: {{ $hoatdong->soluong > 0 ? ($stats['total'] / $hoatdong->soluong * 100) : 0 }}%"></div>
-                </div>
+                <div class="text-sm font-semibold mb-2 opacity-90">Tổng số ban</div>
+                <div class="text-5xl font-black mb-2">{{ $bans->count() }}</div>
+                <div class="text-sm opacity-90">Ban tổ chức</div>
             </div>
 
             <div class="bg-white rounded-2xl shadow-xl border border-gray-100 p-6">
-                <div class="text-sm font-semibold text-gray-600 mb-4">Điểm danh</div>
+                <div class="text-sm font-semibold text-gray-600 mb-4">Công việc</div>
                 <div class="space-y-3">
                     <div class="flex items-center justify-between">
-                        <span class="text-gray-700">Đã điểm danh</span>
-                        <span class="text-2xl font-bold text-green-600">{{ $stats['checked_in'] }}</span>
-                    </div>
-                    <div class="flex items-center justify-between">
-                        <span class="text-gray-700">Chưa điểm danh</span>
-                        <span class="text-2xl font-bold text-orange-600">{{ $stats['not_checked_in'] }}</span>
-                    </div>
-                </div>
-                <div class="mt-4 pt-4 border-t">
-                    <div class="text-sm text-gray-500 mb-2">Tỷ lệ điểm danh</div>
-                    <div class="text-3xl font-bold text-purple-600">
-                        {{ $stats['total'] > 0 ? round(($stats['checked_in'] / $stats['total']) * 100) : 0 }}%
+                        <span class="text-gray-700">Tổng công việc</span>
+                        <span class="text-2xl font-bold text-purple-600">{{ $congviecs->count() }}</span>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    {{-- Danh sách đăng ký --}}
+    {{-- Danh sách ban --}}
+    @if($bans->count() > 0)
+    <div class="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden mb-8">
+        <div class="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-purple-50">
+            <h3 class="text-xl font-bold text-gray-800">Danh sách Ban ({{ $bans->count() }})</h3>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase">STT</th>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase">Tên ban</th>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase">Mô tả</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    @foreach($bans as $index => $ban)
+                        <tr class="hover:bg-purple-50/50 transition">
+                            <td class="px-6 py-4 text-sm text-gray-700">{{ $index + 1 }}</td>
+                            <td class="px-6 py-4 text-sm font-semibold text-gray-800">{{ $ban->tenban }}</td>
+                            <td class="px-6 py-4 text-sm text-gray-700">{{ $ban->mota ?? '-' }}</td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    </div>
+    @endif
+
+    {{-- Danh sách công việc --}}
+    @if($congviecs->count() > 0)
     <div class="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
         <div class="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-purple-50">
-            <h3 class="text-xl font-bold text-gray-800">Danh sách đăng ký ({{ $dangkys->count() }})</h3>
+            <h3 class="text-xl font-bold text-gray-800">Danh sách Công việc ({{ $congviecs->count() }})</h3>
         </div>
-
-        @if($dangkys->count() > 0)
-            <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-gray-200">
-                    <thead class="bg-gray-50">
-                        <tr>
-                            <th class="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase">STT</th>
-                            <th class="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase">Mã SV</th>
-                            <th class="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase">Họ tên</th>
-                            <th class="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase">Lớp</th>
-                            <th class="px-6 py-3 text-center text-xs font-bold text-gray-600 uppercase">Điểm danh</th>
-                            <th class="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase">Thời gian điểm danh</th>
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase">STT</th>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase">Tên công việc</th>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase">Thời gian</th>
+                        <th class="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase">Mô tả</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200">
+                    @foreach($congviecs as $index => $cv)
+                        <tr class="hover:bg-purple-50/50 transition">
+                            <td class="px-6 py-4 text-sm text-gray-700">{{ $index + 1 }}</td>
+                            <td class="px-6 py-4 text-sm font-semibold text-gray-800">{{ $cv->tencongviec }}</td>
+                            <td class="px-6 py-4 text-sm text-gray-700">
+                                {{ \Carbon\Carbon::parse($cv->thoigianbatdau)->format('d/m/Y H:i') }}
+                                @if($cv->thoigianketthuc)
+                                    - {{ \Carbon\Carbon::parse($cv->thoigianketthuc)->format('d/m/Y H:i') }}
+                                @endif
+                            </td>
+                            <td class="px-6 py-4 text-sm text-gray-700">{{ $cv->mota ?? '-' }}</td>
                         </tr>
-                    </thead>
-                    <tbody class="bg-white divide-y divide-gray-200">
-                        @foreach($dangkys as $index => $dk)
-                            <tr class="hover:bg-purple-50/50 transition">
-                                <td class="px-6 py-4 text-sm text-gray-700">{{ $index + 1 }}</td>
-                                <td class="px-6 py-4 text-sm font-semibold text-gray-800">{{ $dk->sinhvien->masinhvien }}</td>
-                                <td class="px-6 py-4 text-sm text-gray-800">{{ $dk->sinhvien->nguoidung->hoten }}</td>
-                                <td class="px-6 py-4 text-sm text-gray-700">{{ $dk->sinhvien->malop ?? 'N/A' }}</td>
-                                <td class="px-6 py-4 text-center">
-                                    @if($dk->diemdanhqr)
-                                        <span class="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-semibold">
-                                            <i class="fas fa-check-circle"></i>
-                                            <span>Đã điểm danh</span>
-                                        </span>
-                                    @else
-                                        <span class="inline-flex items-center gap-1 px-3 py-1 bg-orange-100 text-orange-700 rounded-full text-sm font-semibold">
-                                            <i class="fas fa-clock"></i>
-                                            <span>Chưa điểm danh</span>
-                                        </span>
-                                    @endif
-                                </td>
-                                <td class="px-6 py-4 text-sm text-gray-700">
-                                    {{ $dk->thoigiandiemdanh ? $dk->thoigiandiemdanh->format('d/m/Y H:i:s') : '-' }}
-                                </td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    </div>
+    @endif
+</div>
+
+{{-- ✨ Modal Duyệt kế hoạch --}}
+<div id="approveModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8">
+        <div class="text-center mb-6">
+            <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-check-circle text-3xl text-green-600"></i>
             </div>
-        @else
-            <div class="p-12 text-center">
-                <i class="fas fa-users text-6xl text-gray-300 mb-4"></i>
-                <p class="text-gray-500">Chưa có sinh viên nào đăng ký</p>
+            <h3 class="text-2xl font-bold text-gray-800 mb-2">Xác nhận duyệt kế hoạch</h3>
+            <p class="text-gray-600">Bạn có chắc chắn muốn duyệt kế hoạch này không?</p>
+        </div>
+        
+        <form action="{{ route('giangvien.kehoach.approve', $kehoach->makehoach) }}" method="POST">
+            @csrf
+            <div class="flex gap-3">
+                <button type="button" onclick="closeApproveModal()" 
+                    class="flex-1 px-6 py-3 bg-gray-200 text-gray-700 rounded-xl font-semibold hover:bg-gray-300 transition">
+                    Hủy
+                </button>
+                <button type="submit" 
+                    class="flex-1 px-6 py-3 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl font-semibold hover:from-green-600 hover:to-green-700 transition shadow-lg">
+                    Xác nhận duyệt
+                </button>
             </div>
-        @endif
+        </form>
     </div>
 </div>
+
+{{-- ✨ Modal Từ chối kế hoạch --}}
+<div id="rejectModal" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8">
+        <div class="text-center mb-6">
+            <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <i class="fas fa-times-circle text-3xl text-red-600"></i>
+            </div>
+            <h3 class="text-2xl font-bold text-gray-800 mb-2">Từ chối kế hoạch</h3>
+            <p class="text-gray-600">Vui lòng nhập lý do từ chối kế hoạch này</p>
+        </div>
+        
+        <form action="{{ route('giangvien.kehoach.reject', $kehoach->makehoach) }}" method="POST">
+            @csrf
+            <div class="mb-6">
+                <textarea name="lydotuchoi" 
+                    rows="4" 
+                    required
+                    placeholder="Nhập lý do từ chối (tối thiểu 10 ký tự)..."
+                    class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 transition"></textarea>
+            </div>
+            
+            <div class="flex gap-3">
+                <button type="button" onclick="closeRejectModal()" 
+                    class="flex-1 px-6 py-3 bg-gray-200 text-gray-700 rounded-xl font-semibold hover:bg-gray-300 transition">
+                    Hủy
+                </button>
+                <button type="submit" 
+                    class="flex-1 px-6 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl font-semibold hover:from-red-600 hover:to-red-700 transition shadow-lg">
+                    Xác nhận từ chối
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+@push('scripts')
+<script>
+function approveModal() {
+    document.getElementById('approveModal').classList.remove('hidden');
+}
+
+function closeApproveModal() {
+    document.getElementById('approveModal').classList.add('hidden');
+}
+
+function rejectModal() {
+    document.getElementById('rejectModal').classList.remove('hidden');
+}
+
+function closeRejectModal() {
+    document.getElementById('rejectModal').classList.add('hidden');
+}
+
+// Đóng modal khi click outside
+document.getElementById('approveModal')?.addEventListener('click', function(e) {
+    if (e.target === this) closeApproveModal();
+});
+
+document.getElementById('rejectModal')?.addEventListener('click', function(e) {
+    if (e.target === this) closeRejectModal();
+});
+</script>
+@endpush
+
 @endsection

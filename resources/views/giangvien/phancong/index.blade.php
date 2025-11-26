@@ -19,15 +19,32 @@
                     <span class="text-white/90 text-sm">Quản lý công việc</span>
                 </div>
                 <h1 class="text-4xl font-black mb-2">
-                    <i class="fas fa-tasks mr-3"></i>Danh sách Phân công
+                    <i class="fas fa-tasks mr-3"></i>
+                    @if($isTruongBoMon)
+                        Quản lý Phân công Bộ môn
+                    @else
+                        Danh sách Phân công
+                    @endif
                 </h1>
-                <p class="text-blue-100">Theo dõi và cập nhật công việc được giao</p>
+                <p class="text-blue-100">
+                    @if($isTruongBoMon)
+                        Phân công và theo dõi công việc của giảng viên trong bộ môn
+                    @else
+                        Theo dõi và cập nhật công việc được giao
+                    @endif
+                </p>
             </div>
             <div class="hidden md:block">
                 <div class="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20">
                     <div class="text-center">
                         <div class="text-3xl font-bold mb-1">{{ $phanCongList->total() }}</div>
-                        <div class="text-sm text-blue-100">Tổng công việc</div>
+                        <div class="text-sm text-blue-100">
+                            @if($isTruongBoMon)
+                                Tổng phân công
+                            @else
+                                Công việc của tôi
+                            @endif
+                        </div>
                     </div>
                 </div>
             </div>
@@ -46,7 +63,9 @@
     <div class="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
         <div class="bg-white rounded-xl shadow-md p-4 border-l-4 border-indigo-500">
             <div class="text-2xl font-bold text-indigo-700">{{ $phanCongList->total() }}</div>
-            <div class="text-sm text-gray-500">Tổng công việc</div>
+            <div class="text-sm text-gray-500">
+                @if($isTruongBoMon) Tổng phân công @else Công việc của tôi @endif
+            </div>
         </div>
         <div class="bg-white rounded-xl shadow-md p-4 border-l-4 border-green-500">
             <div class="text-2xl font-bold text-green-700">{{ $banList->count() }}</div>
@@ -58,62 +77,89 @@
         </div>
     </div>
 
-    {{-- BỘ LỌC --}}
+    {{-- Bộ Lọc --}}
     <div class="bg-white rounded-2xl shadow-xl border border-indigo-100 p-6">
-        <form method="GET" action="{{ route('giangvien.phancong.index') }}" class="grid lg:grid-cols-5 md:grid-cols-3 gap-4">
-            {{-- Tìm kiếm --}}
-            <div class="lg:col-span-2 relative">
-                <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
-                <input type="text" name="search" value="{{ request('search') }}" 
-                    placeholder="Tìm vai trò..." 
-                    class="w-full pl-12 pr-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
+        <form method="GET" action="{{ route('giangvien.phancong.index') }}" class="space-y-4">
+            <div class="grid lg:grid-cols-5 md:grid-cols-3 gap-4">
+                {{-- Tìm kiếm --}}
+                <div class="lg:col-span-2 relative">
+                    <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                    <input type="text" name="search" value="{{ request('search') }}" 
+                        placeholder="@if($isTruongBoMon)Tìm vai trò hoặc tên giảng viên...@else Tìm vai trò...@endif" 
+                        class="w-full pl-12 pr-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
+                </div>
+
+                {{-- Công việc --}}
+                <div>
+                    <select name="congviec" class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
+                        <option value="">Tất cả công việc</option>
+                        @foreach($congViecList as $cv)
+                            <option value="{{ $cv->macongviec }}" {{ request('congviec') == $cv->macongviec ? 'selected' : '' }}>
+                                {{ $cv->tencongviec }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+
+                {{-- Ban --}}
+                <div>
+                    <select name="ban" class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
+                        <option value="">Tất cả ban</option>
+                        @foreach($banList as $ban)
+                            <option value="{{ $ban->maban }}" {{ request('ban') == $ban->maban ? 'selected' : '' }}>
+                                {{ $ban->tenban }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+
+                {{-- Nút --}}
+                <div class="flex gap-2">
+                    <button type="submit" class="flex-1 bg-gradient-to-r from-indigo-600 to-blue-500 text-white px-6 py-2.5 rounded-xl font-semibold hover:from-indigo-700 hover:to-blue-600 transition">
+                        <i class="fas fa-filter mr-2"></i>Lọc
+                    </button>
+                    @if(request()->hasAny(['search', 'congviec', 'ban', 'giangvien_filter']))
+                    <a href="{{ route('giangvien.phancong.index') }}" 
+                        class="px-4 py-2.5 bg-gray-100 text-gray-600 rounded-xl hover:bg-gray-200 transition">
+                        <i class="fas fa-rotate-right"></i>
+                    </a>
+                    @endif
+                </div>
             </div>
 
-            {{-- Công việc --}}
-            <div>
-                <select name="congviec" class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
-                    <option value="">Tất cả công việc</option>
-                    @foreach($congViecList as $cv)
-                        <option value="{{ $cv->macongviec }}" {{ request('congviec') == $cv->macongviec ? 'selected' : '' }}>
-                            {{ $cv->tencongviec }}
+            {{-- Lọc theo giảng viên (chỉ trưởng bộ môn) --}}
+            @if($isTruongBoMon && $giangVienList->count() > 0)
+            <div class="pt-4 border-t border-gray-200">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Lọc theo giảng viên</label>
+                <select name="giangvien_filter" class="w-full md:w-1/3 px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
+                    <option value="">Tất cả giảng viên</option>
+                    @foreach($giangVienList as $gv)
+                        <option value="{{ $gv->magiangvien }}" {{ request('giangvien_filter') == $gv->magiangvien ? 'selected' : '' }}>
+                            {{ $gv->nguoiDung->hoten ?? 'N/A' }}
                         </option>
                     @endforeach
                 </select>
             </div>
-
-            {{-- Ban --}}
-            <div>
-                <select name="ban" class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
-                    <option value="">Tất cả ban</option>
-                    @foreach($banList as $ban)
-                        <option value="{{ $ban->maban }}" {{ request('ban') == $ban->maban ? 'selected' : '' }}>
-                            {{ $ban->tenban }}
-                        </option>
-                    @endforeach
-                </select>
-            </div>
-
-            {{-- Nút --}}
-            <div class="flex gap-2">
-                <button type="submit" class="flex-1 bg-gradient-to-r from-indigo-600 to-blue-500 text-white px-6 py-2.5 rounded-xl font-semibold hover:from-indigo-700 hover:to-blue-600 transition">
-                    <i class="fas fa-filter mr-2"></i>Lọc
-                </button>
-                @if(request()->hasAny(['search', 'congviec', 'ban']))
-                <a href="{{ route('giangvien.phancong.index') }}" 
-                    class="px-4 py-2.5 bg-gray-100 text-gray-600 rounded-xl hover:bg-gray-200 transition">
-                    <i class="fas fa-rotate-right"></i>
-                </a>
-                @endif
-            </div>
+            @endif
         </form>
 
-        {{-- Export --}}
-        <div class="mt-4 pt-4 border-t border-gray-200 flex justify-end">
-            <a href="{{ route('giangvien.phancong.export') }}" 
-                class="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition">
-                <i class="fas fa-file-excel"></i>
-                <span>Xuất Excel</span>
+        {{-- Hành động --}}
+        <div class="mt-4 pt-4 border-t border-gray-200 flex flex-wrap gap-3 justify-between items-center">
+            <div class="flex gap-3">
+                <a href="{{ route('giangvien.phancong.export') }}" 
+                    class="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition">
+                    <i class="fas fa-file-excel"></i>
+                    <span>Xuất Excel</span>
+                </a>
+            </div>
+            
+            @if($isTruongBoMon)
+            <a href="{{ route('giangvien.phancong.create') }}" 
+                class="inline-flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-blue-500 hover:from-indigo-700 hover:to-blue-600 text-white px-6 py-2.5 rounded-xl font-semibold shadow-md hover:shadow-lg transition">
+                <i class="fas fa-plus"></i>
+                <span>Phân công mới</span>
             </a>
+            @endif
         </div>
     </div>
 </section>
@@ -139,6 +185,16 @@
                                     <h3 class="text-xl font-bold text-gray-800 mb-2 group-hover:text-indigo-600 transition">
                                         {{ $phanCong->congviec->tencongviec ?? 'N/A' }}
                                     </h3>
+
+                                    {{-- Giảng viên (chỉ hiện cho trưởng bộ môn) --}}
+                                    @if($isTruongBoMon)
+                                    <div class="mb-2 flex items-center gap-2">
+                                        <i class="fas fa-user text-gray-400 text-sm"></i>
+                                        <span class="font-medium text-gray-700">
+                                            {{ $phanCong->giangvien->nguoiDung->hoten ?? 'N/A' }}
+                                        </span>
+                                    </div>
+                                    @endif
 
                                     {{-- Vai trò --}}
                                     @if($phanCong->vaitro)
@@ -166,12 +222,27 @@
 
                         {{-- RIGHT: Actions --}}
                         <div class="lg:col-span-4">
-                            <div class="flex flex-col gap-4">
+                            <div class="flex flex-col gap-3">
                                 <a href="{{ route('giangvien.phancong.show', $phanCong->maphancong) }}" 
                                     class="w-full bg-gradient-to-r from-indigo-600 to-blue-500 hover:from-indigo-700 hover:to-blue-600 text-white px-4 py-2 rounded-lg font-medium transition inline-flex items-center justify-center gap-2 shadow-md hover:shadow-lg">
                                     <i class="fas fa-eye"></i>
                                     <span>Chi tiết</span>
                                 </a>
+                                
+                                @if($isTruongBoMon)
+                                <div class="flex gap-2">
+                                    <a href="{{ route('giangvien.phancong.edit', $phanCong->maphancong) }}" 
+                                        class="flex-1 bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-lg font-medium transition inline-flex items-center justify-center gap-2">
+                                        <i class="fas fa-edit"></i>
+                                        <span>Sửa</span>
+                                    </a>
+                                    <button onclick="confirmDelete('{{ $phanCong->maphancong }}')" 
+                                        class="flex-1 bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg font-medium transition inline-flex items-center justify-center gap-2">
+                                        <i class="fas fa-trash"></i>
+                                        <span>Xóa</span>
+                                    </button>
+                                </div>
+                                @endif
                             </div>
                         </div>
                     </div>
@@ -191,21 +262,37 @@
                 <div class="mb-6">
                     <i class="fas fa-tasks text-8xl text-gray-300"></i>
                 </div>
-                <h4 class="text-2xl font-bold text-gray-700 mb-3">Chưa có công việc nào</h4>
+                <h4 class="text-2xl font-bold text-gray-700 mb-3">
+                    @if($isTruongBoMon)
+                        Chưa có phân công nào
+                    @else
+                        Chưa có công việc nào
+                    @endif
+                </h4>
                 <p class="text-gray-500 mb-8">
-                    @if(request()->hasAny(['search', 'congviec', 'ban']))
-                        Không tìm thấy công việc nào phù hợp với bộ lọc.
+                    @if(request()->hasAny(['search', 'congviec', 'ban', 'giangvien_filter']))
+                        Không tìm thấy phân công nào phù hợp với bộ lọc.
+                    @elseif($isTruongBoMon)
+                        Chưa có phân công nào trong bộ môn. Bạn có thể tạo phân công mới.
                     @else
                         Hiện tại bạn chưa được phân công công việc nào.
                     @endif
                 </p>
                 <div class="flex gap-3 justify-center">
-                    @if(request()->hasAny(['search', 'congviec', 'ban']))
+                    @if(request()->hasAny(['search', 'congviec', 'ban', 'giangvien_filter']))
                     <a href="{{ route('giangvien.phancong.index') }}" 
                         class="bg-gradient-to-r from-indigo-600 to-blue-500 text-white px-6 py-3 rounded-xl font-semibold shadow-md hover:shadow-lg transition">
                         <i class="fas fa-rotate-right mr-2"></i>Xóa bộ lọc
                     </a>
                     @endif
+                    
+                    @if($isTruongBoMon)
+                    <a href="{{ route('giangvien.phancong.create') }}" 
+                        class="bg-gradient-to-r from-indigo-600 to-blue-500 text-white px-6 py-3 rounded-xl font-semibold shadow-md hover:shadow-lg transition">
+                        <i class="fas fa-plus mr-2"></i>Tạo phân công
+                    </a>
+                    @endif
+                    
                     <a href="{{ route('giangvien.profile.index') }}" 
                         class="bg-white text-gray-700 px-6 py-3 rounded-xl font-semibold shadow-md hover:shadow-lg transition border border-gray-200">
                         <i class="fas fa-arrow-left mr-2"></i>Quay lại
@@ -215,5 +302,25 @@
         </div>
     @endif
 </section>
+
+{{-- Form xóa ẩn --}}
+@if($isTruongBoMon)
+<form id="delete-form" method="POST" style="display: none;">
+    @csrf
+    @method('DELETE')
+</form>
+@endif
+
+@push('scripts')
+<script>
+function confirmDelete(id) {
+    if (confirm('Bạn có chắc chắn muốn xóa phân công này?')) {
+        const form = document.getElementById('delete-form');
+        form.action = `/giang-vien/phan-cong/${id}`;
+        form.submit();
+    }
+}
+</script>
+@endpush
 
 @endsection

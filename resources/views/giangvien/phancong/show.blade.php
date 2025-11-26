@@ -32,6 +32,30 @@
 {{-- 📋 CONTENT SECTION --}}
 <section class="container mx-auto px-6 py-12">
     <div class="max-w-5xl mx-auto">
+        {{-- THÔNG TIN CUỘC THI - THÊM MỚI --}}
+        @if($phanCong->ban && $phanCong->ban->cuocthi)
+        <div class="bg-gradient-to-r from-purple-600 to-indigo-600 rounded-2xl shadow-xl p-6 mb-6 text-white">
+            <div class="flex items-center gap-4">
+                <div class="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center flex-shrink-0">
+                    <i class="fas fa-trophy text-3xl"></i>
+                </div>
+                <div class="flex-1">
+                    <div class="text-sm text-purple-100 mb-1">Cuộc thi</div>
+                    <h2 class="text-2xl font-bold">{{ $phanCong->ban->cuocthi->tencuocthi }}</h2>
+                    @if($phanCong->ban->cuocthi->mota)
+                    <p class="text-purple-100 text-sm mt-2">{{ $phanCong->ban->cuocthi->mota }}</p>
+                    @endif
+                </div>
+                <div class="text-right">
+                    @if($phanCong->ban->cuocthi->ngaybatdau)
+                    <div class="text-xs text-purple-100">Bắt đầu</div>
+                    <div class="font-semibold">{{ \Carbon\Carbon::parse($phanCong->ban->cuocthi->ngaybatdau)->format('d/m/Y') }}</div>
+                    @endif
+                </div>
+            </div>
+        </div>
+        @endif
+
         {{-- Main Card --}}
         <div class="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden mb-6">
             {{-- Header --}}

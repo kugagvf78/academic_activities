@@ -263,12 +263,30 @@ Route::middleware(['jwt.web', 'role:GiangVien'])
             Route::get('/export', 'export')->name('export');
             Route::get('/api/statistics', 'statistics')->name('api.statistics');
             
+            // API endpoints
+            Route::get('/api/ban/{macuocthi}', 'getBanByCuocThi')->name('api.ban');
+            Route::get('/api/congviec/{macuocthi}', 'getCongViecByCuocThi')->name('api.congviec');
+            Route::get('/api/ban-detail/{maban}', 'getBanDetail')->name('api.ban-detail');
+            
             // Chỉ trưởng bộ môn
             Route::get('/tao-moi', 'create')->name('create');
             Route::post('/tao-moi', 'store')->name('store');
             Route::get('/{id}/sua', 'edit')->name('edit');
             Route::put('/{id}', 'update')->name('update');
             Route::delete('/{id}', 'destroy')->name('destroy');
+            
+            // Quản lý ban
+            Route::get('/quan-ly-ban', 'quanLyBan')->name('quan-ly-ban');
+            Route::get('/ban/{maban}', 'chiTietBan')->name('chi-tiet-ban');
+            Route::post('/phan-cong-nhieu', 'phanCongNhieuGiangVien')->name('phan-cong-nhieu');
+
+
+            // CRUD Ban
+            Route::get('/ban/create/{macuocthi}', 'createBan')->name('ban.create');
+            Route::post('/ban/store', 'storeBan')->name('ban.store');
+            Route::get('/ban/edit/{maban}', 'editBan')->name('ban.edit');
+            Route::put('/ban/update/{maban}', 'updateBan')->name('ban.update');
+            Route::delete('/ban/destroy/{maban}', 'destroyBan')->name('ban.destroy');
         });
 
         // Quản lý Kế hoạch Cuộc thi

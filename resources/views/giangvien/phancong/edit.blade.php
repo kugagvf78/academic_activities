@@ -105,22 +105,56 @@
                         <i class="fas fa-briefcase text-cyan-600 mr-1"></i>
                         Công việc <span class="text-red-500">*</span>
                     </label>
-                    <select name="macongviec" required
-                        class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500 transition @error('macongviec') border-red-500 @enderror">
+                    @php
+                        $danhSachCongViec = [
+                            'Xây dựng đề tài và tiêu chí đánh giá',
+                            'Chuẩn bị kế hoạch mac',
+                            'Soạn đề thi',
+                            'Chấm điểm vòng sơ khảo',
+                            'Chấm điểm vòng chung kết',
+                            'Hỗ trợ kỹ thuật',
+                            'Đánh giá dự án',
+                            'Xây dựng nội dung',
+                            'Xây dựng nội dung thi đấu'
+                        ];
+                        
+                        // Lấy tên công việc hiện tại
+                        $currentCongViec = '';
+                        if($phanCong->congviec) {
+                            $currentCongViec = $phanCong->congviec->tencongviec;
+                        }
+                        
+                        $isCustomCongViec = !in_array($currentCongViec, $danhSachCongViec) && !empty($currentCongViec);
+                    @endphp
+                    
+                    <select name="tencongviec" id="congviec-select" required
+                        class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500 transition @error('tencongviec') border-red-500 @enderror">
                         <option value="">-- Chọn công việc --</option>
-                        @foreach($congViecList as $cv)
-                            <option value="{{ $cv->macongviec }}" 
-                                {{ old('macongviec', $phanCong->macongviec) == $cv->macongviec ? 'selected' : '' }}>
-                                {{ $cv->tencongviec }}
-                                @if($cv->cuocthi)
-                                    - {{ $cv->cuocthi->tencuocthi }}
-                                @endif
+                        @foreach($danhSachCongViec as $tenCV)
+                            <option value="{{ $tenCV }}" {{ old('tencongviec', $currentCongViec) == $tenCV ? 'selected' : '' }}>
+                                {{ $tenCV }}
                             </option>
                         @endforeach
+                        <option value="khac" {{ $isCustomCongViec ? 'selected' : '' }}>Khác (Nhập tùy chỉnh)</option>
                     </select>
-                    @error('macongviec')
+                    @error('tencongviec')
                         <p class="mt-1 text-sm text-red-500">{{ $message }}</p>
                     @enderror
+                </div>
+
+                {{-- Input công việc tùy chỉnh --}}
+                <div id="customCongViec" class="{{ $isCustomCongViec ? '' : 'hidden' }}">
+                    <label class="block text-sm font-semibold text-gray-700 mb-2">
+                        <i class="fas fa-pencil-alt text-cyan-600 mr-1"></i>
+                        Nhập tên công việc tùy chỉnh
+                        <span class="text-red-500">*</span>
+                    </label>
+                    <input type="text" 
+                        name="tencongviec_custom" 
+                        id="tencongviec_custom"
+                        value="{{ $isCustomCongViec ? $currentCongViec : old('tencongviec_custom') }}"
+                        placeholder="VD: Hỗ trợ kỹ thuật sân khấu, Thiết kế backdrop..."
+                        class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition">
                 </div>
 
                 <!-- Vai trò -->
@@ -129,9 +163,15 @@
                         <i class="fas fa-user-tag text-purple-600 mr-1"></i>
                         Vai trò <span class="text-red-500">*</span>
                     </label>
-                    <input type="text" name="vaitro" value="{{ old('vaitro', $phanCong->vaitro) }}" required
-                        placeholder="VD: Trưởng ban, Phó ban, Ủy viên..."
+                    <select name="vaitro" required
                         class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500 transition @error('vaitro') border-red-500 @enderror">
+                        <option value="">-- Chọn vai trò --</option>
+                        <option value="Trưởng ban" {{ old('vaitro', $phanCong->vaitro) == 'Trưởng ban' ? 'selected' : '' }}>Trưởng ban</option>
+                        <option value="Phó ban" {{ old('vaitro', $phanCong->vaitro) == 'Phó ban' ? 'selected' : '' }}>Phó ban</option>
+                        <option value="Ủy viên" {{ old('vaitro', $phanCong->vaitro) == 'Ủy viên' ? 'selected' : '' }}>Ủy viên</option>
+                        <option value="Thư ký" {{ old('vaitro', $phanCong->vaitro) == 'Thư ký' ? 'selected' : '' }}>Thư ký</option>
+                        <option value="Thành viên" {{ old('vaitro', $phanCong->vaitro) == 'Thành viên' ? 'selected' : '' }}>Thành viên</option>
+                    </select>
                     @error('vaitro')
                         <p class="mt-1 text-sm text-red-500">{{ $message }}</p>
                     @enderror
@@ -147,6 +187,32 @@
                         value="{{ old('ngayphancong', $phanCong->ngayphancong ? \Carbon\Carbon::parse($phanCong->ngayphancong)->format('Y-m-d') : '') }}"
                         class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-cyan-500 transition">
                     <p class="mt-1 text-sm text-gray-500">Để trống sẽ giữ nguyên hoặc lấy ngày hiện tại</p>
+                </div>
+
+                <!-- Thông tin bổ sung -->
+                <div class="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                    <h3 class="font-semibold text-blue-800 mb-3 flex items-center gap-2">
+                        <i class="fas fa-info-circle"></i>
+                        Thông tin hiện tại
+                    </h3>
+                    <div class="grid md:grid-cols-2 gap-3 text-sm">
+                        <div class="flex items-start gap-2">
+                            <i class="fas fa-trophy text-blue-500 mt-0.5"></i>
+                            <div>
+                                <span class="text-gray-600">Cuộc thi:</span>
+                                <p class="font-medium text-gray-800">
+                                    {{ $phanCong->ban->cuocthi->tencuocthi ?? 'N/A' }}
+                                </p>
+                            </div>
+                        </div>
+                        <div class="flex items-start gap-2">
+                            <i class="fas fa-users text-blue-500 mt-0.5"></i>
+                            <div>
+                                <span class="text-gray-600">Ban hiện tại:</span>
+                                <p class="font-medium text-gray-800">{{ $phanCong->ban->tenban ?? 'N/A' }}</p>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Buttons -->
@@ -166,4 +232,35 @@
         </div>
     </div>
 </section>
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const congViecSelect = document.getElementById('congviec-select');
+    const customCongViecDiv = document.getElementById('customCongViec');
+    const customCongViecInput = document.getElementById('tencongviec_custom');
+
+    congViecSelect.addEventListener('change', function() {
+        if (this.value === 'khac') {
+            customCongViecDiv.classList.remove('hidden');
+            customCongViecInput.required = true;
+            congViecSelect.removeAttribute('name');
+            customCongViecInput.setAttribute('name', 'tencongviec');
+        } else {
+            customCongViecDiv.classList.add('hidden');
+            customCongViecInput.required = false;
+            customCongViecInput.removeAttribute('name');
+            congViecSelect.setAttribute('name', 'tencongviec');
+        }
+    });
+
+    // Kiểm tra ngay khi load trang
+    if (congViecSelect.value === 'khac') {
+        customCongViecInput.setAttribute('name', 'tencongviec');
+        congViecSelect.removeAttribute('name');
+    }
+});
+</script>
+@endpush
+
 @endsection

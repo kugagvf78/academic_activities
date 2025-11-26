@@ -60,12 +60,16 @@
 
 {{-- 📊 THỐNG KÊ NHANH --}}
 <section class="container mx-auto px-6 -mt-8 relative z-20">
-    <div class="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <div class="bg-white rounded-xl shadow-md p-4 border-l-4 border-indigo-500">
             <div class="text-2xl font-bold text-indigo-700">{{ $phanCongList->total() }}</div>
             <div class="text-sm text-gray-500">
                 @if($isTruongBoMon) Tổng phân công @else Công việc của tôi @endif
             </div>
+        </div>
+        <div class="bg-white rounded-xl shadow-md p-4 border-l-4 border-purple-500">
+            <div class="text-2xl font-bold text-purple-700">{{ $cuocThiList->count() }}</div>
+            <div class="text-sm text-gray-500">Cuộc thi</div>
         </div>
         <div class="bg-white rounded-xl shadow-md p-4 border-l-4 border-green-500">
             <div class="text-2xl font-bold text-green-700">{{ $banList->count() }}</div>
@@ -80,13 +84,25 @@
     {{-- Bộ Lọc --}}
     <div class="bg-white rounded-2xl shadow-xl border border-indigo-100 p-6">
         <form method="GET" action="{{ route('giangvien.phancong.index') }}" class="space-y-4">
-            <div class="grid lg:grid-cols-5 md:grid-cols-3 gap-4">
+            <div class="grid lg:grid-cols-6 md:grid-cols-3 gap-4">
                 {{-- Tìm kiếm --}}
                 <div class="lg:col-span-2 relative">
                     <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
                     <input type="text" name="search" value="{{ request('search') }}" 
-                        placeholder="@if($isTruongBoMon)Tìm vai trò hoặc tên giảng viên...@else Tìm vai trò...@endif" 
+                        placeholder="Tìm theo vai trò, giảng viên, cuộc thi..." 
                         class="w-full pl-12 pr-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
+                </div>
+
+                {{-- Cuộc thi - THÊM MỚI --}}
+                <div>
+                    <select name="cuocthi" class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
+                        <option value="">Tất cả cuộc thi</option>
+                        @foreach($cuocThiList as $ct)
+                            <option value="{{ $ct->macuocthi }}" {{ request('cuocthi') == $ct->macuocthi ? 'selected' : '' }}>
+                                {{ $ct->tencuocthi }}
+                            </option>
+                        @endforeach
+                    </select>
                 </div>
 
                 {{-- Công việc --}}
@@ -118,7 +134,7 @@
                     <button type="submit" class="flex-1 bg-gradient-to-r from-indigo-600 to-blue-500 text-white px-6 py-2.5 rounded-xl font-semibold hover:from-indigo-700 hover:to-blue-600 transition">
                         <i class="fas fa-filter mr-2"></i>Lọc
                     </button>
-                    @if(request()->hasAny(['search', 'congviec', 'ban', 'giangvien_filter']))
+                    @if(request()->hasAny(['search', 'congviec', 'ban', 'cuocthi', 'giangvien_filter']))
                     <a href="{{ route('giangvien.phancong.index') }}" 
                         class="px-4 py-2.5 bg-gray-100 text-gray-600 rounded-xl hover:bg-gray-200 transition">
                         <i class="fas fa-rotate-right"></i>
@@ -151,6 +167,14 @@
                     <i class="fas fa-file-excel"></i>
                     <span>Xuất Excel</span>
                 </a>
+                
+                @if($isTruongBoMon)
+                <a href="{{ route('giangvien.phancong.quan-ly-ban') }}" 
+                    class="inline-flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg font-medium transition">
+                    <i class="fas fa-users-cog"></i>
+                    <span>Quản lý Ban</span>
+                </a>
+                @endif
             </div>
             
             @if($isTruongBoMon)
@@ -181,6 +205,16 @@
                                 </div>
 
                                 <div class="flex-1">
+                                    {{-- CUỘC THI - THÊM MỚI --}}
+                                    @if($phanCong->ban && $phanCong->ban->cuocthi)
+                                    <div class="mb-2">
+                                        <span class="inline-flex items-center gap-1.5 bg-purple-100 text-purple-700 px-3 py-1 rounded-full text-sm font-medium">
+                                            <i class="fas fa-trophy"></i>
+                                            {{ $phanCong->ban->cuocthi->tencuocthi }}
+                                        </span>
+                                    </div>
+                                    @endif
+
                                     {{-- Tiêu đề --}}
                                     <h3 class="text-xl font-bold text-gray-800 mb-2 group-hover:text-indigo-600 transition">
                                         {{ $phanCong->congviec->tencongviec ?? 'N/A' }}
@@ -270,7 +304,7 @@
                     @endif
                 </h4>
                 <p class="text-gray-500 mb-8">
-                    @if(request()->hasAny(['search', 'congviec', 'ban', 'giangvien_filter']))
+                    @if(request()->hasAny(['search', 'congviec', 'ban', 'cuocthi', 'giangvien_filter']))
                         Không tìm thấy phân công nào phù hợp với bộ lọc.
                     @elseif($isTruongBoMon)
                         Chưa có phân công nào trong bộ môn. Bạn có thể tạo phân công mới.
@@ -279,7 +313,7 @@
                     @endif
                 </p>
                 <div class="flex gap-3 justify-center">
-                    @if(request()->hasAny(['search', 'congviec', 'ban', 'giangvien_filter']))
+                    @if(request()->hasAny(['search', 'congviec', 'ban', 'cuocthi', 'giangvien_filter']))
                     <a href="{{ route('giangvien.phancong.index') }}" 
                         class="bg-gradient-to-r from-indigo-600 to-blue-500 text-white px-6 py-3 rounded-xl font-semibold shadow-md hover:shadow-lg transition">
                         <i class="fas fa-rotate-right mr-2"></i>Xóa bộ lọc

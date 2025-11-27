@@ -15,10 +15,18 @@
                 <h1 class="text-4xl font-black mb-2">
                     Hồ sơ Quyết toán
                     @if($isTruongBoMon)
-                        <span class="text-sm font-normal bg-white/20 px-3 py-1 rounded-full ml-2">Trưởng bộ môn</span>
+                        <span class="text-sm font-normal bg-white/20 px-3 py-1 rounded-full ml-2">
+                            <i class="fas fa-crown mr-1"></i>Trưởng bộ môn
+                        </span>
                     @endif
                 </h1>
-                <p class="text-blue-100">Lập và quản lý hồ sơ quyết toán cuộc thi</p>
+                <p class="text-blue-100">
+                    @if($isTruongBoMon)
+                        Quản lý tất cả quyết toán trong bộ môn
+                    @else
+                        Lập và quản lý hồ sơ quyết toán cuộc thi
+                    @endif
+                </p>
             </div>
             <div class="hidden md:flex items-center gap-4">
                 <div class="bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20">

@@ -44,6 +44,11 @@ class GiangVienQuyetToanController extends Controller
                 'nd_nguoiduyet.hoten as tennguoiduyet'
             );
 
+        // Nếu KHÔNG phải trưởng bộ môn, chỉ xem quyết toán do mình lập
+        if (!$isTruongBoMon) {
+            $query->where('qt.nguoilap', $giangvien->magiangvien);
+        }
+
         // Tìm kiếm
         if ($request->filled('search')) {
             $search = $request->search;
@@ -194,10 +199,25 @@ class GiangVienQuyetToanController extends Controller
         // Kiểm tra xem có phải trưởng bộ môn không
         $isTruongBoMon = ($quyettoan->matruongbomon == $giangvien->magiangvien);
 
-        // Lấy danh sách chi phí của cuộc thi
+        // Lấy danh sách chi phí của cuộc thi - FIX: SELECT tất cả các cột cần thiết
         $chiphis = DB::table('chiphi')
             ->where('macuocthi', $quyettoan->macuocthi)
             ->where('trangthai', 'Approved')
+            ->select(
+                'machiphi',
+                'macuocthi',
+                'tenkhoanchi',  // Đây là tên cột đúng trong database
+                'dutruchiphi',
+                'thuctechi',
+                'ngaychi',
+                'nguoiyeucau',
+                'ngayyeucau',
+                'nguoiduyet',
+                'ngayduyet',
+                'trangthai',
+                'chungtu',
+                'ghichu'
+            )
             ->get();
 
         return view('giangvien.quyettoan.show', compact('quyettoan', 'chiphis', 'isTruongBoMon'));
@@ -417,31 +437,32 @@ class GiangVienQuyetToanController extends Controller
         $user = jwt_user();
         $giangvien = DB::table('giangvien')->where('manguoidung', $user->manguoidung)->first();
 
+        // Kiểm tra xem có phải trưởng bộ môn không
+        $isTruongBoMon = DB::table('bomon')
+            ->where('mabomon', $giangvien->mabomon)
+            ->where('matruongbomon', $giangvien->magiangvien)
+            ->exists();
+
+        // Base query
+        $baseQuery = function() use ($giangvien, $isTruongBoMon) {
+            $query = DB::table('quyettoan as qt')
+                ->join('cuocthi as ct', 'qt.macuocthi', '=', 'ct.macuocthi')
+                ->where('ct.mabomon', $giangvien->mabomon);
+            
+            // Nếu không phải trưởng bộ môn, chỉ đếm quyết toán của mình
+            if (!$isTruongBoMon) {
+                $query->where('qt.nguoilap', $giangvien->magiangvien);
+            }
+            
+            return $query;
+        };
+
         $stats = [
-            'total' => DB::table('quyettoan as qt')
-                ->join('cuocthi as ct', 'qt.macuocthi', '=', 'ct.macuocthi')
-                ->where('ct.mabomon', $giangvien->mabomon)
-                ->count(),
-            'draft' => DB::table('quyettoan as qt')
-                ->join('cuocthi as ct', 'qt.macuocthi', '=', 'ct.macuocthi')
-                ->where('ct.mabomon', $giangvien->mabomon)
-                ->where('qt.trangthai', 'Draft')
-                ->count(),
-            'pending' => DB::table('quyettoan as qt')
-                ->join('cuocthi as ct', 'qt.macuocthi', '=', 'ct.macuocthi')
-                ->where('ct.mabomon', $giangvien->mabomon)
-                ->where('qt.trangthai', 'Pending')
-                ->count(),
-            'approved' => DB::table('quyettoan as qt')
-                ->join('cuocthi as ct', 'qt.macuocthi', '=', 'ct.macuocthi')
-                ->where('ct.mabomon', $giangvien->mabomon)
-                ->where('qt.trangthai', 'Approved')
-                ->count(),
-            'rejected' => DB::table('quyettoan as qt')
-                ->join('cuocthi as ct', 'qt.macuocthi', '=', 'ct.macuocthi')
-                ->where('ct.mabomon', $giangvien->mabomon)
-                ->where('qt.trangthai', 'Rejected')
-                ->count(),
+            'total' => $baseQuery()->count(),
+            'draft' => $baseQuery()->where('qt.trangthai', 'Draft')->count(),
+            'pending' => $baseQuery()->where('qt.trangthai', 'Pending')->count(),
+            'approved' => $baseQuery()->where('qt.trangthai', 'Approved')->count(),
+            'rejected' => $baseQuery()->where('qt.trangthai', 'Rejected')->count(),
         ];
 
         return response()->json($stats);
@@ -457,13 +478,18 @@ class GiangVienQuyetToanController extends Controller
             ->leftJoin('bomon as bm', 'ct.mabomon', '=', 'bm.mabomon')
             ->leftJoin('giangvien as gv_nguoilap', 'qt.nguoilap', '=', 'gv_nguoilap.magiangvien')
             ->leftJoin('nguoidung as nd_nguoilap', 'gv_nguoilap.manguoidung', '=', 'nd_nguoilap.manguoidung')
+            ->leftJoin('giangvien as gv_nguoiduyet', 'qt.nguoiduyet', '=', 'gv_nguoiduyet.magiangvien')
+            ->leftJoin('nguoidung as nd_nguoiduyet', 'gv_nguoiduyet.manguoidung', '=', 'nd_nguoiduyet.manguoidung')
             ->where('qt.maquyettoan', $id)
             ->select(
                 'qt.*',
                 'ct.tencuocthi',
                 'ct.loaicuocthi',
+                'ct.thoigianbatdau',
+                'ct.thoigianketthuc',
                 'bm.tenbomon',
-                'nd_nguoilap.hoten as tennguoilap'
+                'nd_nguoilap.hoten as tennguoilap',
+                'nd_nguoiduyet.hoten as tennguoiduyet'
             )
             ->first();
 
@@ -475,12 +501,34 @@ class GiangVienQuyetToanController extends Controller
         $chiphis = DB::table('chiphi')
             ->where('macuocthi', $quyettoan->macuocthi)
             ->where('trangthai', 'Approved')
+            ->select(
+                'machiphi',
+                'tenkhoanchi',
+                'dutruchiphi',
+                'thuctechi',
+                'ngaychi',
+                'ghichu'
+            )
             ->get();
 
-        // Tạo PDF
-        $pdf = PDF::loadView('giangvien.quyettoan.pdf', compact('quyettoan', 'chiphis'));
+        // Tạo PDF với cấu hình encoding
+        // $pdf = PDF::loadView('giangvien.quyettoan.pdf', compact('quyettoan', 'chiphis'))
+        //     ->setPaper('A4', 'portrait')
+        //     ->setOption('isHtml5ParserEnabled', true)
+        //     ->setOption('isRemoteEnabled', true);
         
-        return $pdf->download('quyet-toan-' . $quyettoan->maquyettoan . '.pdf');
+        // return $pdf->download('quyet-toan-' . $quyettoan->maquyettoan . '.pdf');
+
+        $html = view('giangvien.quyettoan.pdf', compact('quyettoan', 'chiphis'))->render();
+    
+        $mpdf = new \Mpdf\Mpdf([
+            'mode' => 'utf-8',
+            'format' => 'A4',
+            'orientation' => 'P'
+        ]);
+        
+        $mpdf->WriteHTML($html);
+        return $mpdf->Output('quyet-toan-' . $quyettoan->maquyettoan . '.pdf', 'D');
     }
 
     /**

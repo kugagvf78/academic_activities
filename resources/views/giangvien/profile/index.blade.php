@@ -334,8 +334,23 @@
                             <i class="fas fa-chevron-right text-gray-400 group-hover:text-teal-600 transition-all duration-200"></i>
                         </a>
 
-                        {{-- Quản lý Giải thưởng --}}
+                        {{-- Hồ sơ Quyết toán --}}
                         <a href="{{ route('giangvien.quyettoan.index') }}" 
+                            class="flex items-center justify-between p-5 border-2 border-gray-200 rounded-xl hover:border-rose-500 hover:bg-rose-50 transition-all duration-200 group">
+                            <div class="flex items-center gap-4">
+                                <div class="w-14 h-14 bg-rose-100 group-hover:bg-rose-600 rounded-xl flex items-center justify-center transition-all duration-200">
+                                    <i class="fas fa-file-invoice-dollar text-rose-600 group-hover:text-white text-2xl transition-all duration-200"></i>
+                                </div>
+                                <div>
+                                    <p class="font-bold text-gray-800 group-hover:text-rose-600 transition-all duration-200">Hồ sơ Quyết toán</p>
+                                    <p class="text-sm text-gray-500">Lập, nộp và theo dõi hồ sơ quyết toán kinh phí</p>
+                                </div>
+                            </div>
+                            <i class="fas fa-chevron-right text-gray-400 group-hover:text-rose-600 transition-all duration-200"></i>
+                        </a>
+
+                        {{-- Quản lý Giải thưởng --}}
+                        <a href="#" 
                             class="flex items-center justify-between p-5 border-2 border-gray-200 rounded-xl hover:border-amber-500 hover:bg-amber-50 transition-all duration-200 group">
                             <div class="flex items-center gap-4">
                                 <div class="w-14 h-14 bg-amber-100 group-hover:bg-amber-600 rounded-xl flex items-center justify-center transition-all duration-200">

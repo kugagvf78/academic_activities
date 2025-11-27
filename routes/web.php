@@ -334,6 +334,73 @@ Route::middleware(['jwt.web', 'role:GiangVien'])
 
             Route::post('/{id}/import-google-form', 'importFromGoogleForm')->name('import-google-form');
         });
+
+        // Quản lý Chi phí
+        Route::prefix('chi-phi')->name('chiphi.')->controller(\App\Http\Controllers\Web\GiangVien\GiangVienChiPhiController::class)->group(function () {
+            // Danh sách chi phí
+            Route::get('/', 'index')->name('index');
+            
+            // Tạo chi phí mới
+            Route::get('/tao-moi', 'create')->name('create');
+            Route::post('/tao-moi', 'store')->name('store');
+            
+            // Chi tiết chi phí
+            Route::get('/{id}/chi-tiet', 'show')->name('show');
+            
+            // Chỉnh sửa chi phí
+            Route::get('/{id}/sua', 'edit')->name('edit');
+            Route::put('/{id}', 'update')->name('update');
+            
+            // Xóa chi phí
+            Route::delete('/{id}', 'destroy')->name('destroy');
+            
+            // Download chứng từ
+            Route::get('/{id}/download-chung-tu', 'downloadChungTu')->name('download-chung-tu');
+            
+            // API thống kê
+            Route::get('/api/statistics', 'statistics')->name('api.statistics');
+            
+            // Duyệt/Từ chối (chỉ trưởng bộ môn)
+            Route::post('/{id}/duyet', 'approve')->name('approve');
+            Route::post('/{id}/tu-choi', 'reject')->name('reject');
+        });
+
+        // Quản lý Quyết toán
+        Route::prefix('quyet-toan')->name('quyettoan.')->controller(\App\Http\Controllers\Web\GiangVien\GiangVienQuyetToanController::class)->group(function () {
+            // Danh sách quyết toán
+            Route::get('/', 'index')->name('index');
+            
+            // Tạo quyết toán mới
+            Route::get('/tao-moi', 'create')->name('create');
+            Route::post('/tao-moi', 'store')->name('store');
+            
+            // Chi tiết quyết toán
+            Route::get('/{id}/chi-tiet', 'show')->name('show');
+            
+            // Chỉnh sửa quyết toán
+            Route::get('/{id}/sua', 'edit')->name('edit');
+            Route::put('/{id}', 'update')->name('update');
+            
+            // Xóa quyết toán
+            Route::delete('/{id}', 'destroy')->name('destroy');
+            
+            // Nộp quyết toán
+            Route::post('/{id}/nop', 'submit')->name('submit');
+            
+            // Export PDF
+            Route::get('/{id}/export', 'export')->name('export');
+            
+            // Download file
+            Route::get('/{id}/download-file', 'downloadFile')->name('download-file');
+            
+            // API
+            Route::get('/api/statistics', 'statistics')->name('api.statistics');
+            Route::get('/api/auto-calculate/{macuocthi}', 'autoCalculate')->name('api.auto-calculate');
+            
+            // Duyệt/Từ chối (chỉ trưởng bộ môn)
+            Route::post('/{id}/duyet', 'approve')->name('approve');
+            Route::post('/{id}/tu-choi', 'reject')->name('reject');
+        });
     });
 
 /*

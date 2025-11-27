@@ -318,6 +318,36 @@
                             </div>
                             <i class="fas fa-chevron-right text-gray-400 group-hover:text-cyan-600 transition-all duration-200"></i>
                         </a>
+
+                        {{-- Quản lý Chi phí --}}
+                        <a href="{{ route('giangvien.chiphi.index') }}" 
+                            class="flex items-center justify-between p-5 border-2 border-gray-200 rounded-xl hover:border-teal-500 hover:bg-teal-50 transition-all duration-200 group">
+                            <div class="flex items-center gap-4">
+                                <div class="w-14 h-14 bg-teal-100 group-hover:bg-teal-600 rounded-xl flex items-center justify-center transition-all duration-200">
+                                    <i class="fas fa-coins text-teal-600 group-hover:text-white text-2xl transition-all duration-200"></i>
+                                </div>
+                                <div>
+                                    <p class="font-bold text-gray-800 group-hover:text-teal-600 transition-all duration-200">Quản lý Chi phí</p>
+                                    <p class="text-sm text-gray-500">Theo dõi và phê duyệt chi phí cuộc thi</p>
+                                </div>
+                            </div>
+                            <i class="fas fa-chevron-right text-gray-400 group-hover:text-teal-600 transition-all duration-200"></i>
+                        </a>
+
+                        {{-- Quản lý Giải thưởng --}}
+                        <a href="{{ route('giangvien.quyettoan.index') }}" 
+                            class="flex items-center justify-between p-5 border-2 border-gray-200 rounded-xl hover:border-amber-500 hover:bg-amber-50 transition-all duration-200 group">
+                            <div class="flex items-center gap-4">
+                                <div class="w-14 h-14 bg-amber-100 group-hover:bg-amber-600 rounded-xl flex items-center justify-center transition-all duration-200">
+                                    <i class="fas fa-gift text-amber-600 group-hover:text-white text-2xl transition-all duration-200"></i>
+                                </div>
+                                <div>
+                                    <p class="font-bold text-gray-800 group-hover:text-amber-600 transition-all duration-200">Quản lý Giải thưởng</p>
+                                    <p class="text-sm text-gray-500">Cấu hình giải thưởng các hạng mục</p>
+                                </div>
+                            </div>
+                            <i class="fas fa-chevron-right text-gray-400 group-hover:text-amber-600 transition-all duration-200"></i>
+                        </a>
                     </div>
                 </div>
             </div>

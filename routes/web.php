@@ -357,13 +357,13 @@ Route::prefix('hoat-dong')->name('hoatdong.')->group(function () {
 
 
 
+
+
 // Admin Routes
 Route::prefix('admin')->middleware(['jwt.web', 'admin'])->group(function () {
     Route::get('/dashboard', [App\Http\Controllers\Admin\AdminController::class, 'dashboard'])
         ->name('admin.dashboard');
     
-    // Thêm các route admin khác ở đây
-    // Route::get('/users', ...)->name('admin.users');
-    // Route::get('/departments', ...)->name('admin.departments');
-    // ...
+    // // ✅ Route logout cho admin
+    // Route::post('/logout', [AuthController::class, 'logout'])->name('admin.logout');
 });

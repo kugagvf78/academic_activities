@@ -11,3 +11,6 @@ php artisan serve --port=8080
 
 #localhost:8080
 http://localhost:8080
+
+
+ngrok http 8080

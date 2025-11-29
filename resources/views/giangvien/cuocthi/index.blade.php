@@ -24,10 +24,10 @@
                         <div class="text-sm text-cyan-100">Cuộc thi</div>
                     </div>
                 </div>
-                <a href="{{ route('giangvien.cuocthi.create') }}" 
+                <a href="{{ route('giangvien.kehoach.index') }}" 
                     class="px-6 py-3 bg-white text-blue-600 rounded-xl font-bold hover:bg-cyan-50 transition-all duration-300 shadow-lg hover:shadow-xl flex items-center gap-2">
-                    <i class="fas fa-plus"></i>
-                    <span>Tạo cuộc thi mới</span>
+                    <i class="fas fa-clipboard-list"></i>
+                    <span>Quản lý Kế hoạch</span>
                 </a>
             </div>
         </div>
@@ -63,9 +63,9 @@
 
     {{-- Mobile: Nút tạo cuộc thi --}}
     <div class="md:hidden mb-6">
-        <a href="{{ route('giangvien.cuocthi.create') }}" 
+        <a href="{{ route('giangvien.kehoach.index') }}" 
             class="block w-full px-6 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 text-white rounded-xl font-bold shadow-lg text-center">
-            <i class="fas fa-plus mr-2"></i>Tạo cuộc thi mới
+            <i class="fas fa-clipboard-list mr-2"></i>Quản lý Kế hoạch
         </a>
     </div>
 
@@ -221,9 +221,9 @@
                         <i class="fas fa-rotate-right mr-2"></i>Xóa bộ lọc
                     </a>
                     @endif
-                    <a href="{{ route('giangvien.cuocthi.create') }}" 
+                    <a href="{{ route('giangvien.kehoach.index') }}" 
                         class="bg-white text-blue-600 px-6 py-3 rounded-xl font-semibold shadow-md hover:shadow-lg transition border-2 border-blue-600">
-                        <i class="fas fa-plus mr-2"></i>Tạo cuộc thi mới
+                        <i class="fas fa-clipboard-list mr-2"></i>Xem Kế hoạch
                     </a>
                 </div>
             </div>

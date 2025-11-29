@@ -214,13 +214,25 @@ Route::middleware(['jwt.web', 'role:GiangVien'])
 
         // Quản lý cuộc thi
         Route::prefix('cuoc-thi')->name('cuocthi.')->controller(GiangVienCuocThiController::class)->group(function () {
+            // Danh sách cuộc thi
             Route::get('/', 'index')->name('index');
-            Route::get('/tao-moi', 'create')->name('create');
-            Route::post('/tao-moi', 'store')->name('store');
+            
+            // Chi tiết cuộc thi
             Route::get('/{id}/chi-tiet', 'show')->name('show');
+            
+            // ⚠️ BỎ: Không còn tạo cuộc thi trực tiếp - phải tạo từ kế hoạch đã duyệt
+            // Route::get('/tao-moi', 'create')->name('create');
+            // Route::post('/tao-moi', 'store')->name('store');
+            
+            // Chỉnh sửa cuộc thi (chỉ một số trường không quan trọng)
             Route::get('/{id}/sua', 'edit')->name('edit');
             Route::put('/{id}', 'update')->name('update');
+            
+            // Xóa cuộc thi (chỉ khi chưa có đăng ký)
             Route::delete('/{id}', 'destroy')->name('destroy');
+            
+            // ⭐ MỚI: Cập nhật trạng thái cuộc thi
+            Route::patch('/{id}/cap-nhat-trang-thai', 'updateStatus')->name('update-status');
         });
 
         // Quản lý đề thi
@@ -291,6 +303,7 @@ Route::middleware(['jwt.web', 'role:GiangVien'])
 
         // Quản lý Kế hoạch Cuộc thi
         Route::prefix('ke-hoach')->name('kehoach.')->controller(\App\Http\Controllers\Web\GiangVien\GiangVienKeHoachController::class)->group(function () {
+            // Danh sách và CRUD kế hoạch
             Route::get('/', 'index')->name('index');
             Route::get('/tao-moi', 'create')->name('create');
             Route::post('/tao-moi', 'store')->name('store');
@@ -298,11 +311,16 @@ Route::middleware(['jwt.web', 'role:GiangVien'])
             Route::get('/{id}/sua', 'edit')->name('edit');
             Route::put('/{id}', 'update')->name('update');
             Route::delete('/{id}', 'destroy')->name('destroy');
+            
+            // ⭐ MỚI: Tạo cuộc thi từ kế hoạch đã duyệt
+            Route::post('/{id}/tao-cuoc-thi', 'createCuocThi')->name('create-cuocthi');
+            
+            // Gửi lại kế hoạch và export
             Route::post('/{id}/gui-lai', 'resubmit')->name('resubmit');
             Route::get('/{id}/export', 'export')->name('export');
             Route::get('/api/statistics', 'statistics')->name('statistics');
 
-            // THÊM MỚI: Routes duyệt/từ chối kế hoạch (chỉ trưởng bộ môn)
+            // Duyệt/Từ chối kế hoạch (chỉ trưởng bộ môn)
             Route::post('/{id}/duyet', 'approve')->name('approve');
             Route::post('/{id}/tu-choi', 'reject')->name('reject');
         });
@@ -401,6 +419,28 @@ Route::middleware(['jwt.web', 'role:GiangVien'])
             Route::post('/{id}/duyet', 'approve')->name('approve');
             Route::post('/{id}/tu-choi', 'reject')->name('reject');
         });
+
+        Route::prefix('giai-thuong')->name('giaithuong.')->controller(\App\Http\Controllers\Web\GiangVien\GiangVienGiaiThuongController::class)->group(function () {
+        // Danh sách giải thưởng
+        Route::get('/', 'index')->name('index');
+        
+        // Tạo giải thưởng mới
+        Route::get('/tao-moi', 'create')->name('create');
+        Route::post('/tao-moi', 'store')->name('store');
+        
+        // Chi tiết giải thưởng
+        Route::get('/{id}/chi-tiet', 'show')->name('show');
+        
+        // Chỉnh sửa giải thưởng
+        Route::get('/{id}/sua', 'edit')->name('edit');
+        Route::put('/{id}', 'update')->name('update');
+        
+        // Xóa giải thưởng
+        Route::delete('/{id}', 'destroy')->name('destroy');
+        
+        // API - Lấy danh sách đăng ký theo cuộc thi
+        Route::get('/api/dangky/{macuocthi}', 'getDangKyByCuocThi')->name('api.dangky');
+});
     });
 
 /*

@@ -201,11 +201,13 @@ class EventController extends Controller
             ->get();
 
         // Lấy kế hoạch cuộc thi
-        $kehoach = DB::table('kehoachcuocthi as kh')
-            ->leftJoin('nguoidung as nd', 'kh.nguoiduyet', '=', 'nd.tendangnhap')
-            ->where('kh.macuocthi', $macuocthi)
-            ->select('kh.*', 'nd.hoten as tennguoiduyet')
-            ->first();
+        $kehoach = DB::table('cuocthi as ct')
+        ->leftJoin('kehoachcuocthi as kh', 'ct.makehoach', '=', 'kh.makehoach')
+        ->leftJoin('giangvien as gv', 'kh.nguoiduyet', '=', 'gv.magiangvien')
+        ->leftJoin('nguoidung as nd', 'gv.manguoidung', '=', 'nd.manguoidung')
+        ->where('ct.macuocthi', $macuocthi)
+        ->select('kh.*', 'nd.hoten as tennguoiduyet')
+        ->first();
 
         // Lấy danh sách ban tổ chức
         $bantochuc = DB::table('ban as b')

@@ -350,7 +350,7 @@
                         </a>
 
                         {{-- Quản lý Giải thưởng --}}
-                        <a href="#" 
+                        <a href="{{ route('giangvien.giaithuong.index') }}" 
                             class="flex items-center justify-between p-5 border-2 border-gray-200 rounded-xl hover:border-amber-500 hover:bg-amber-50 transition-all duration-200 group">
                             <div class="flex items-center gap-4">
                                 <div class="w-14 h-14 bg-amber-100 group-hover:bg-amber-600 rounded-xl flex items-center justify-center transition-all duration-200">
@@ -363,6 +363,25 @@
                             </div>
                             <i class="fas fa-chevron-right text-gray-400 group-hover:text-amber-600 transition-all duration-200"></i>
                         </a>
+
+                        {{-- Quản lý Tin tức --}}
+                        {{-- <a href="#" 
+                            class="flex items-center justify-between p-5 border-2 border-gray-200 rounded-xl hover:border-blue-500 hover:bg-blue-50 transition-all duration-200 group">
+                            <div class="flex items-center gap-4">
+                                <div class="w-14 h-14 bg-blue-100 group-hover:bg-blue-600 rounded-xl flex items-center justify-center transition-all duration-200">
+                                    <i class="fas fa-newspaper text-blue-600 group-hover:text-white text-2xl transition-all duration-200"></i>
+                                </div>
+                                <div>
+                                    <p class="font-bold text-gray-800 group-hover:text-blue-600 transition-all duration-200">
+                                        Quản lý Tin tức
+                                    </p>
+                                    <p class="text-sm text-gray-500">
+                                        Thêm, sửa, xóa và đăng tải các bài viết tin tức
+                                    </p>
+                                </div>
+                            </div>
+                            <i class="fas fa-chevron-right text-gray-400 group-hover:text-blue-600 transition-all duration-200"></i>
+                        </a> --}}
                     </div>
                 </div>
             </div>

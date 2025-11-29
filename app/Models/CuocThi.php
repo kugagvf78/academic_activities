@@ -1,9 +1,5 @@
 <?php
 
-// ==========================================
-// MODEL CẬP NHẬT: CuocThi.php
-// ==========================================
-
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -22,6 +18,7 @@ class CuocThi extends Model
 
     protected $fillable = [
         'macuocthi',
+        'makehoach',
         'tencuocthi',
         'loaicuocthi',
         'mota',
@@ -54,9 +51,9 @@ class CuocThi extends Model
         return $this->belongsTo(BoMon::class, 'mabomon', 'mabomon');
     }
 
-    public function kehoachs()
+    public function kehoach()
     {
-        return $this->hasMany(KeHoachCuocThi::class, 'macuocthi', 'macuocthi');
+        return $this->belongsTo(KeHoachCuocThi::class, 'makehoach', 'makehoach');
     }
 
     public function bans()
@@ -74,7 +71,6 @@ class CuocThi extends Model
         return $this->hasMany(DoiThi::class, 'macuocthi', 'macuocthi');
     }
 
-    // CẬP NHẬT: Thay đổi từ dangkyduthis sang 2 relationship mới
     public function dangkycanhans()
     {
         return $this->hasMany(DangKyCaNhan::class, 'macuocthi', 'macuocthi');
@@ -131,11 +127,6 @@ class CuocThi extends Model
     }
 
     // Scopes
-    public function scopeDraft($query)
-    {
-        return $query->where('trangthai', 'Draft');
-    }
-
     public function scopeApproved($query)
     {
         return $query->where('trangthai', 'Approved');
@@ -151,7 +142,6 @@ class CuocThi extends Model
         return $query->where('trangthai', 'Completed');
     }
 
-    // CẬP NHẬT: Thêm scope cho hình thức tham gia
     public function scopeCaNhan($query)
     {
         return $query->where('hinhthucthamgia', 'CaNhan');
@@ -165,6 +155,21 @@ class CuocThi extends Model
     public function scopeCaHai($query)
     {
         return $query->where('hinhthucthamgia', 'CaHai');
+    }
+
+    public function scopeUpcoming($query)
+    {
+        return $query->whereRaw('thoigianbatdau > NOW()');
+    }
+
+    public function scopeOngoing($query)
+    {
+        return $query->whereRaw('thoigianbatdau <= NOW() AND thoigianketthuc >= NOW()');
+    }
+
+    public function scopePast($query)
+    {
+        return $query->whereRaw('thoigianketthuc < NOW()');
     }
 
     // Helper methods
@@ -181,5 +186,35 @@ class CuocThi extends Model
     public function getDangKyDoiCount()
     {
         return $this->dangkydoithis()->count();
+    }
+
+    public function isUpcoming()
+    {
+        return $this->thoigianbatdau > now();
+    }
+
+    public function isOngoing()
+    {
+        return $this->thoigianbatdau <= now() && $this->thoigianketthuc >= now();
+    }
+
+    public function isPast()
+    {
+        return $this->thoigianketthuc < now();
+    }
+
+    public function hasRegistrations()
+    {
+        return $this->getTotalDangKy() > 0;
+    }
+
+    public function canEdit()
+    {
+        return !$this->hasRegistrations() && !$this->isPast();
+    }
+
+    public function canDelete()
+    {
+        return !$this->hasRegistrations() && $this->isUpcoming();
     }
 }

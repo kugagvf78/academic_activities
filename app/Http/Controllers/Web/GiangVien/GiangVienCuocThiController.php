@@ -23,13 +23,14 @@ class GiangVienCuocThiController extends Controller
 
         $query = DB::table('cuocthi as ct')
             ->leftJoin('bomon as bm', 'ct.mabomon', '=', 'bm.mabomon')
-            ->leftJoin('kehoachcuocthi as kh', 'ct.macuocthi', '=', 'kh.macuocthi')
+            ->leftJoin('kehoachcuocthi as kh', 'ct.makehoach', '=', 'kh.makehoach')
             ->where('ct.mabomon', $giangvien->mabomon)
             ->select(
                 'ct.*',
                 'bm.tenbomon',
-                'kh.trangthaiduyet as trangthaiduyet_kehoach',
                 'kh.makehoach',
+                'kh.namhoc',
+                'kh.hocky',
                 DB::raw('(
                     (SELECT COUNT(*) FROM dangkycanhan WHERE macuocthi = ct.macuocthi) + 
                     (SELECT COUNT(*) FROM dangkydoithi WHERE macuocthi = ct.macuocthi)
@@ -46,23 +47,25 @@ class GiangVienCuocThiController extends Controller
         if ($request->filled('status')) {
             $status = $request->status;
             
-            if ($status == 'Draft') {
-                $query->where(function($q) {
-                    $q->whereNull('kh.trangthaiduyet')
-                    ->orWhereIn('kh.trangthaiduyet', ['Pending', 'Rejected']);
-                });
+            if ($status == 'Upcoming') {
+                $query->whereRaw('ct.thoigianbatdau > NOW()');
             } 
-            elseif ($status == 'Approved') {
-                $query->where('kh.trangthaiduyet', 'Approved');
+            elseif ($status == 'InProgress') {
+                $query->whereRaw('ct.thoigianbatdau <= NOW() AND ct.thoigianketthuc >= NOW()');
             }
-            else {
-                $query->where('ct.trangthai', $status);
+            elseif ($status == 'Completed') {
+                $query->whereRaw('ct.thoigianketthuc < NOW()');
             }
         }
 
         // Lọc theo loại cuộc thi
         if ($request->filled('loai')) {
             $query->where('ct.loaicuocthi', $request->loai);
+        }
+
+        // Lọc theo năm học
+        if ($request->filled('namhoc')) {
+            $query->where('kh.namhoc', $request->namhoc);
         }
 
         $cuocthiList = $query->orderBy('ct.thoigianbatdau', 'desc')->paginate(10);
@@ -78,88 +81,21 @@ class GiangVienCuocThiController extends Controller
     }
 
     /**
-     * Hiển thị form tạo cuộc thi
-     */
-    public function create()
-    {
-        $user = jwt_user();
-        $giangvien = DB::table('giangvien')->where('manguoidung', $user->manguoidung)->first();
-        
-        $bomons = DB::table('bomon')->get();
-        
-        return view('giangvien.cuocthi.create', compact('giangvien', 'bomons'));
-    }
-
-    /**
-     * Lưu cuộc thi mới
-     */
-    public function store(Request $request)
-    {
-        $validated = $request->validate([
-            'tencuocthi' => 'required|string|max:255',
-            'loaicuocthi' => 'required|string',
-            'mota' => 'nullable|string',
-            'mucdich' => 'nullable|string',
-            'doituongthamgia' => 'nullable|string',
-            'thoigianbatdau' => 'required|date',
-            'thoigianketthuc' => 'required|date|after:thoigianbatdau',
-            'diadiem' => 'nullable|string',
-            'soluongthanhvien' => 'nullable|integer',
-            'hinhthucthamgia' => 'nullable|string',
-            'dutrukinhphi' => 'nullable|numeric',
-        ]);
-
-        $user = jwt_user();
-        $giangvien = DB::table('giangvien')->where('manguoidung', $user->manguoidung)->first();
-
-        DB::beginTransaction();
-        try {
-            $lastCuocthi = DB::table('cuocthi')
-                ->where('macuocthi', 'LIKE', 'CT%')
-                ->orderByRaw('CAST(SUBSTRING(macuocthi FROM 3) AS INTEGER) DESC')
-                ->lockForUpdate()
-                ->first();
-            
-            if ($lastCuocthi && preg_match('/CT(\d+)/', $lastCuocthi->macuocthi, $matches)) {
-                $newNumber = intval($matches[1]) + 1;
-            } else {
-                $newNumber = 1;
-            }
-            
-            $validated['macuocthi'] = 'CT' . str_pad($newNumber, 4, '0', STR_PAD_LEFT);
-            $validated['mabomon'] = $giangvien->mabomon;
-            $validated['trangthai'] = 'Draft'; // Luôn bắt đầu ở Draft
-            $validated['ngaytao'] = now();
-            $validated['ngaycapnhat'] = now();
-
-            DB::table('cuocthi')->insert($validated);
-            
-            DB::commit();
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return back()->withInput()->with('error', 'Có lỗi xảy ra khi tạo cuộc thi. Vui lòng thử lại!');
-        }
-
-        return redirect()->route('giangvien.cuocthi.index')
-            ->with('success', 'Tạo cuộc thi thành công! Vui lòng tạo kế hoạch để cuộc thi được kích hoạt.');
-    }
-
-    /**
      * Chi tiết cuộc thi
      */
     public function show($id)
     {
         $cuocthi = DB::table('cuocthi as ct')
             ->leftJoin('bomon as bm', 'ct.mabomon', '=', 'bm.mabomon')
-            ->leftJoin('kehoachcuocthi as kh', 'ct.macuocthi', '=', 'kh.macuocthi')
+            ->leftJoin('kehoachcuocthi as kh', 'ct.makehoach', '=', 'kh.makehoach')
             ->where('ct.macuocthi', $id)
             ->select(
                 'ct.*',
                 'bm.tenbomon',
-                'kh.trangthaiduyet as trangthaiduyet_kehoach',
                 'kh.makehoach',
                 'kh.namhoc',
                 'kh.hocky',
+                'kh.trangthaiduyet as trangthaiduyet_kehoach',
                 DB::raw('(
                     (SELECT COUNT(*) FROM dangkycanhan WHERE macuocthi = ct.macuocthi) + 
                     (SELECT COUNT(*) FROM dangkydoithi WHERE macuocthi = ct.macuocthi)
@@ -191,15 +127,20 @@ class GiangVienCuocThiController extends Controller
             ->select('dk.*', 'dt.tendoithi')
             ->get();
 
+        $cuocthi->status_label = $this->getStatusLabel($cuocthi);
+        $cuocthi->status_color = $this->getStatusColor($cuocthi);
+
         return view('giangvien.cuocthi.show', compact('cuocthi', 'vongthi', 'dangkycanhan', 'dangkydoi'));
     }
+
     /**
      * Hiển thị form chỉnh sửa
+     * Lưu ý: Chỉ cho sửa một số thông tin, không sửa được thông tin cơ bản đã được duyệt trong kế hoạch
      */
     public function edit($id)
     {
         $cuocthi = DB::table('cuocthi as ct')
-            ->leftJoin('kehoachcuocthi as kh', 'ct.macuocthi', '=', 'kh.macuocthi')
+            ->leftJoin('kehoachcuocthi as kh', 'ct.makehoach', '=', 'kh.makehoach')
             ->where('ct.macuocthi', $id)
             ->select('ct.*', 'kh.trangthaiduyet as trangthaiduyet_kehoach')
             ->first();
@@ -208,10 +149,10 @@ class GiangVienCuocThiController extends Controller
             abort(404, 'Không tìm thấy cuộc thi');
         }
 
-        // Không cho sửa nếu kế hoạch đã được duyệt
-        if ($cuocthi->trangthaiduyet_kehoach == 'Approved') {
+        // Kiểm tra xem cuộc thi đã bắt đầu chưa
+        if (Carbon::parse($cuocthi->thoigianbatdau)->isPast()) {
             return redirect()->route('giangvien.cuocthi.show', $id)
-                ->with('error', 'Không thể chỉnh sửa cuộc thi đã có kế hoạch được duyệt!');
+                ->with('error', 'Không thể chỉnh sửa cuộc thi đã bắt đầu!');
         }
 
         $bomons = DB::table('bomon')->get();
@@ -221,32 +162,26 @@ class GiangVienCuocThiController extends Controller
 
     /**
      * Cập nhật cuộc thi
+     * Chỉ cho phép cập nhật một số thông tin không quan trọng
      */
     public function update(Request $request, $id)
     {
         $validated = $request->validate([
-            'tencuocthi' => 'required|string|max:255',
-            'loaicuocthi' => 'required|string',
             'mota' => 'nullable|string',
-            'mucdich' => 'nullable|string',
-            'doituongthamgia' => 'nullable|string',
-            'thoigianbatdau' => 'required|date',
-            'thoigianketthuc' => 'required|date|after:thoigianbatdau',
             'diadiem' => 'nullable|string',
-            'soluongthanhvien' => 'nullable|integer',
-            'hinhthucthamgia' => 'nullable|string',
-            'dutrukinhphi' => 'nullable|numeric',
+            'chiphithucte' => 'nullable|numeric',
         ]);
 
-        // Kiểm tra xem có kế hoạch đã được duyệt chưa
-        $kehoach = DB::table('kehoachcuocthi')
-            ->where('macuocthi', $id)
-            ->where('trangthaiduyet', 'Approved')
-            ->first();
+        $cuocthi = DB::table('cuocthi')->where('macuocthi', $id)->first();
 
-        if ($kehoach) {
+        if (!$cuocthi) {
+            abort(404, 'Không tìm thấy cuộc thi');
+        }
+
+        // Kiểm tra xem cuộc thi đã bắt đầu chưa
+        if (Carbon::parse($cuocthi->thoigianbatdau)->isPast()) {
             return redirect()->route('giangvien.cuocthi.show', $id)
-                ->with('error', 'Không thể chỉnh sửa cuộc thi đã có kế hoạch được duyệt!');
+                ->with('error', 'Không thể chỉnh sửa cuộc thi đã bắt đầu!');
         }
 
         $validated['ngaycapnhat'] = now();
@@ -262,22 +197,23 @@ class GiangVienCuocThiController extends Controller
      */
     public function destroy($id)
     {
-        // Kiểm tra xem có kế hoạch đã được duyệt chưa
-        $kehoach = DB::table('kehoachcuocthi')
-            ->where('macuocthi', $id)
-            ->where('trangthaiduyet', 'Approved')
-            ->first();
+        $cuocthi = DB::table('cuocthi')->where('macuocthi', $id)->first();
 
-        if ($kehoach) {
-            return back()->with('error', 'Không thể xóa cuộc thi đã có kế hoạch được duyệt!');
+        if (!$cuocthi) {
+            abort(404, 'Không tìm thấy cuộc thi');
         }
 
-        // Kiểm tra xem có đăng ký nào chưa
+        // Không cho xóa nếu đã có đăng ký
         $hasDangKy = DB::table('dangkycanhan')->where('macuocthi', $id)->exists() ||
                      DB::table('dangkydoithi')->where('macuocthi', $id)->exists();
 
         if ($hasDangKy) {
             return back()->with('error', 'Không thể xóa cuộc thi đã có đăng ký!');
+        }
+
+        // Không cho xóa nếu đã bắt đầu
+        if (Carbon::parse($cuocthi->thoigianbatdau)->isPast()) {
+            return back()->with('error', 'Không thể xóa cuộc thi đã bắt đầu!');
         }
 
         DB::table('cuocthi')->where('macuocthi', $id)->delete();
@@ -286,56 +222,59 @@ class GiangVienCuocThiController extends Controller
             ->with('success', 'Xóa cuộc thi thành công!');
     }
 
+    /**
+     * Cập nhật trạng thái cuộc thi
+     */
+    public function updateStatus($id, Request $request)
+    {
+        $validated = $request->validate([
+            'trangthai' => 'required|in:Approved,InProgress,Completed,Cancelled'
+        ]);
+
+        $cuocthi = DB::table('cuocthi')->where('macuocthi', $id)->first();
+
+        if (!$cuocthi) {
+            abort(404, 'Không tìm thấy cuộc thi');
+        }
+
+        DB::table('cuocthi')
+            ->where('macuocthi', $id)
+            ->update([
+                'trangthai' => $validated['trangthai'],
+                'ngaycapnhat' => now()
+            ]);
+
+        return back()->with('success', 'Cập nhật trạng thái thành công!');
+    }
+
     // Helper methods
     private function getStatusLabel($event)
     {
-        // Kiểm tra trạng thái kế hoạch trước
-        if (!$event->trangthaiduyet_kehoach || 
-            in_array($event->trangthaiduyet_kehoach, ['Pending', 'Rejected'])) {
-            return 'Nháp (Chờ duyệt kế hoạch)';
-        }
-        
-        // Nếu kế hoạch đã được duyệt, kiểm tra thời gian
-        if ($event->trangthaiduyet_kehoach == 'Approved') {
-            $now = Carbon::now();
-            $start = Carbon::parse($event->thoigianbatdau);
-            $end = Carbon::parse($event->thoigianketthuc);
+        $now = Carbon::now();
+        $start = Carbon::parse($event->thoigianbatdau);
+        $end = Carbon::parse($event->thoigianketthuc);
 
-            if ($now->lt($start)) {
-                return 'Sắp diễn ra';
-            } elseif ($now->between($start, $end)) {
-                return 'Đang diễn ra';
-            } else {
-                return 'Đã kết thúc';
-            }
+        if ($now->lt($start)) {
+            return 'Sắp diễn ra';
+        } elseif ($now->between($start, $end)) {
+            return 'Đang diễn ra';
+        } else {
+            return 'Đã kết thúc';
         }
-
-        return 'Nháp';
     }
 
     private function getStatusColor($event)
     {
-        // Kiểm tra trạng thái kế hoạch trước
-        if (!$event->trangthaiduyet_kehoach || 
-            in_array($event->trangthaiduyet_kehoach, ['Pending', 'Rejected'])) {
+        $now = Carbon::now();
+        $start = Carbon::parse($event->thoigianbatdau);
+        $end = Carbon::parse($event->thoigianketthuc);
+
+        if ($now->lt($start)) {
+            return 'yellow';
+        } elseif ($now->between($start, $end)) {
+            return 'green';
+        } else {
             return 'gray';
         }
-        
-        // Nếu kế hoạch đã được duyệt, kiểm tra thời gian
-        if ($event->trangthaiduyet_kehoach == 'Approved') {
-            $now = Carbon::now();
-            $start = Carbon::parse($event->thoigianbatdau);
-            $end = Carbon::parse($event->thoigianketthuc);
-
-            if ($now->lt($start)) {
-                return 'yellow';
-            } elseif ($now->between($start, $end)) {
-                return 'green';
-            } else {
-                return 'gray';
-            }
-        }
-
-        return 'gray';
     }
 }

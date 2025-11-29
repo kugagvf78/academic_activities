@@ -118,7 +118,7 @@ class GiangVienChiPhiController extends Controller
         
         // Lấy danh sách cuộc thi đã được duyệt của bộ môn
         $cuocthis = DB::table('cuocthi as ct')
-            ->join('kehoachcuocthi as kh', 'ct.macuocthi', '=', 'kh.macuocthi')
+            ->join('kehoachcuocthi as kh', 'ct.makehoach', '=', 'kh.makehoach')
             ->where('ct.mabomon', $giangvien->mabomon)
             ->where('kh.trangthaiduyet', 'Approved')
             ->select('ct.macuocthi', 'ct.tencuocthi', 'ct.dutrukinhphi')
@@ -191,6 +191,10 @@ class GiangVienChiPhiController extends Controller
     {
         $user = jwt_user();
         $giangvien = DB::table('giangvien')->where('manguoidung', $user->manguoidung)->first();
+        
+        if (!$giangvien) {
+            return redirect()->route('login')->with('error', 'Không tìm thấy thông tin giảng viên!');
+        }
 
         $chiphi = DB::table('chiphi as cp')
             ->join('cuocthi as ct', 'cp.macuocthi', '=', 'ct.macuocthi')
@@ -204,6 +208,7 @@ class GiangVienChiPhiController extends Controller
                 'cp.*',
                 'ct.tencuocthi',
                 'ct.dutrukinhphi',
+                'ct.mabomon',
                 'bm.tenbomon',
                 'bm.matruongbomon',
                 'nd_yeucau.hoten as tennguoiyeucau',
@@ -217,15 +222,18 @@ class GiangVienChiPhiController extends Controller
             abort(404, 'Không tìm thấy chi phí');
         }
 
-        // Kiểm tra quyền xem
-        $isTruongBoMon = ($chiphi->matruongbomon == $giangvien->magiangvien);
-        $isOwner = ($chiphi->nguoiyeucau == $giangvien->magiangvien);
-
-        if (!$isTruongBoMon && !$isOwner) {
+        // Kiểm tra quyền xem: phải cùng bộ môn
+        if ($chiphi->mabomon != $giangvien->mabomon) {
             abort(403, 'Bạn không có quyền xem chi phí này');
         }
 
-        return view('giangvien.chiphi.show', compact('chiphi', 'isTruongBoMon', 'isOwner'));
+        // Kiểm tra xem có phải trưởng bộ môn không
+        $isTruongBoMon = ($chiphi->matruongbomon == $giangvien->magiangvien);
+        
+        // Kiểm tra xem có phải người tạo không
+        $isOwner = ($chiphi->nguoiyeucau == $giangvien->magiangvien);
+
+        return view('giangvien.chiphi.show', compact('chiphi', 'giangvien', 'isTruongBoMon', 'isOwner'));
     }
 
     /**

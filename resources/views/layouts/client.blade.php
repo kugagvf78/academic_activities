@@ -260,11 +260,11 @@
                         <i class="fas fa-sign-in-alt"></i>
                         <span>Đăng nhập</span>
                     </a>
-                    <a href="{{ route('register') }}"
+                    {{-- <a href="{{ route('register') }}"
                         class="px-5 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition flex items-center gap-2 shadow-md">
                         <i class="fas fa-user-plus"></i>
                         <span>Đăng ký</span>
-                    </a>
+                    </a> --}}
                 @endif
             </div>
         </div>
@@ -388,12 +388,12 @@
                             <span>Đăng nhập</span>
                         </a>
                         
-                        <a href="{{ route('register') }}"
+                        {{-- <a href="{{ route('register') }}"
                             @click="mobileMenuOpen = false"
                             class="flex items-center justify-center gap-2 w-full px-4 py-3 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition">
                             <i class="fas fa-user-plus"></i>
                             <span>Đăng ký</span>
-                        </a>
+                        </a> --}}
                     </div>
                 @endif
             </div>

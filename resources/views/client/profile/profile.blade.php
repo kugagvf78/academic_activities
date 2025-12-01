@@ -34,7 +34,9 @@
         </div>
     @endif
 
-    <div class="grid lg:grid-cols-4 gap-8 relative" x-data="{ tab: 'info' }">
+    <div class="grid lg:grid-cols-4 gap-8 relative" x-data="{ 
+            tab: new URLSearchParams(window.location.search).get('tab') || 'info' 
+        }">
 
         {{-- 👤 LEFT SIDEBAR --}}
         <aside class="lg:col-span-1 sticky top-28 self-start">
@@ -81,7 +83,7 @@
 
                 {{-- Navigation Menu --}}
                 <nav class="flex flex-col text-left mt-3">
-                    <button @click="tab='info'"
+                    <button @click="tab='info'; window.history.pushState({}, '', '?tab=info')"
                         :class="tab==='info' ? 'bg-blue-50 text-blue-700 border-l-4 border-blue-600' : 'text-gray-700 hover:bg-gray-50'"
                         class="w-full px-6 py-4 flex items-center gap-3 font-medium transition">
                         <i class="fas fa-user w-5"></i>
@@ -89,14 +91,14 @@
                     </button>
 
                     @if($user->vaitro === 'SinhVien')
-                        <button @click="tab='activities'"
+                        <button @click="tab='activities'; window.history.pushState({}, '', '?tab=activities')"
                             :class="tab==='activities' ? 'bg-blue-50 text-blue-700 border-l-4 border-blue-600' : 'text-gray-700 hover:bg-gray-50'"
                             class="w-full px-6 py-4 flex items-center gap-3 font-medium transition border-t border-gray-100">
                             <i class="fas fa-trophy w-5"></i>
                             <span>Hoạt động học thuật</span>
                         </button>
 
-                        <button @click="tab='points'"
+                        <button @click="tab='points'; window.history.pushState({}, '', '?tab=points')"
                             :class="tab==='points' ? 'bg-blue-50 text-blue-700 border-l-4 border-blue-600' : 'text-gray-700 hover:bg-gray-50'"
                             class="w-full px-6 py-4 flex items-center gap-3 font-medium transition border-t border-gray-100">
                             <i class="fas fa-chart-line w-5"></i>
@@ -104,7 +106,7 @@
                         </button>
 
                         <button 
-                            @click="tab = 'competition'"
+                            @click="tab = 'competition'; window.history.pushState({}, '', '?tab=competition')"
                             :class="tab === 'competition' ? 'bg-blue-50 text-blue-700 border-l-4 border-blue-600' : 'text-gray-700 hover:bg-gray-50'"
                             class="w-full px-6 py-4 flex items-center gap-3 font-medium transition border-t border-gray-100 cursor-pointer">
                             <i class="fas fa-trophy w-5" :class="tab === 'competition' ? 'text-blue-600' : 'text-gray-500'"></i>
@@ -112,14 +114,14 @@
                         </button>
 
                         <button
-                            @click="tab = 'activity'"
+                            @click="tab = 'activity'; window.history.pushState({}, '', '?tab=activity')"
                             :class="tab === 'activity' ? 'bg-blue-50 text-blue-700 border-l-4 border-blue-600' : 'text-gray-700 hover:bg-gray-50'"
                             class="w-full px-6 py-4 flex items-center gap-3 font-medium transition border-t border-gray-100 cursor-pointer">
                             <i class="fas fa-hands-clapping w-5" :class="tab === 'activity' ? 'text-blue-600' : 'text-gray-500'"></i>
                             <span>Đăng ký cổ vũ - hỗ trợ</span>
                         </button>
 
-                        <button @click="tab='certs'"
+                        <button @click="tab='certs'; window.history.pushState({}, '', '?tab=certs')"
                             :class="tab==='certs' ? 'bg-blue-50 text-blue-700 border-l-4 border-blue-600' : 'text-gray-700 hover:bg-gray-50'"
                             class="w-full px-6 py-4 flex items-center gap-3 font-medium transition border-t border-gray-100">
                             <i class="fas fa-certificate w-5"></i>
@@ -127,7 +129,7 @@
                         </button>
                     @endif
 
-                    <button @click="tab='settings'"
+                    <button @click="tab='settings'; window.history.pushState({}, '', '?tab=settings')"
                         :class="tab==='settings' ? 'bg-blue-50 text-blue-700 border-l-4 border-blue-600' : 'text-gray-700 hover:bg-gray-50'"
                         class="w-full px-6 py-4 flex items-center gap-3 font-medium transition border-t border-gray-100">
                         <i class="fas fa-cog w-5"></i>

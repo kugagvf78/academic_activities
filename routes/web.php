@@ -263,6 +263,10 @@ Route::middleware(['jwt.web', 'role:GiangVien'])
             Route::post('/cuoc-thi/{macuocthi}/import', 'importDiem')->name('import');
             Route::get('/{id}/chi-tiet', 'show')->name('show');
             Route::put('/{id}', 'update')->name('update');
+
+            Route::get('/cuoc-thi/{macuocthi}/auto-gan-giai', 'showAutoGanGiai')->name('show-auto-gan-giai');
+            Route::post('/cuoc-thi/{macuocthi}/auto-gan-giai', 'autoGanGiai')->name('auto-gan-giai');
+            Route::delete('/cuoc-thi/{macuocthi}/xoa-gan-giai-tu-dong', 'xoaGanGiaiTuDong')->name('xoa-gan-giai-tu-dong');
         });
 
         Route::prefix('phan-cong')
@@ -420,27 +424,59 @@ Route::middleware(['jwt.web', 'role:GiangVien'])
             Route::post('/{id}/tu-choi', 'reject')->name('reject');
         });
 
+        // === QUẢN LÝ GIẢI THƯỞNG ===
         Route::prefix('giai-thuong')->name('giaithuong.')->controller(\App\Http\Controllers\Web\GiangVien\GiangVienGiaiThuongController::class)->group(function () {
-        // Danh sách giải thưởng
-        Route::get('/', 'index')->name('index');
+            
+            // Danh sách cuộc thi có cơ cấu giải thưởng (cả giảng viên thường và trưởng bộ môn)
+            Route::get('/', 'index')
+                ->name('index');
+            
+            // Xem chi tiết cơ cấu giải thưởng của cuộc thi (cả giảng viên thường và trưởng bộ môn)
+            Route::get('/cuocthi/{macuocthi}', 'show')
+                ->name('show');
+            
+            // Xem danh sách giải đã gán của một cơ cấu (cả giảng viên thường và trưởng bộ môn)
+            Route::get('/cocau/{macocau}/gangiai', 'showGanGiai')
+                ->name('gangiai');
+            
+            // Thống kê giải thưởng theo cuộc thi (cả giảng viên thường và trưởng bộ môn)
+            Route::get('/cuocthi/{macuocthi}/thongke', 'thongke')
+                ->name('thongke');
+            
+            // === CHỈ TRƯỞNG BỘ MÔN ===
+            
+            // Tạo cơ cấu giải thưởng mới
+            Route::get('/cuocthi/{macuocthi}/create', 'create')
+                ->name('create');
+            
+            Route::post('/cuocthi/{macuocthi}/store', 'store')
+                ->name('store');
+            
+            // Chỉnh sửa cơ cấu giải thưởng
+            Route::get('/cocau/{macocau}/edit', 'edit')
+                ->name('edit');
+            
+            Route::put('/cocau/{macocau}', 'update')
+                ->name('update');
+            
+            // Xóa cơ cấu giải thưởng
+            Route::delete('/cocau/{macocau}', 'destroy')
+                ->name('destroy');
+            
+            // ✅ MỚI: Gán giải thưởng (chỉ trưởng bộ môn)
+            Route::get('/cocau/{macocau}/danh-sach-gan-giai', 'danhSachGanGiai')
+                ->name('danh-sach-gan-giai');
+            
+            Route::post('/cocau/{macocau}/store-gan-giai', 'storeGanGiai')
+                ->name('store-gan-giai');
+            
+            Route::post('/cocau/{macocau}/gan-giai-hang-loat', 'ganGiaiHangLoat')
+                ->name('gan-giai-hang-loat');
+            
+            Route::delete('/huy-gan-giai/{magangiai}', 'huyGanGiai')
+                ->name('huy-gan-giai');
+        });
         
-        // Tạo giải thưởng mới
-        Route::get('/tao-moi', 'create')->name('create');
-        Route::post('/tao-moi', 'store')->name('store');
-        
-        // Chi tiết giải thưởng
-        Route::get('/{id}/chi-tiet', 'show')->name('show');
-        
-        // Chỉnh sửa giải thưởng
-        Route::get('/{id}/sua', 'edit')->name('edit');
-        Route::put('/{id}', 'update')->name('update');
-        
-        // Xóa giải thưởng
-        Route::delete('/{id}', 'destroy')->name('destroy');
-        
-        // API - Lấy danh sách đăng ký theo cuộc thi
-        Route::get('/api/dangky/{macuocthi}', 'getDangKyByCuocThi')->name('api.dangky');
-});
     });
 
 /*

@@ -428,27 +428,73 @@
                                         <span class="text-lg font-bold text-green-600 ml-4">+{{ $detail['diem'] }}</span>
                                     </div>
 
-                                    {{-- Chi tiết hoạt động (nếu có) --}}
+                                    {{-- ✅ Chi tiết (Hỗ trợ CẢ giải thưởng VÀ hoạt động) --}}
                                     @if($detail['chi_tiet'])
                                         <div class="px-4 py-3 bg-gray-50 border-t border-gray-200">
                                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm text-gray-600">
-                                                <div class="flex items-center gap-2">
-                                                    <i class="fas fa-tag w-4 text-purple-500"></i>
-                                                    <span><strong>Hoạt động:</strong> {{ $detail['chi_tiet']['ten_hoat_dong'] }}</span>
-                                                </div>
-                                                @if($detail['chi_tiet']['loai'])
+                                                {{-- ✅ Hiển thị tên cuộc thi (nếu có) --}}
+                                                @if(isset($detail['chi_tiet']['ten_cuoc_thi']))
+                                                    <div class="flex items-center gap-2 col-span-2">
+                                                        <i class="fas fa-trophy w-4 text-yellow-500"></i>
+                                                        <span><strong>Cuộc thi:</strong> {{ $detail['chi_tiet']['ten_cuoc_thi'] }}</span>
+                                                    </div>
+                                                @endif
+
+                                                {{-- ✅ Hiển thị tên giải (nếu có) --}}
+                                                @if(isset($detail['chi_tiet']['ten_giai']))
+                                                    <div class="flex items-center gap-2">
+                                                        <i class="fas fa-medal w-4 text-yellow-600"></i>
+                                                        <span><strong>Giải thưởng:</strong> {{ $detail['chi_tiet']['ten_giai'] }}</span>
+                                                    </div>
+                                                @endif
+
+                                                {{-- ✅ Hiển thị xếp hạng (nếu có) --}}
+                                                @if(isset($detail['chi_tiet']['xep_hang']))
+                                                    <div class="flex items-center gap-2">
+                                                        <i class="fas fa-ranking-star w-4 text-orange-500"></i>
+                                                        <span><strong>Xếp hạng:</strong> {{ $detail['chi_tiet']['xep_hang'] }}{{ isset($detail['chi_tiet']['la_dong_hang']) && $detail['chi_tiet']['la_dong_hang'] ? ' (Đồng hạng)' : '' }}</span>
+                                                    </div>
+                                                @endif
+
+                                                {{-- ✅ Hiển thị trạng thái (nếu có) --}}
+                                                @if(isset($detail['chi_tiet']['trang_thai']))
+                                                    <div class="flex items-center gap-2">
+                                                        <i class="fas fa-check-circle w-4 text-green-500"></i>
+                                                        <span><strong>Trạng thái:</strong> 
+                                                            @if($detail['chi_tiet']['trang_thai'] === 'Approved')
+                                                                <span class="text-green-600">Đã phê duyệt</span>
+                                                            @elseif($detail['chi_tiet']['trang_thai'] === 'Pending')
+                                                                <span class="text-yellow-600">Chờ duyệt</span>
+                                                            @else
+                                                                {{ $detail['chi_tiet']['trang_thai'] }}
+                                                            @endif
+                                                        </span>
+                                                    </div>
+                                                @endif
+
+                                                {{-- Hiển thị thông tin hoạt động hỗ trợ (nếu có) --}}
+                                                @if(isset($detail['chi_tiet']['ten_hoat_dong']))
+                                                    <div class="flex items-center gap-2 col-span-2">
+                                                        <i class="fas fa-tag w-4 text-purple-500"></i>
+                                                        <span><strong>Hoạt động:</strong> {{ $detail['chi_tiet']['ten_hoat_dong'] }}</span>
+                                                    </div>
+                                                @endif
+                                                
+                                                @if(isset($detail['chi_tiet']['loai']))
                                                     <div class="flex items-center gap-2">
                                                         <i class="fas fa-list w-4 text-blue-500"></i>
                                                         <span><strong>Loại:</strong> {{ $detail['chi_tiet']['loai'] }}</span>
                                                     </div>
                                                 @endif
-                                                @if($detail['chi_tiet']['thoi_gian'])
+                                                
+                                                @if(isset($detail['chi_tiet']['thoi_gian']))
                                                     <div class="flex items-center gap-2">
                                                         <i class="fas fa-clock w-4 text-green-500"></i>
                                                         <span><strong>Thời gian:</strong> {{ $detail['chi_tiet']['thoi_gian'] }}</span>
                                                     </div>
                                                 @endif
-                                                @if($detail['chi_tiet']['dia_diem'])
+                                                
+                                                @if(isset($detail['chi_tiet']['dia_diem']))
                                                     <div class="flex items-center gap-2">
                                                         <i class="fas fa-map-marker-alt w-4 text-red-500"></i>
                                                         <span><strong>Địa điểm:</strong> {{ $detail['chi_tiet']['dia_diem'] }}</span>

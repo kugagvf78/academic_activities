@@ -217,4 +217,9 @@ class CuocThi extends Model
     {
         return !$this->hasRegistrations() && $this->isUpcoming();
     }
+    
+    public function cocaugiaithuong()
+    {
+        return $this->hasMany(\App\Models\CoCauGiaiThuong::class, 'macuocthi', 'macuocthi');
+    }
 }

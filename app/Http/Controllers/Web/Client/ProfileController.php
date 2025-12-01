@@ -477,6 +477,8 @@ class ProfileController extends Controller
             $diemRenLuyen = DB::table('diemrenluyen as drl')
                 ->leftJoin('cuocthi as ct', 'drl.macuocthi', '=', 'ct.macuocthi')
                 ->leftJoin('hoatdonghotro as hd', 'drl.mahoatdong', '=', 'hd.mahoatdong')
+                ->leftJoin('gangiaithuong as gg', 'drl.magangiai', '=', 'gg.magangiai') // ✅ JOIN giải thưởng
+                ->leftJoin('cocaugiaithuong as cocau', 'gg.macocau', '=', 'cocau.macocau') // ✅ JOIN cơ cấu giải
                 ->where('drl.masinhvien', $sinhVien->masinhvien)
                 ->select(
                     'drl.madiemrl',
@@ -486,9 +488,15 @@ class ProfileController extends Controller
                     'drl.ngaycong',
                     'ct.tencuocthi',
                     'hd.tenhoatdong',
-                    'hd.loaihoatdong as loai_hoatdong_hotro', // ✅ THÊM loại hoạt động
-                    'hd.thoigianbatdau',  // ✅ THÊM thời gian
-                    'hd.diadiem'           // ✅ THÊM địa điểm
+                    'hd.loaihoatdong as loai_hoatdong_hotro',
+                    'hd.thoigianbatdau',
+                    'hd.diadiem',
+                    // ✅ Thêm thông tin giải thưởng
+                    'gg.magangiai',
+                    'gg.xephangthucte',
+                    'gg.ladonghang',
+                    'gg.trangthai as trangthai_gangiai',
+                    'cocau.tengiai'
                 )
                 ->orderBy('drl.ngaycong', 'desc')
                 ->get();
@@ -497,7 +505,6 @@ class ProfileController extends Controller
             $totalPoints = 0;
 
             foreach ($diemRenLuyen as $diem) {
-                // ✅ Map loại hoạt động chi tiết hơn
                 $loaiMap = [
                     'DatGiai' => 'Đạt giải',
                     'DuThi' => 'Dự thi',
@@ -506,7 +513,6 @@ class ProfileController extends Controller
                     'CoVu' => 'Cổ vũ',
                 ];
 
-                // ✅ Xác định loại và icon
                 $loaiHoatDong = $loaiMap[$diem->loaihoatdong] ?? $diem->loaihoatdong;
                 $icon = 'fa-star';
                 $color = 'blue';
@@ -528,12 +534,23 @@ class ProfileController extends Controller
                     $color = 'pink';
                 }
 
-                // ✅ Xây dựng title đầy đủ
                 $title = $diem->tencuocthi ?? $diem->tenhoatdong ?? $diem->mota;
                 
-                // ✅ Thêm chi tiết nếu là hoạt động hỗ trợ
+                // ✅ Xây dựng chi tiết
                 $chiTiet = null;
-                if ($diem->tenhoatdong) {
+
+                // ✅ Nếu là đạt giải -> hiển thị thông tin giải thưởng
+                if ($diem->loaihoatdong === 'DatGiai' && $diem->magangiai) {
+                    $chiTiet = [
+                        'ten_cuoc_thi' => $diem->tencuocthi,
+                        'ten_giai' => $diem->tengiai,
+                        'xep_hang' => $diem->xephangthucte,
+                        'la_dong_hang' => $diem->ladonghang,
+                        'trang_thai' => $diem->trangthai_gangiai,
+                    ];
+                }
+                // ✅ Nếu là hoạt động hỗ trợ -> hiển thị thông tin hoạt động
+                elseif ($diem->tenhoatdong) {
                     $loaiHD = '';
                     if ($diem->loai_hoatdong_hotro === 'CoVu') $loaiHD = 'Cổ vũ';
                     elseif ($diem->loai_hoatdong_hotro === 'HoTroKyThuat') $loaiHD = 'Hỗ trợ kỹ thuật';
@@ -553,9 +570,9 @@ class ProfileController extends Controller
                     'diem' => $diem->diem,
                     'ngay' => $diem->ngaycong,
                     'mota' => $diem->mota,
-                    'icon' => $icon,      // ✅ THÊM icon
-                    'color' => $color,    // ✅ THÊM màu
-                    'chi_tiet' => $chiTiet, // ✅ THÊM chi tiết hoạt động
+                    'icon' => $icon,
+                    'color' => $color,
+                    'chi_tiet' => $chiTiet,
                 ];
 
                 $totalPoints += $diem->diem;
@@ -564,7 +581,7 @@ class ProfileController extends Controller
             return [
                 'details' => collect($details),
                 'total' => $totalPoints,
-                'base' => 70, // Điểm cơ bản
+                'base' => 70,
                 'bonus' => $totalPoints,
                 'final' => 70 + $totalPoints,
             ];

@@ -16,7 +16,7 @@
         start() {
             this.interval = setInterval(() => {
                 this.active = (this.active + 1) % this.slides.length;
-            }, 3000);
+            }, 5000);
         },
         stop() { clearInterval(this.interval); }
     }"

@@ -247,9 +247,9 @@ class ProfileController extends Controller
                             $now->diffInHours($start, false) >= 24 &&
                             in_array($reg->trangthai, ['Registered']);
 
-                // Có thể nộp bài không (SAU KHI kết thúc và TRONG 1 NGÀY)
-                $canSubmit = $end->lt($now) && 
-                            $submitDeadline->gt($now) && 
+                // Có thể nộp bài không (TRONG KHI cuộc thi đang diễn ra)
+                $canSubmit = $start->lte($now) && 
+                            $end->gte($now) && 
                             !$reg->mabaithi &&
                             in_array($reg->trangthai, ['Registered', 'Confirmed']);
 
@@ -994,18 +994,17 @@ class ProfileController extends Controller
                 return back()->with('error', 'Không tìm thấy đăng ký dự thi');
             }
 
-            // Kiểm tra thời gian nộp bài
+            // Kiểm tra thời gian nộp bài (trong khi cuộc thi đang diễn ra)
             $now = now();
+            $startTime = \Carbon\Carbon::parse($dangky->thoigianbatdau);
             $endTime = \Carbon\Carbon::parse($dangky->thoigianketthuc);
-            $submitDeadline = $endTime->copy()->addDay(); // Thêm 1 ngày sau khi kết thúc
 
-            // Chỉ cho nộp bài SAU KHI cuộc thi KẾT THÚC và TRONG VÒNG 1 NGÀY
-            if ($now->lt($endTime)) {
-                return back()->with('error', 'Chưa thể nộp bài. Cuộc thi chưa kết thúc!');
+            if ($now->lt($startTime)) {
+                return back()->with('error', 'Cuộc thi chưa bắt đầu!');
             }
 
-            if ($now->gt($submitDeadline)) {
-                return back()->with('error', 'Đã hết hạn nộp bài! (24h sau khi kết thúc)');
+            if ($now->gt($endTime)) {
+                return back()->with('error', 'Đã hết hạn nộp bài! Cuộc thi đã kết thúc.');
             }
 
             // Kiểm tra đã nộp bài chưa
@@ -1017,6 +1016,9 @@ class ProfileController extends Controller
             if ($baiThi) {
                 return back()->with('info', 'Bạn đã nộp bài cho cuộc thi này rồi!');
             }
+
+            // ✅ QUAN TRỌNG: Gán submitDeadline = thời gian kết thúc cuộc thi
+            $submitDeadline = $endTime;
 
             return view('client.profile.submit-exam', compact(
                 'dangky',
@@ -1070,6 +1072,7 @@ class ProfileController extends Controller
                     ->where('dkcn.masinhvien', $sinhVien->masinhvien)
                     ->select(
                         'dkcn.*', 
+                        'ct.thoigianbatdau',  // ✅ Thêm dòng này
                         'ct.thoigianketthuc', 
                         'ct.tencuocthi',
                         'ct.macuocthi',
@@ -1091,6 +1094,7 @@ class ProfileController extends Controller
                     ->where('tv.masinhvien', $sinhVien->masinhvien)
                     ->select(
                         'dkdt.*', 
+                        'ct.thoigianbatdau',  // ✅ Thêm dòng này
                         'ct.thoigianketthuc',
                         'ct.tencuocthi',
                         'ct.macuocthi',
@@ -1109,14 +1113,20 @@ class ProfileController extends Controller
                 return back()->with('error', 'Không tìm thấy đăng ký dự thi');
             }
 
-            // Kiểm tra thời gian nộp bài
+            // ✅ Kiểm tra thời gian nộp bài (TRONG KHI cuộc thi đang diễn ra)
             $now = now();
+            $startTime = \Carbon\Carbon::parse($dangky->thoigianbatdau);
             $endTime = \Carbon\Carbon::parse($dangky->thoigianketthuc);
-            $submitDeadline = $endTime->copy()->addDay();
 
-            if ($now->lt($endTime) || $now->gt($submitDeadline)) {
+            // Chỉ cho nộp bài TRONG KHI cuộc thi đang diễn ra
+            if ($now->lt($startTime)) {
                 DB::rollBack();
-                return back()->with('error', 'Không trong thời gian nộp bài!');
+                return back()->with('error', 'Cuộc thi chưa bắt đầu!');
+            }
+
+            if ($now->gt($endTime)) {
+                DB::rollBack();
+                return back()->with('error', 'Đã hết hạn nộp bài! Cuộc thi đã kết thúc.');
             }
 
             // Kiểm tra đã nộp bài chưa

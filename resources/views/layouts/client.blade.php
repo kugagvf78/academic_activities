@@ -187,22 +187,26 @@
                     <div x-data="{ userDropdown: false }" class="relative">
                         <button 
                             @click="userDropdown = !userDropdown" 
-                            class="flex items-center space-x-3 px-3 py-2 rounded-lg hover:bg-gray-50 transition group">
+                            class="flex items-center space-x-4 px-4 py-2 rounded-xl 
+                                bg-white/70 backdrop-blur border border-gray-200
+                                hover:shadow-md transition-all duration-200 group">
                             
                             {{-- Avatar --}}
-                            <div class="user-avatar w-10 h-10 bg-gradient-to-tr from-blue-600 to-cyan-500 text-white rounded-full flex items-center justify-center font-bold uppercase shadow-md">
+                            <div class="user-avatar w-11 h-11 bg-gradient-to-tr from-blue-700 to-cyan-500 
+                                        text-white rounded-full flex items-center justify-center 
+                                        font-semibold uppercase shadow-md ring-2 ring-white">
                                 {{ strtoupper(substr($user->ho_ten ?? $user->ten_dang_nhap, 0, 1)) }}
                             </div>
                             
                             {{-- Tên + Icon --}}
-                            <div class="flex items-center gap-2">
+                            <div class="flex items-center gap-3">
                                 <div class="text-left">
                                     <p class="font-semibold text-gray-800 text-sm leading-tight">
                                         {{ Str::limit($user->ho_ten ?? $user->ten_dang_nhap, 20) }}
                                     </p>
-                                    <p class="text-xs text-gray-500">{{ '@' . $user->ten_dang_nhap }}</p>
+                                    <p class="text-xs text-gray-500 font-medium">{{ '@' . $user->ten_dang_nhap }}</p>
                                 </div>
-                                <i class="fa-solid fa-chevron-down text-gray-400 text-xs transition-transform duration-200" 
+                                <i class="fa-solid fa-chevron-down text-gray-400 text-xs transition-transform duration-200 group-hover:text-gray-600"
                                 :class="userDropdown ? 'rotate-180' : ''"></i>
                             </div>
                         </button>
@@ -218,24 +222,27 @@
                             x-transition:leave-start="opacity-100 scale-100 translate-y-0"
                             x-transition:leave-end="opacity-0 scale-95 -translate-y-2"
                             @click.away="userDropdown = false"
-                            class="absolute right-0 mt-3 w-64 bg-white border border-gray-100 rounded-xl shadow-2xl overflow-hidden z-50">
+                            class="absolute right-0 mt-3 w-72 bg-white border border-gray-200 
+                                rounded-2xl shadow-xl overflow-hidden z-50">
                             
                             {{-- User Info Header --}}
-                            <div class="px-4 py-3 bg-gradient-to-r from-blue-600 to-cyan-500 text-white">
-                                <p class="font-bold text-sm">{{ $user->ho_ten ?? $user->ten_dang_nhap }}</p>
-                                <p class="text-xs opacity-90">{{ $user->email }}</p>
+                            <div class="px-5 py-4 bg-gradient-to-r from-blue-700 to-cyan-500 text-white">
+                                <p class="font-semibold text-sm">{{ $user->ho_ten ?? $user->ten_dang_nhap }}</p>
+                                <p class="text-xs text-blue-100">{{ $user->email }}</p>
                             </div>
 
                             {{-- Menu Items --}}
                             <div class="py-2">
                                 <a href="{{ route('profile.index') }}" 
-                                   class="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-blue-50 transition">
+                                class="flex items-center gap-3 px-5 py-2.5 text-sm text-gray-700 
+                                        hover:bg-blue-50 hover:text-blue-700 transition w-full">
                                     <i class="fa-solid fa-user text-blue-600 w-5"></i>
                                     <span>Hồ sơ cá nhân</span>
                                 </a>
                                 
                                 <a href="{{ route('password.change') }}" 
-                                   class="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-blue-50 transition">
+                                class="flex items-center gap-3 px-5 py-2.5 text-sm text-gray-700 
+                                        hover:bg-blue-50 hover:text-blue-700 transition w-full">
                                     <i class="fa-solid fa-key text-blue-600 w-5"></i>
                                     <span>Đổi mật khẩu</span>
                                 </a>
@@ -246,7 +253,8 @@
                                 <form action="{{ route('logout') }}" method="POST">
                                     @csrf
                                     <button type="submit"
-                                        class="flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition w-full text-left">
+                                        class="flex items-center gap-3 px-5 py-2.5 text-sm text-red-600 
+                                            hover:bg-red-50 transition w-full text-left font-medium">
                                         <i class="fa-solid fa-right-from-bracket w-5"></i>
                                         <span>Đăng xuất</span>
                                     </button>
@@ -254,17 +262,15 @@
                             </div>
                         </div>
                     </div>
+
                 @else
                     <a href="{{ route('login') }}"
-                        class="px-5 py-2 border-2 border-blue-600 text-blue-600 rounded-lg font-semibold hover:bg-blue-50 transition flex items-center gap-2">
+                    class="px-5 py-2 border-2 border-blue-600 text-blue-700 rounded-xl font-semibold 
+                            hover:bg-blue-600 hover:text-white transition-all duration-200 
+                            flex items-center gap-2 shadow-sm">
                         <i class="fas fa-sign-in-alt"></i>
                         <span>Đăng nhập</span>
                     </a>
-                    {{-- <a href="{{ route('register') }}"
-                        class="px-5 py-2 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition flex items-center gap-2 shadow-md">
-                        <i class="fas fa-user-plus"></i>
-                        <span>Đăng ký</span>
-                    </a> --}}
                 @endif
             </div>
         </div>

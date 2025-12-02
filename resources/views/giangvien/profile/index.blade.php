@@ -13,11 +13,11 @@
         </div>
     @endif
 
-    @if(session('error'))
+    {{-- @if(session('error'))
         <div class="mb-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
             <span class="block sm:inline">{{ session('error') }}</span>
         </div>
-    @endif
+    @endif --}}
 
     @if($errors->any())
         <div class="mb-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative" role="alert">
@@ -229,7 +229,7 @@
 
                     {{-- Menu công việc --}}
                     <div class="grid md:grid-cols-2 gap-4">
-                        {{-- Quản lý Cuộc thi --}}
+                        {{-- 1. Quản lý Cuộc thi --}}
                         <a href="{{ route('giangvien.cuocthi.index') }}" 
                             class="flex items-center justify-between p-5 border-2 border-gray-200 rounded-xl hover:border-blue-500 hover:bg-blue-50 transition-all duration-200 group">
                             <div class="flex items-center gap-4">
@@ -244,52 +244,7 @@
                             <i class="fas fa-chevron-right text-gray-400 group-hover:text-blue-600 transition-all duration-200"></i>
                         </a>
 
-                        {{-- Quản lý Đề thi --}}
-                        <a href="{{ route('giangvien.dethi.index') }}" 
-                            class="flex items-center justify-between p-5 border-2 border-gray-200 rounded-xl hover:border-green-500 hover:bg-green-50 transition-all duration-200 group">
-                            <div class="flex items-center gap-4">
-                                <div class="w-14 h-14 bg-green-100 group-hover:bg-green-600 rounded-xl flex items-center justify-center transition-all duration-200">
-                                    <i class="fas fa-file-alt text-green-600 group-hover:text-white text-2xl transition-all duration-200"></i>
-                                </div>
-                                <div>
-                                    <p class="font-bold text-gray-800 group-hover:text-green-600 transition-all duration-200">Quản lý Đề thi</p>
-                                    <p class="text-sm text-gray-500">Tạo và quản lý đề thi</p>
-                                </div>
-                            </div>
-                            <i class="fas fa-chevron-right text-gray-400 group-hover:text-green-600 transition-all duration-200"></i>
-                        </a>
-
-                        {{-- Chấm điểm --}}
-                        <a href="{{ route('giangvien.chamdiem.index') }}" 
-                            class="flex items-center justify-between p-5 border-2 border-gray-200 rounded-xl hover:border-orange-500 hover:bg-orange-50 transition-all duration-200 group">
-                            <div class="flex items-center gap-4">
-                                <div class="w-14 h-14 bg-orange-100 group-hover:bg-orange-600 rounded-xl flex items-center justify-center transition-all duration-200">
-                                    <i class="fas fa-edit text-orange-600 group-hover:text-white text-2xl transition-all duration-200"></i>
-                                </div>
-                                <div>
-                                    <p class="font-bold text-gray-800 group-hover:text-orange-600 transition-all duration-200">Chấm điểm</p>
-                                    <p class="text-sm text-gray-500">Chấm bài thi của sinh viên</p>
-                                </div>
-                            </div>
-                            <i class="fas fa-chevron-right text-gray-400 group-hover:text-orange-600 transition-all duration-200"></i>
-                        </a>
-
-                        {{-- Phân công --}}
-                        <a href="{{ route('giangvien.phancong.index') }}" 
-                            class="flex items-center justify-between p-5 border-2 border-gray-200 rounded-xl hover:border-purple-500 hover:bg-purple-50 transition-all duration-200 group">
-                            <div class="flex items-center gap-4">
-                                <div class="w-14 h-14 bg-purple-100 group-hover:bg-purple-600 rounded-xl flex items-center justify-center transition-all duration-200">
-                                    <i class="fas fa-tasks text-purple-600 group-hover:text-white text-2xl transition-all duration-200"></i>
-                                </div>
-                                <div>
-                                    <p class="font-bold text-gray-800 group-hover:text-purple-600 transition-all duration-200">Phân công</p>
-                                    <p class="text-sm text-gray-500">Xem công việc được phân công</p>
-                                </div>
-                            </div>
-                            <i class="fas fa-chevron-right text-gray-400 group-hover:text-purple-600 transition-all duration-200"></i>
-                        </a>
-
-                        {{-- Kế hoạch --}}
+                        {{-- 2. Kế hoạch --}}
                         <a href="{{ route('giangvien.kehoach.index') }}" 
                             class="flex items-center justify-between p-5 border-2 border-gray-200 rounded-xl hover:border-indigo-500 hover:bg-indigo-50 transition-all duration-200 group">
                             <div class="flex items-center gap-4">
@@ -304,52 +259,52 @@
                             <i class="fas fa-chevron-right text-gray-400 group-hover:text-indigo-600 transition-all duration-200"></i>
                         </a>
 
-                        {{-- Hoạt động hỗ trợ --}}
-                        <a href="{{ route('giangvien.hoatdong.index') }}" 
-                            class="flex items-center justify-between p-5 border-2 border-gray-200 rounded-xl hover:border-cyan-500 hover:bg-cyan-50 transition-all duration-200 group">
+                        {{-- 3. Phân công --}}
+                        <a href="{{ route('giangvien.phancong.index') }}" 
+                            class="flex items-center justify-between p-5 border-2 border-gray-200 rounded-xl hover:border-purple-500 hover:bg-purple-50 transition-all duration-200 group">
                             <div class="flex items-center gap-4">
-                                <div class="w-14 h-14 bg-cyan-100 group-hover:bg-cyan-600 rounded-xl flex items-center justify-center transition-all duration-200">
-                                    <i class="fas fa-hands-helping text-cyan-600 group-hover:text-white text-2xl transition-all duration-200"></i>
+                                <div class="w-14 h-14 bg-purple-100 group-hover:bg-purple-600 rounded-xl flex items-center justify-center transition-all duration-200">
+                                    <i class="fas fa-tasks text-purple-600 group-hover:text-white text-2xl transition-all duration-200"></i>
                                 </div>
                                 <div>
-                                    <p class="font-bold text-gray-800 group-hover:text-cyan-600 transition-all duration-200">Hoạt động hỗ trợ</p>
-                                    <p class="text-sm text-gray-500">Quản lý hoạt động hỗ trợ</p>
+                                    <p class="font-bold text-gray-800 group-hover:text-purple-600 transition-all duration-200">Phân công</p>
+                                    <p class="text-sm text-gray-500">Xem công việc được phân công</p>
                                 </div>
                             </div>
-                            <i class="fas fa-chevron-right text-gray-400 group-hover:text-cyan-600 transition-all duration-200"></i>
+                            <i class="fas fa-chevron-right text-gray-400 group-hover:text-purple-600 transition-all duration-200"></i>
                         </a>
 
-                        {{-- Quản lý Chi phí --}}
-                        <a href="{{ route('giangvien.chiphi.index') }}" 
-                            class="flex items-center justify-between p-5 border-2 border-gray-200 rounded-xl hover:border-teal-500 hover:bg-teal-50 transition-all duration-200 group">
+                        {{-- 4. Quản lý Đề thi --}}
+                        <a href="{{ route('giangvien.dethi.index') }}" 
+                            class="flex items-center justify-between p-5 border-2 border-gray-200 rounded-xl hover:border-green-500 hover:bg-green-50 transition-all duration-200 group">
                             <div class="flex items-center gap-4">
-                                <div class="w-14 h-14 bg-teal-100 group-hover:bg-teal-600 rounded-xl flex items-center justify-center transition-all duration-200">
-                                    <i class="fas fa-coins text-teal-600 group-hover:text-white text-2xl transition-all duration-200"></i>
+                                <div class="w-14 h-14 bg-green-100 group-hover:bg-green-600 rounded-xl flex items-center justify-center transition-all duration-200">
+                                    <i class="fas fa-file-alt text-green-600 group-hover:text-white text-2xl transition-all duration-200"></i>
                                 </div>
                                 <div>
-                                    <p class="font-bold text-gray-800 group-hover:text-teal-600 transition-all duration-200">Quản lý Chi phí</p>
-                                    <p class="text-sm text-gray-500">Theo dõi và phê duyệt chi phí cuộc thi</p>
+                                    <p class="font-bold text-gray-800 group-hover:text-green-600 transition-all duration-200">Quản lý Đề thi</p>
+                                    <p class="text-sm text-gray-500">Tạo và quản lý đề thi</p>
                                 </div>
                             </div>
-                            <i class="fas fa-chevron-right text-gray-400 group-hover:text-teal-600 transition-all duration-200"></i>
+                            <i class="fas fa-chevron-right text-gray-400 group-hover:text-green-600 transition-all duration-200"></i>
                         </a>
 
-                        {{-- Hồ sơ Quyết toán --}}
-                        <a href="{{ route('giangvien.quyettoan.index') }}" 
-                            class="flex items-center justify-between p-5 border-2 border-gray-200 rounded-xl hover:border-rose-500 hover:bg-rose-50 transition-all duration-200 group">
+                        {{-- 5. Chấm điểm --}}
+                        <a href="{{ route('giangvien.chamdiem.index') }}" 
+                            class="flex items-center justify-between p-5 border-2 border-gray-200 rounded-xl hover:border-orange-500 hover:bg-orange-50 transition-all duration-200 group">
                             <div class="flex items-center gap-4">
-                                <div class="w-14 h-14 bg-rose-100 group-hover:bg-rose-600 rounded-xl flex items-center justify-center transition-all duration-200">
-                                    <i class="fas fa-file-invoice-dollar text-rose-600 group-hover:text-white text-2xl transition-all duration-200"></i>
+                                <div class="w-14 h-14 bg-orange-100 group-hover:bg-orange-600 rounded-xl flex items-center justify-center transition-all duration-200">
+                                    <i class="fas fa-edit text-orange-600 group-hover:text-white text-2xl transition-all duration-200"></i>
                                 </div>
                                 <div>
-                                    <p class="font-bold text-gray-800 group-hover:text-rose-600 transition-all duration-200">Hồ sơ Quyết toán</p>
-                                    <p class="text-sm text-gray-500">Lập, nộp và theo dõi hồ sơ quyết toán kinh phí</p>
+                                    <p class="font-bold text-gray-800 group-hover:text-orange-600 transition-all duration-200">Chấm điểm</p>
+                                    <p class="text-sm text-gray-500">Chấm bài thi của sinh viên</p>
                                 </div>
                             </div>
-                            <i class="fas fa-chevron-right text-gray-400 group-hover:text-rose-600 transition-all duration-200"></i>
+                            <i class="fas fa-chevron-right text-gray-400 group-hover:text-orange-600 transition-all duration-200"></i>
                         </a>
 
-                        {{-- Quản lý Giải thưởng --}}
+                        {{-- 6. Quản lý Giải thưởng --}}
                         <a href="{{ route('giangvien.giaithuong.index') }}" 
                             class="flex items-center justify-between p-5 border-2 border-gray-200 rounded-xl hover:border-amber-500 hover:bg-amber-50 transition-all duration-200 group">
                             <div class="flex items-center gap-4">
@@ -364,24 +319,50 @@
                             <i class="fas fa-chevron-right text-gray-400 group-hover:text-amber-600 transition-all duration-200"></i>
                         </a>
 
-                        {{-- Quản lý Tin tức --}}
-                        {{-- <a href="#" 
-                            class="flex items-center justify-between p-5 border-2 border-gray-200 rounded-xl hover:border-blue-500 hover:bg-blue-50 transition-all duration-200 group">
+                        {{-- 7. Hoạt động hỗ trợ --}}
+                        <a href="{{ route('giangvien.hoatdong.index') }}" 
+                            class="flex items-center justify-between p-5 border-2 border-gray-200 rounded-xl hover:border-cyan-500 hover:bg-cyan-50 transition-all duration-200 group">
                             <div class="flex items-center gap-4">
-                                <div class="w-14 h-14 bg-blue-100 group-hover:bg-blue-600 rounded-xl flex items-center justify-center transition-all duration-200">
-                                    <i class="fas fa-newspaper text-blue-600 group-hover:text-white text-2xl transition-all duration-200"></i>
+                                <div class="w-14 h-14 bg-cyan-100 group-hover:bg-cyan-600 rounded-xl flex items-center justify-center transition-all duration-200">
+                                    <i class="fas fa-hands-helping text-cyan-600 group-hover:text-white text-2xl transition-all duration-200"></i>
                                 </div>
                                 <div>
-                                    <p class="font-bold text-gray-800 group-hover:text-blue-600 transition-all duration-200">
-                                        Quản lý Tin tức
-                                    </p>
-                                    <p class="text-sm text-gray-500">
-                                        Thêm, sửa, xóa và đăng tải các bài viết tin tức
-                                    </p>
+                                    <p class="font-bold text-gray-800 group-hover:text-cyan-600 transition-all duration-200">Hoạt động hỗ trợ</p>
+                                    <p class="text-sm text-gray-500">Quản lý hoạt động hỗ trợ</p>
                                 </div>
                             </div>
-                            <i class="fas fa-chevron-right text-gray-400 group-hover:text-blue-600 transition-all duration-200"></i>
-                        </a> --}}
+                            <i class="fas fa-chevron-right text-gray-400 group-hover:text-cyan-600 transition-all duration-200"></i>
+                        </a>
+
+                        {{-- 8. Quản lý Chi phí --}}
+                        <a href="{{ route('giangvien.chiphi.index') }}" 
+                            class="flex items-center justify-between p-5 border-2 border-gray-200 rounded-xl hover:border-teal-500 hover:bg-teal-50 transition-all duration-200 group">
+                            <div class="flex items-center gap-4">
+                                <div class="w-14 h-14 bg-teal-100 group-hover:bg-teal-600 rounded-xl flex items-center justify-center transition-all duration-200">
+                                    <i class="fas fa-coins text-teal-600 group-hover:text-white text-2xl transition-all duration-200"></i>
+                                </div>
+                                <div>
+                                    <p class="font-bold text-gray-800 group-hover:text-teal-600 transition-all duration-200">Quản lý Chi phí</p>
+                                    <p class="text-sm text-gray-500">Theo dõi và phê duyệt chi phí cuộc thi</p>
+                                </div>
+                            </div>
+                            <i class="fas fa-chevron-right text-gray-400 group-hover:text-teal-600 transition-all duration-200"></i>
+                        </a>
+
+                        {{-- 9. Hồ sơ Quyết toán --}}
+                        <a href="{{ route('giangvien.quyettoan.index') }}" 
+                            class="flex items-center justify-between p-5 border-2 border-gray-200 rounded-xl hover:border-rose-500 hover:bg-rose-50 transition-all duration-200 group">
+                            <div class="flex items-center gap-4">
+                                <div class="w-14 h-14 bg-rose-100 group-hover:bg-rose-600 rounded-xl flex items-center justify-center transition-all duration-200">
+                                    <i class="fas fa-file-invoice-dollar text-rose-600 group-hover:text-white text-2xl transition-all duration-200"></i>
+                                </div>
+                                <div>
+                                    <p class="font-bold text-gray-800 group-hover:text-rose-600 transition-all duration-200">Hồ sơ Quyết toán</p>
+                                    <p class="text-sm text-gray-500">Lập, nộp và theo dõi hồ sơ quyết toán kinh phí</p>
+                                </div>
+                            </div>
+                            <i class="fas fa-chevron-right text-gray-400 group-hover:text-rose-600 transition-all duration-200"></i>
+                        </a>
                     </div>
                 </div>
             </div>

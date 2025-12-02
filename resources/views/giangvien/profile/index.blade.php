@@ -376,7 +376,7 @@
 
                     <div class="space-y-4">
                         {{-- Đổi mật khẩu --}}
-                        <a href="{{ route('password.change.view') }}"
+                        <a href="{{ route('password.change') }}"
                             class="flex items-center justify-between p-5 border border-gray-200 rounded-xl hover:border-blue-300 hover:bg-blue-50 transition group">
                             <div class="flex items-center gap-4">
                                 <div class="w-12 h-12 bg-blue-100 group-hover:bg-blue-600 rounded-lg flex items-center justify-center transition">

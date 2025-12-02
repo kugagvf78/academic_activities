@@ -550,11 +550,86 @@ class AuthController extends Controller
     // ====================================================================
 
     /**
-     * Hiển thị form đổi mật khẩu
+     * Hiển thị form đổi mật khẩu (tự động điền email)
      */
-    public function showChangePassword()
+    public function showChangePassword(Request $request)
     {
-        return view('auth.change-password');
+        // Load JWT token từ cookie
+        if ($request->cookie('jwt_token')) {
+            try {
+                Auth::guard('api')->setToken($request->cookie('jwt_token'));
+            } catch (\Exception $e) {
+                return redirect()->route('login')
+                    ->withErrors(['error' => 'Phiên đăng nhập đã hết hạn']);
+            }
+        }
+        
+        $user = Auth::guard('api')->user();
+        
+        if (!$user) {
+            return redirect()->route('login')
+                ->withErrors(['error' => 'Vui lòng đăng nhập để đổi mật khẩu']);
+        }
+        
+        return view('auth.change-password', ['user' => $user]);
+    }
+
+    /**
+     * Gửi OTP cho đổi mật khẩu (user đã đăng nhập)
+     */
+    public function sendOtpForChangePassword(Request $request)
+    {
+        // Load JWT token từ cookie
+        if ($request->cookie('jwt_token')) {
+            try {
+                Auth::guard('api')->setToken($request->cookie('jwt_token'));
+            } catch (\Exception $e) {
+                return redirect()->route('login');
+            }
+        }
+        
+        $user = Auth::guard('api')->user();
+        
+        if (!$user) {
+            return redirect()->route('login');
+        }
+
+        // Xóa các OTP cũ
+        PasswordResetOtp::where('email', $user->email)->delete();
+
+        // Tạo mã OTP 6 số
+        $otp = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+
+        // Lưu OTP vào database
+        PasswordResetOtp::create([
+            'email' => $user->email,
+            'otp' => $otp,
+            'created_at' => now(),
+            'expires_at' => now()->addMinutes(5),
+            'is_used' => false
+        ]);
+
+        // Gửi email
+        try {
+            Mail::to($user->email)->send(new OtpMail($otp, $user->hoten));
+
+            // Lưu email vào session
+            session(['email' => $user->email]);
+
+            return redirect()->route('password.verify-otp')
+                ->with('toast', [
+                    'type' => 'success',
+                    'title' => 'Gửi mã OTP thành công!',
+                    'message' => 'Vui lòng kiểm tra email của bạn. Mã OTP có hiệu lực trong 5 phút.'
+                ]);
+
+        } catch (\Exception $e) {
+            Log::error('Email Sending Error: ' . $e->getMessage());
+            
+            return back()->withErrors([
+                'error' => 'Không thể gửi email. Vui lòng thử lại sau.'
+            ]);
+        }
     }
 
     /**

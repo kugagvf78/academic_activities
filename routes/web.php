@@ -535,3 +535,13 @@ Route::post('reset-password', [AuthController::class, 'resetPasswordWithOtp'])
 // Gửi lại OTP
 Route::post('resend-otp', [AuthController::class, 'resendOtp'])
     ->name('password.resend-otp');
+
+// ====================================================================
+// ĐỔI MẬT KHẨU (cho user đã đăng nhập) - Sử dụng OTP
+// ====================================================================
+Route::middleware('jwt.web')->group(function () {
+    Route::get('change-password', [AuthController::class, 'showChangePassword'])
+        ->name('password.change');
+    Route::post('change-password', [AuthController::class, 'sendOtpForChangePassword'])
+        ->name('password.change.send-otp');
+});

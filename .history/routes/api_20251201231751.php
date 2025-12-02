@@ -31,6 +31,7 @@ Route::get('/news/{slug}', [NewsApiController::class, 'show']);
 
 Route::middleware('auth:api')->prefix('profile')->group(function () {
     
+    // Lấy toàn bộ thông tin hồ sơ (user + profile + activities + certificates + điểm rèn luyện + đăng ký)
     Route::get('/', [ProfileApiController::class, 'index']);
     
     Route::post('/avatar', [ProfileApiController::class, 'updateAvatar']);

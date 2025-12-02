@@ -20,7 +20,7 @@ class EventController extends Controller
         $totalEvents = DB::table('cuocthi')
             ->where('trangthai', '!=', 'Draft')
             ->count();
-
+        
         // Đếm tổng sinh viên tham gia từ cả 2 bảng (loại bỏ trùng lặp)
         try {
             $totalStudents = DB::table('dangkycanhan')
@@ -43,20 +43,20 @@ class EventController extends Controller
                 ->join('cuocthi', 'dangkycanhan.macuocthi', '=', 'cuocthi.macuocthi')
                 ->where('cuocthi.trangthai', '!=', 'Draft')
                 ->distinct('dangkycanhan.masinhvien')
-                ->count() +
+                ->count() + 
                 DB::table('dangkydoithi')
-                ->join('cuocthi', 'dangkydoithi.macuocthi', '=', 'cuocthi.macuocthi')
-                ->where('cuocthi.trangthai', '!=', 'Draft')
-                ->distinct('dangkydoithi.masinhvien')
-                ->count();
+                    ->join('cuocthi', 'dangkydoithi.macuocthi', '=', 'cuocthi.macuocthi')
+                    ->where('cuocthi.trangthai', '!=', 'Draft')
+                    ->distinct('dangkydoithi.masinhvien')
+                    ->count();
         }
-
+        
         // FIXED: Chỉ đếm giải thưởng của cuộc thi không phải Draft
         $totalPrizes = DB::table('datgiai')
             ->join('cuocthi', 'datgiai.macuocthi', '=', 'cuocthi.macuocthi')
             ->where('cuocthi.trangthai', '!=', 'Draft')
             ->count();
-
+        
         // ===== QUERY DANH SÁCH CUỘC THI =====
         $query = DB::table('cuocthi as ct')
             ->leftJoin('bomon as bm', 'ct.mabomon', '=', 'bm.mabomon')
@@ -86,9 +86,9 @@ class EventController extends Controller
         // Tìm kiếm theo tên
         if ($request->filled('search')) {
             $search = $request->search;
-            $query->where(function ($q) use ($search) {
+            $query->where(function($q) use ($search) {
                 $q->where('ct.tencuocthi', 'ILIKE', "%{$search}%")
-                    ->orWhere('ct.mota', 'ILIKE', "%{$search}%");
+                ->orWhere('ct.mota', 'ILIKE', "%{$search}%");
             });
         }
 
@@ -134,7 +134,7 @@ class EventController extends Controller
                 ELSE 3
             END
         ")
-            ->orderBy('ct.thoigianbatdau', 'desc');
+        ->orderBy('ct.thoigianbatdau', 'desc');
 
         // Phân trang
         $perPage = 6;
@@ -147,7 +147,7 @@ class EventController extends Controller
             $event->slug = $this->generateSlug($event->tencuocthi, $event->macuocthi);
             $event->days_remaining = $this->getDaysRemaining($event);
             $event->prize_display = $this->formatPrize($event->dutrukinhphi);
-
+            
             return $event;
         });
 
@@ -275,13 +275,13 @@ class EventController extends Controller
     {
         // Loại bỏ dấu tiếng Việt
         $slug = $this->removeVietnameseTones($tencuocthi);
-
+        
         // Chuyển thành lowercase và thay khoảng trắng bằng dấu gạch ngang
         $slug = strtolower($slug);
         $slug = preg_replace('/[^a-z0-9\s-]/', '', $slug);
         $slug = preg_replace('/[\s-]+/', '-', $slug);
         $slug = trim($slug, '-');
-
+        
         // Thêm mã cuộc thi vào cuối
         return $slug . '-' . $macuocthi;
     }
@@ -302,26 +302,26 @@ class EventController extends Controller
     private function removeVietnameseTones($str)
     {
         $unicode = [
-            'a' => 'á|à|ả|ã|ạ|ă|ắ|ằ|ẳ|ẵ|ặ|â|ấ|ầ|ẩ|ẫ|ậ',
-            'd' => 'đ',
-            'e' => 'é|è|ẻ|ẽ|ẹ|ê|ế|ề|ể|ễ|ệ',
-            'i' => 'í|ì|ỉ|ĩ|ị',
-            'o' => 'ó|ò|ỏ|õ|ọ|ô|ố|ồ|ổ|ỗ|ộ|ơ|ớ|ờ|ở|ỡ|ợ',
-            'u' => 'ú|ù|ủ|ũ|ụ|ư|ứ|ừ|ử|ữ|ự',
-            'y' => 'ý|ỳ|ỷ|ỹ|ỵ',
-            'A' => 'Á|À|Ả|Ã|Ạ|Ă|Ắ|Ằ|Ẳ|Ẵ|Ặ|Â|Ấ|Ầ|Ẩ|Ẫ|Ậ',
-            'D' => 'Đ',
-            'E' => 'É|È|Ẻ|Ẽ|Ẹ|Ê|Ế|Ề|Ể|Ễ|Ệ',
-            'I' => 'Í|Ì|Ỉ|Ĩ|Ị',
-            'O' => 'Ó|Ò|Ỏ|Õ|Ọ|Ô|Ố|Ồ|Ổ|Ỗ|Ộ|Ơ|Ớ|Ờ|Ở|Ỡ|Ợ',
-            'U' => 'Ú|Ù|Ủ|Ũ|Ụ|Ư|Ứ|Ừ|Ử|Ữ|Ự',
-            'Y' => 'Ý|Ỳ|Ỷ|Ỹ|Ỵ',
+            'a'=>'á|à|ả|ã|ạ|ă|ắ|ằ|ẳ|ẵ|ặ|â|ấ|ầ|ẩ|ẫ|ậ',
+            'd'=>'đ',
+            'e'=>'é|è|ẻ|ẽ|ẹ|ê|ế|ề|ể|ễ|ệ',
+            'i'=>'í|ì|ỉ|ĩ|ị',
+            'o'=>'ó|ò|ỏ|õ|ọ|ô|ố|ồ|ổ|ỗ|ộ|ơ|ớ|ờ|ở|ỡ|ợ',
+            'u'=>'ú|ù|ủ|ũ|ụ|ư|ứ|ừ|ử|ữ|ự',
+            'y'=>'ý|ỳ|ỷ|ỹ|ỵ',
+            'A'=>'Á|À|Ả|Ã|Ạ|Ă|Ắ|Ằ|Ẳ|Ẵ|Ặ|Â|Ấ|Ầ|Ẩ|Ẫ|Ậ',
+            'D'=>'Đ',
+            'E'=>'É|È|Ẻ|Ẽ|Ẹ|Ê|Ế|Ề|Ể|Ễ|Ệ',
+            'I'=>'Í|Ì|Ỉ|Ĩ|Ị',
+            'O'=>'Ó|Ò|Ỏ|Õ|Ọ|Ô|Ố|Ồ|Ổ|Ỗ|Ộ|Ơ|Ớ|Ờ|Ở|Ỡ|Ợ',
+            'U'=>'Ú|Ù|Ủ|Ũ|Ụ|Ư|Ứ|Ừ|Ử|Ữ|Ự',
+            'Y'=>'Ý|Ỳ|Ỷ|Ỹ|Ỵ',
         ];
-
-        foreach ($unicode as $nonUnicode => $uni) {
+        
+        foreach($unicode as $nonUnicode => $uni) {
             $str = preg_replace("/($uni)/i", $nonUnicode, $str);
         }
-
+        
         return $str;
     }
 
@@ -364,10 +364,10 @@ class EventController extends Controller
     {
         $now = Carbon::now();
         $start = Carbon::parse($event->thoigianbatdau);
-
+        
         // CHỈ cho đăng ký khi cuộc thi CHƯA BẮT ĐẦU
         // và trạng thái là Approved và có hình thức tham gia hợp lệ
-        return $now->lt($start) &&
+        return $now->lt($start) && 
             in_array($event->trangthai, ['Approved', 'InProgress']) &&
             !empty($event->hinhthucthamgia);
     }
@@ -391,7 +391,7 @@ class EventController extends Controller
             $now = Carbon::now();
             $start = Carbon::parse($event->thoigianbatdau);
             $end = Carbon::parse($event->thoigianketthuc);
-
+            
             // Tùy chỉnh thông báo theo trạng thái
             if ($now->gte($start) && $now->lte($end)) {
                 $message = 'Cuộc thi đang diễn ra, không thể đăng ký thêm';
@@ -400,7 +400,7 @@ class EventController extends Controller
             } else {
                 $message = 'Cuộc thi này hiện không nhận đăng ký';
             }
-
+            
             return redirect()
                 ->route('client.events.show', $slug)
                 ->with('error', $message);
@@ -481,78 +481,4 @@ class EventController extends Controller
 
         return view('client.events.support', compact('cuocthi', 'hoatdongs', 'slug'));
     }
-
-
-    public function apiIndex()
-{
-    try {
-        $events = DB::table('cuocthi as ct')
-            ->leftJoin('bomon as bm', 'ct.mabomon', '=', 'bm.mabomon')
-            ->select(
-                'ct.macuocthi',
-                'ct.tencuocthi',
-                'ct.loaicuocthi',
-                'ct.mota',
-                'ct.mucdich',
-                'ct.doituongthamgia',
-                'ct.thoigianbatdau',
-                'ct.thoigianketthuc',
-                'ct.diadiem',
-                'ct.soluongthanhvien',
-                'ct.hinhthucthamgia',
-                'ct.trangthai',
-                'ct.dutrukinhphi',
-                'bm.tenbomon',
-                DB::raw('(
-                    (SELECT COUNT(*) FROM dangkycanhan WHERE macuocthi = ct.macuocthi)
-                    + (SELECT COUNT(*) FROM dangkydoithi WHERE macuocthi = ct.macuocthi)
-                ) as soluongdangky')
-            )
-            ->where('ct.trangthai', '!=', 'Draft')
-            ->orderBy('ct.thoigianbatdau', 'desc')
-            ->get();
-
-        // 🔹 Thêm các trường tính toán
-        $events->transform(function ($event) {
-            $now = now();
-            $start = \Carbon\Carbon::parse($event->thoigianbatdau);
-            $end = \Carbon\Carbon::parse($event->thoigianketthuc);
-
-            // Nhãn trạng thái
-            if ($now->lt($start)) {
-                $event->status_label = 'Sắp diễn ra';
-                $event->status_color = 'yellow';
-            } elseif ($now->between($start, $end)) {
-                $event->status_label = 'Đang diễn ra';
-                $event->status_color = 'green';
-            } else {
-                $event->status_label = 'Đã kết thúc';
-                $event->status_color = 'gray';
-            }
-
-            // Slug để Flutter có thể mở chi tiết
-            $slug = strtolower(preg_replace('/[^a-z0-9]+/i', '-', $event->tencuocthi));
-            $event->slug = $slug . '-' . $event->macuocthi;
-
-            // Có cho đăng ký hay không
-            $event->can_register = $now->lt($start)
-                && in_array($event->trangthai, ['Approved', 'InProgress'])
-                && !empty($event->hinhthucthamgia);
-
-            return $event;
-        });
-
-        return response()->json([
-            'status' => true,
-            'data' => $events,
-        ]);
-    } catch (\Exception $e) {
-        return response()->json([
-            'status' => false,
-            'message' => 'Lỗi khi tải danh sách cuộc thi',
-            'error' => $e->getMessage(),
-        ], 500);
-    }
-}
-
 }

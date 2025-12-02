@@ -31,17 +31,23 @@ Route::get('/news/{slug}', [NewsApiController::class, 'show']);
 
 Route::middleware('auth:api')->prefix('profile')->group(function () {
     
+    // Lấy toàn bộ thông tin hồ sơ (user + profile + activities + certificates + điểm rèn luyện + đăng ký)
     Route::get('/', [ProfileApiController::class, 'index']);
     
+    // Cập nhật ảnh đại diện
     Route::post('/avatar', [ProfileApiController::class, 'updateAvatar']);
     
+    // Cập nhật thông tin cá nhân
     Route::put('/info', [ProfileApiController::class, 'updateInfo']);
     
+    // Hủy đăng ký hoạt động hỗ trợ (Cổ vũ, Tổ chức, Hỗ trợ kỹ thuật)
     Route::delete('/activities/{madangkyhoatdong}', [ProfileApiController::class, 'cancelActivityRegistration']);
     
+    // Hủy đăng ký dự thi (cá nhân hoặc đội nhóm)
     Route::delete('/competitions/{id}', [ProfileApiController::class, 'cancelCompetitionRegistration']);
     
+    // Lấy form nộp bài thi (kiểm tra điều kiện)
     Route::get('/submit-exam/{id}/{loaidangky}', [ProfileApiController::class, 'showSubmitExam']);
-
-    Route::post('/submit-exam/{id}/{loaidangky}', [ProfileApiController::class, 'submitExam']);
-});
+    
+    // Xử lý nộp bài thi
+    Route::po

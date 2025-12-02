@@ -33,7 +33,7 @@ class AuthController extends Controller
             // Tạo mã sinh viên tự động
             $count = SinhVien::count() + 1;
             $maSinhVien = '20' . date('y') . str_pad($count, 6, '0', STR_PAD_LEFT);
-
+            
             // Tạo mã người dùng
             $maNguoiDung = 'ND' . str_pad(NguoiDung::count() + 1, 6, '0', STR_PAD_LEFT);
 
@@ -63,9 +63,10 @@ class AuthController extends Controller
                 'user' => $user,
                 'ma_sinh_vien' => $maSinhVien
             ], 201);
+
         } catch (\Exception $e) {
             DB::rollBack();
-
+            
             return response()->json([
                 'error' => 'Có lỗi xảy ra: ' . $e->getMessage()
             ], 500);
@@ -115,7 +116,7 @@ class AuthController extends Controller
 
             // Tạo mã người dùng
             $maNguoiDung = 'ND' . str_pad(NguoiDung::count() + 1, 6, '0', STR_PAD_LEFT);
-
+            
             // Tạo mã và tên đăng nhập dựa trên vai trò
             if ($request->VaiTro === 'SinhVien') {
                 $count = SinhVien::count() + 1;
@@ -158,7 +159,7 @@ class AuthController extends Controller
             $cookie = cookie('jwt_token', $token, 60 * 24, '/', null, false, true);
 
             $vaiTroText = $request->VaiTro === 'SinhVien' ? 'Sinh viên' : 'Giảng viên';
-
+            
             return redirect()->route('client.home')
                 ->with('toast', [
                     'type' => 'success',
@@ -166,9 +167,10 @@ class AuthController extends Controller
                     'message' => "Mã {$vaiTroText} của bạn là: {$maVaiTro}. Đây cũng là tên đăng nhập của bạn."
                 ])
                 ->cookie($cookie);
+
         } catch (\Exception $e) {
             DB::rollBack();
-
+            
             return back()->withErrors([
                 'error' => 'Có lỗi xảy ra trong quá trình đăng ký: ' . $e->getMessage()
             ])->withInput();
@@ -217,55 +219,55 @@ class AuthController extends Controller
 
     // Đăng nhập WEB
     public function webLogin(Request $request)
-    {
-        $request->validate([
-            'TenDangNhap' => 'required|string',
-            'MatKhau' => 'required|string',
+{
+    $request->validate([
+        'TenDangNhap' => 'required|string',
+        'MatKhau' => 'required|string',
+    ]);
+
+    $user = NguoiDung::where('tendangnhap', $request->TenDangNhap)->first();
+
+    if (!$user || !Hash::check($request->MatKhau, $user->matkhau)) {
+        return back()->withErrors([
+            'TenDangNhap' => 'Mã sinh viên/giảng viên hoặc mật khẩu không đúng.'
         ]);
-
-        $user = NguoiDung::where('tendangnhap', $request->TenDangNhap)->first();
-
-        if (!$user || !Hash::check($request->MatKhau, $user->matkhau)) {
-            return back()->withErrors([
-                'TenDangNhap' => 'Mã sinh viên/giảng viên hoặc mật khẩu không đúng.'
-            ]);
-        }
-
-        if ($user->trangthai !== 'Active') {
-            return back()->withErrors([
-                'TenDangNhap' => 'Tài khoản của bạn đã bị khóa.'
-            ]);
-        }
-
-        // 🔥 GIỮ LẠI TOKEN ĐỂ WEB SỬ DỤNG API
-        $token = Auth::guard('api')->login($user);
-
-        // 🔥 GIỮ LẠI SESSION CHO WEB
-        Auth::guard('web')->login($user);
-
-        // 🔥 COOKIE JWT ĐỂ WEB GỌI API
-        $cookie = cookie('jwt_token', $token, 60 * 24 * 7, '/', null, false, true);
-
-        // Redirect theo role
-        $redirectRoute = $user->isAdmin()
-            ? 'admin.dashboard'
-            : match ($user->vaitro) {
-                'GiangVien' => 'giangvien.profile.index',
-                'SinhVien' => 'profile.index',
-                default => 'client.home',
-            };
-
-        return redirect()->route($redirectRoute)
-            ->with('success', 'Đăng nhập thành công!')
-            ->cookie($cookie);
     }
+
+    if ($user->trangthai !== 'Active') {
+        return back()->withErrors([
+            'TenDangNhap' => 'Tài khoản của bạn đã bị khóa.'
+        ]);
+    }
+
+    // 🔥 GIỮ LẠI TOKEN ĐỂ WEB SỬ DỤNG API
+    $token = Auth::guard('api')->login($user);
+
+    // 🔥 GIỮ LẠI SESSION CHO WEB
+    Auth::guard('web')->login($user);
+
+    // 🔥 COOKIE JWT ĐỂ WEB GỌI API
+    $cookie = cookie('jwt_token', $token, 60 * 24 * 7, '/', null, false, true);
+
+    // Redirect theo role
+    $redirectRoute = $user->isAdmin()
+        ? 'admin.dashboard'
+        : match($user->vaitro) {
+            'GiangVien' => 'giangvien.profile.index',
+            'SinhVien' => 'profile.index',
+            default => 'client.home',
+        };
+
+    return redirect()->route($redirectRoute)
+        ->with('success', 'Đăng nhập thành công!')
+        ->cookie($cookie);
+}
 
 
     // Lấy thông tin người dùng hiện tại
     public function me()
     {
         $user = Auth::guard('api')->user();
-
+        
         if (!$user) {
             return response()->json(['error' => 'Không tìm thấy người dùng'], 401);
         }

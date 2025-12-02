@@ -20,9 +20,10 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
         $middleware->api([
             \Illuminate\Http\Middleware\HandleCors::class,
-            \App\Http\Middleware\ForceJsonResponse::class,
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
+            \Illuminate\Http\Middleware\AddQueuedCookiesToResponse::class,
             \Illuminate\Routing\Middleware\ThrottleRequests::class,
+            \Illuminate\Http\Middleware\SetServerEncoding::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {

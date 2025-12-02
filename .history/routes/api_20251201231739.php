@@ -29,19 +29,14 @@ Route::get('/news', [NewsApiController::class, 'index']);
 Route::get('/news/{slug}', [NewsApiController::class, 'show']);
 
 
-Route::middleware('auth:api')->prefix('profile')->group(function () {
-    
-    Route::get('/', [ProfileApiController::class, 'index']);
-    
-    Route::post('/avatar', [ProfileApiController::class, 'updateAvatar']);
-    
-    Route::put('/info', [ProfileApiController::class, 'updateInfo']);
-    
-    Route::delete('/activities/{madangkyhoatdong}', [ProfileApiController::class, 'cancelActivityRegistration']);
-    
-    Route::delete('/competitions/{id}', [ProfileApiController::class, 'cancelCompetitionRegistration']);
-    
-    Route::get('/submit-exam/{id}/{loaidangky}', [ProfileApiController::class, 'showSubmitExam']);
+Route::middleware('auth:api')->group(function () {
+    Route::get('/profile', [ProfileApiController::class, 'getProfile']);
 
-    Route::post('/submit-exam/{id}/{loaidangky}', [ProfileApiController::class, 'submitExam']);
+    Route::post('/profile/update', [ProfileApiController::class, 'updateInfo']);
+    Route::post('/profile/avatar', [ProfileApiController::class, 'updateAvatar']);
+
+    Route::post('/profile/cancel-activity/{id}', [ProfileApiController::class, 'cancelActivity']);
+    Route::post('/profile/cancel-competition/{id}', [ProfileApiController::class, 'cancelCompetition']);
+
+    Route::post('/profile/submit-exam/{id}/{loaidangky}', [ProfileApiController::class, 'submitExam']);
 });

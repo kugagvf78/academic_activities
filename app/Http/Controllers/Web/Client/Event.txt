@@ -1,0 +1,49 @@
+public function apiIndex()
+    {
+        try {
+            $events = DB::table('cuocthi as ct')
+                ->leftJoin('bomon as bm', 'ct.mabomon', '=', 'bm.mabomon')
+                ->select(
+                    'ct.macuocthi',
+                    'ct.tencuocthi',
+                    'ct.loaicuocthi',
+                    'ct.mota',
+                    'ct.thoigianbatdau',
+                    'ct.thoigianketthuc',
+                    'ct.trangthai',
+                    'bm.tenbomon'
+                )
+                ->where('ct.trangthai', '!=', 'Draft')
+                ->orderBy('ct.thoigianbatdau', 'desc')
+                ->get();
+
+            // Thêm thông tin trạng thái & số ngày còn lại
+            $events->transform(function ($event) {
+                $now = now();
+                $start = \Carbon\Carbon::parse($event->thoigianbatdau);
+                $end = \Carbon\Carbon::parse($event->thoigianketthuc);
+
+                if ($now->lt($start)) {
+                    $event->trangthai_label = 'Sắp diễn ra';
+                } elseif ($now->between($start, $end)) {
+                    $event->trangthai_label = 'Đang diễn ra';
+                } else {
+                    $event->trangthai_label = 'Đã kết thúc';
+                }
+
+                $event->songayconlai = max(0, $end->diffInDays($now, false) * -1);
+                return $event;
+            });
+
+            return response()->json([
+                'status' => true,
+                'data' => $events
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Lỗi khi tải danh sách cuộc thi',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }

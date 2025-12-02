@@ -484,75 +484,52 @@ class EventController extends Controller
 
 
     public function apiIndex()
-{
-    try {
-        $events = DB::table('cuocthi as ct')
-            ->leftJoin('bomon as bm', 'ct.mabomon', '=', 'bm.mabomon')
-            ->select(
-                'ct.macuocthi',
-                'ct.tencuocthi',
-                'ct.loaicuocthi',
-                'ct.mota',
-                'ct.mucdich',
-                'ct.doituongthamgia',
-                'ct.thoigianbatdau',
-                'ct.thoigianketthuc',
-                'ct.diadiem',
-                'ct.soluongthanhvien',
-                'ct.hinhthucthamgia',
-                'ct.trangthai',
-                'ct.dutrukinhphi',
-                'bm.tenbomon',
-                DB::raw('(
-                    (SELECT COUNT(*) FROM dangkycanhan WHERE macuocthi = ct.macuocthi)
-                    + (SELECT COUNT(*) FROM dangkydoithi WHERE macuocthi = ct.macuocthi)
-                ) as soluongdangky')
-            )
-            ->where('ct.trangthai', '!=', 'Draft')
-            ->orderBy('ct.thoigianbatdau', 'desc')
-            ->get();
+    {
+        try {
+            $events = DB::table('cuocthi as ct')
+                ->leftJoin('bomon as bm', 'ct.mabomon', '=', 'bm.mabomon')
+                ->select(
+                    'ct.macuocthi',
+                    'ct.tencuocthi',
+                    'ct.loaicuocthi',
+                    'ct.mota',
+                    'ct.thoigianbatdau',
+                    'ct.thoigianketthuc',
+                    'ct.trangthai',
+                    'bm.tenbomon'
+                )
+                ->where('ct.trangthai', '!=', 'Draft')
+                ->orderBy('ct.thoigianbatdau', 'desc')
+                ->get();
 
-        // 🔹 Thêm các trường tính toán
-        $events->transform(function ($event) {
-            $now = now();
-            $start = \Carbon\Carbon::parse($event->thoigianbatdau);
-            $end = \Carbon\Carbon::parse($event->thoigianketthuc);
+            // Thêm thông tin trạng thái & số ngày còn lại
+            $events->transform(function ($event) {
+                $now = now();
+                $start = \Carbon\Carbon::parse($event->thoigianbatdau);
+                $end = \Carbon\Carbon::parse($event->thoigianketthuc);
 
-            // Nhãn trạng thái
-            if ($now->lt($start)) {
-                $event->status_label = 'Sắp diễn ra';
-                $event->status_color = 'yellow';
-            } elseif ($now->between($start, $end)) {
-                $event->status_label = 'Đang diễn ra';
-                $event->status_color = 'green';
-            } else {
-                $event->status_label = 'Đã kết thúc';
-                $event->status_color = 'gray';
-            }
+                if ($now->lt($start)) {
+                    $event->trangthai_label = 'Sắp diễn ra';
+                } elseif ($now->between($start, $end)) {
+                    $event->trangthai_label = 'Đang diễn ra';
+                } else {
+                    $event->trangthai_label = 'Đã kết thúc';
+                }
 
-            // Slug để Flutter có thể mở chi tiết
-            $slug = strtolower(preg_replace('/[^a-z0-9]+/i', '-', $event->tencuocthi));
-            $event->slug = $slug . '-' . $event->macuocthi;
+                $event->songayconlai = max(0, $end->diffInDays($now, false) * -1);
+                return $event;
+            });
 
-            // Có cho đăng ký hay không
-            $event->can_register = $now->lt($start)
-                && in_array($event->trangthai, ['Approved', 'InProgress'])
-                && !empty($event->hinhthucthamgia);
-
-            return $event;
-        });
-
-        return response()->json([
-            'status' => true,
-            'data' => $events,
-        ]);
-    } catch (\Exception $e) {
-        return response()->json([
-            'status' => false,
-            'message' => 'Lỗi khi tải danh sách cuộc thi',
-            'error' => $e->getMessage(),
-        ], 500);
+            return response()->json([
+                'status' => true,
+                'data' => $events
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'status' => false,
+                'message' => 'Lỗi khi tải danh sách cuộc thi',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
-}
-
 }

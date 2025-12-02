@@ -33,14 +33,12 @@ Route::controller(AuthController::class)->group(function () {
 });
 
 // Password Reset Routes
-Route::get('/quen-mat-khau', [AuthController::class, 'showForgotPassword'])
-    ->name('password.request');
-Route::post('/quen-mat-khau', [AuthController::class, 'sendResetLink'])
-    ->name('password.email');
-Route::get('/dat-lai-mat-khau/{token}', [AuthController::class, 'showResetPassword'])
-    ->name('password.reset');
-Route::post('/dat-lai-mat-khau', [AuthController::class, 'resetPassword'])
-    ->name('password.update');
+// Route::get('/quen-mat-khau', [AuthController::class, 'showForgotPassword'])
+//     ->name('password.request');
+// Route::get('/dat-lai-mat-khau/{token}', [AuthController::class, 'showResetPassword'])
+//     ->name('password.reset');
+// Route::post('/dat-lai-mat-khau', [AuthController::class, 'resetPassword'])
+//     ->name('password.update');
 
 /*
 |--------------------------------------------------------------------------
@@ -510,3 +508,30 @@ Route::prefix('admin')->middleware(['jwt.web', 'admin'])->group(function () {
     // // ✅ Route logout cho admin
     // Route::post('/logout', [AuthController::class, 'logout'])->name('admin.logout');
 });
+
+
+// ====================================================================
+// PASSWORD RESET ROUTES - OTP VIA EMAIL
+// ====================================================================
+
+// Bước 1: Nhập email
+Route::get('forgot-password', [AuthController::class, 'showForgotPassword'])
+    ->name('password.request');
+Route::post('forgot-password', [AuthController::class, 'sendOtp'])
+    ->name('password.send-otp');
+
+// Bước 2: Nhập OTP
+Route::get('verify-otp', [AuthController::class, 'showVerifyOtp'])
+    ->name('password.verify-otp');
+Route::post('verify-otp', [AuthController::class, 'verifyOtp'])
+    ->name('password.verify-otp.post');
+
+// Bước 3: Đặt mật khẩu mới
+Route::get('reset-password', [AuthController::class, 'showResetPassword'])
+    ->name('password.reset');
+Route::post('reset-password', [AuthController::class, 'resetPasswordWithOtp'])
+    ->name('password.reset.post');
+
+// Gửi lại OTP
+Route::post('resend-otp', [AuthController::class, 'resendOtp'])
+    ->name('password.resend-otp');

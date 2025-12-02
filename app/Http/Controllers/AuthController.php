@@ -6,18 +6,27 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Log;
 use Tymon\JWTAuth\Facades\JWTAuth;
 use Tymon\JWTAuth\Exceptions\JWTException;
-use Illuminate\Support\Facades\Password;
-use Illuminate\Support\Str;
-use Illuminate\Auth\Events\PasswordReset;
 use App\Models\NguoiDung;
 use App\Models\SinhVien;
 use App\Models\GiangVien;
+use App\Models\PasswordResetOtp;
+use App\Mail\OtpMail;
+use Symfony\Component\Mailer\Exception\TransportException;
+
 
 class AuthController extends Controller
 {
-    // Đăng ký người dùng mới (API)
+    // ====================================================================
+    // ĐĂNG KÝ
+    // ====================================================================
+    
+    /**
+     * Đăng ký người dùng mới (API)
+     */
     public function register(Request $request)
     {
         $request->validate([
@@ -30,17 +39,14 @@ class AuthController extends Controller
         try {
             DB::beginTransaction();
 
-            // Tạo mã sinh viên tự động
             $count = SinhVien::count() + 1;
             $maSinhVien = '20' . date('y') . str_pad($count, 6, '0', STR_PAD_LEFT);
             
-            // Tạo mã người dùng
             $maNguoiDung = 'ND' . str_pad(NguoiDung::count() + 1, 6, '0', STR_PAD_LEFT);
 
-            // ✅ Tên đăng nhập = Mã sinh viên
             $user = NguoiDung::create([
                 'manguoidung' => $maNguoiDung,
-                'tendangnhap' => $maSinhVien, // Tên đăng nhập = Mã sinh viên
+                'tendangnhap' => $maSinhVien,
                 'matkhau' => Hash::make($request->MatKhau),
                 'email' => $request->Email,
                 'hoten' => $request->HoTen,
@@ -49,7 +55,6 @@ class AuthController extends Controller
                 'trangthai' => 'Active',
             ]);
 
-            // ✅ Tạo bản ghi SinhVien
             SinhVien::create([
                 'masinhvien' => $maSinhVien,
                 'manguoidung' => $maNguoiDung,
@@ -73,7 +78,9 @@ class AuthController extends Controller
         }
     }
 
-    // Hiển thị form đăng ký
+    /**
+     * Hiển thị form đăng ký
+     */
     public function showRegister(Request $request)
     {
         if ($request->cookie('jwt_token')) {
@@ -90,7 +97,9 @@ class AuthController extends Controller
         return view('auth.register');
     }
 
-    // Xử lý đăng ký từ form web
+    /**
+     * Xử lý đăng ký từ form web
+     */
     public function webRegister(Request $request)
     {
         $request->validate([
@@ -114,10 +123,8 @@ class AuthController extends Controller
         try {
             DB::beginTransaction();
 
-            // Tạo mã người dùng
             $maNguoiDung = 'ND' . str_pad(NguoiDung::count() + 1, 6, '0', STR_PAD_LEFT);
             
-            // Tạo mã và tên đăng nhập dựa trên vai trò
             if ($request->VaiTro === 'SinhVien') {
                 $count = SinhVien::count() + 1;
                 $maVaiTro = '20' . date('y') . str_pad($count, 6, '0', STR_PAD_LEFT);
@@ -126,10 +133,9 @@ class AuthController extends Controller
                 $maVaiTro = 'GV' . str_pad($count, 3, '0', STR_PAD_LEFT);
             }
 
-            // ✅ Tên đăng nhập = Mã sinh viên/giảng viên
             $user = NguoiDung::create([
                 'manguoidung' => $maNguoiDung,
-                'tendangnhap' => $maVaiTro, // Tên đăng nhập = Mã SV/GV
+                'tendangnhap' => $maVaiTro,
                 'matkhau' => Hash::make($request->MatKhau),
                 'hoten' => $request->HoTen,
                 'email' => $request->Email,
@@ -138,7 +144,6 @@ class AuthController extends Controller
                 'trangthai' => 'Active',
             ]);
 
-            // ✅ Tạo bản ghi tương ứng trong SinhVien hoặc GiangVien
             if ($request->VaiTro === 'SinhVien') {
                 SinhVien::create([
                     'masinhvien' => $maVaiTro,
@@ -154,7 +159,6 @@ class AuthController extends Controller
 
             DB::commit();
 
-            // Đăng nhập luôn sau khi đăng ký
             $token = Auth::guard('api')->login($user);
             $cookie = cookie('jwt_token', $token, 60 * 24, '/', null, false, true);
 
@@ -177,7 +181,13 @@ class AuthController extends Controller
         }
     }
 
-    // Hiển thị form đăng nhập
+    // ====================================================================
+    // ĐĂNG NHẬP
+    // ====================================================================
+
+    /**
+     * Hiển thị form đăng nhập
+     */
     public function showLogin(Request $request)
     {
         if ($request->cookie('jwt_token')) {
@@ -193,15 +203,16 @@ class AuthController extends Controller
         return view('auth.login');
     }
 
-    // Đăng nhập API (JWT)
+    /**
+     * Đăng nhập API (JWT)
+     */
     public function login(Request $request)
     {
         $request->validate([
-            'TenDangNhap' => 'required|string', // Mã sinh viên hoặc mã giảng viên
+            'TenDangNhap' => 'required|string',
             'MatKhau' => 'required|string',
         ]);
 
-        // ✅ Tìm user bằng tên đăng nhập (là mã sinh viên/giảng viên)
         $user = NguoiDung::where('tendangnhap', $request->TenDangNhap)->first();
 
         if (!$user || !Hash::check($request->MatKhau, $user->matkhau)) {
@@ -217,7 +228,9 @@ class AuthController extends Controller
         return $this->respondWithToken($token);
     }
 
-    // Đăng nhập WEB
+    /**
+     * Đăng nhập WEB
+     */
     public function webLogin(Request $request)
     {
         $request->validate([
@@ -247,7 +260,6 @@ class AuthController extends Controller
 
         $cookie = cookie('jwt_token', $token, 60 * 24 * 7, '/', null, false, true);
 
-        // Redirect theo vai trò, ưu tiên admin
         if ($user->isAdmin()) {
             $redirectRoute = 'admin.dashboard';
         } else {
@@ -263,64 +275,291 @@ class AuthController extends Controller
             ->cookie($cookie);
     }
 
-    // Lấy thông tin người dùng hiện tại
-    public function me()
+    // ====================================================================
+    // QUÊN MẬT KHẨU - OTP
+    // ====================================================================
+
+    /**
+     * Hiển thị form quên mật khẩu (Bước 1: Nhập email)
+     */
+    public function showForgotPassword()
     {
-        $user = Auth::guard('api')->user();
-        
-        if (!$user) {
-            return response()->json(['error' => 'Không tìm thấy người dùng'], 401);
-        }
-
-        // Lấy thêm thông tin sinh viên hoặc giảng viên
-        $additionalInfo = null;
-        if ($user->vaitro === 'SinhVien') {
-            $additionalInfo = SinhVien::where('manguoidung', $user->manguoidung)->first();
-        } elseif ($user->vaitro === 'GiangVien') {
-            $additionalInfo = GiangVien::where('manguoidung', $user->manguoidung)->first();
-        }
-
-        return response()->json([
-            'user' => $user,
-            'detail' => $additionalInfo
-        ]);
+        return view('auth.forgot-password');
     }
 
-    // Đăng xuất
-    public function logout(Request $request)
+    /**
+     * Gửi mã OTP qua email (Bước 1)
+     */
+    public function sendOtp(Request $request)
     {
-        try {
-            Auth::guard('api')->logout();
-            Auth::guard('web')->logout();
-        } catch (\Exception $e) {
-            // Ignore
+        $request->validate([
+            'Email' => 'required|email'
+        ], [
+            'Email.required' => 'Vui lòng nhập email',
+            'Email.email' => 'Email không hợp lệ'
+        ]);
+
+        $user = NguoiDung::where('email', $request->Email)->first();
+
+        if (!$user) {
+            return back()->withErrors([
+                'Email' => 'Email không tồn tại trong hệ thống'
+            ])->withInput();
         }
 
-        $cookie = cookie()->forget('jwt_token');
+        // Xóa các OTP cũ
+        PasswordResetOtp::where('email', $request->Email)->delete();
+
+        // Tạo mã OTP 6 số
+        $otp = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+
+        // Lưu OTP vào database
+        PasswordResetOtp::create([
+            'email' => $request->Email,
+            'otp' => $otp,
+            'created_at' => now(),
+            'expires_at' => now()->addMinutes(5),
+            'is_used' => false
+        ]);
+
+        // Gửi email
+        try {
+            Mail::to($request->Email)->send(new OtpMail($otp, $user->hoten));
+
+            // Lưu email vào session
+            session(['email' => $request->Email]);
+
+            return redirect()->route('password.verify-otp')
+                ->with('toast', [
+                    'type' => 'success',
+                    'title' => 'Gửi mã OTP thành công!',
+                    'message' => 'Vui lòng kiểm tra email của bạn. Mã OTP có hiệu lực trong 5 phút.'
+                ]);
+
+        } catch (\Exception $e) {
+            Log::error('Email Sending Error: ' . $e->getMessage());
+            
+            return back()->withErrors([
+                'Email' => 'Không thể gửi email. Vui lòng thử lại sau.'
+            ])->withInput();
+        }
+    }
+
+    /**
+     * Hiển thị form nhập OTP (Bước 2)
+     */
+    public function showVerifyOtp(Request $request)
+    {
+        // DEBUG
+        Log::info('showVerifyOtp called', [
+            'session_email' => session('email'),
+            'all_session' => session()->all()
+        ]);
+
+        if (!session('email')) {
+            Log::warning('No email in session, redirecting to forgot password');
+            return redirect()->route('password.request')
+                ->withErrors(['error' => 'Phiên làm việc đã hết hạn. Vui lòng thử lại.']);
+        }
+
+        return view('auth.verify-otp');
+    }
+
+    /**
+     * Xác thực mã OTP (Bước 2)
+     */
+    public function verifyOtp(Request $request)
+    {
+        $request->validate([
+            'otp' => 'required|digits:6'
+        ], [
+            'otp.required' => 'Vui lòng nhập mã OTP',
+            'otp.digits' => 'Mã OTP phải có 6 chữ số'
+        ]);
+
+        $email = session('email');
+        if (!$email) {
+            return redirect()->route('password.request');
+        }
+
+        $otpRecord = PasswordResetOtp::where('email', $email)
+            ->where('otp', $request->otp)
+            ->where('is_used', false)
+            ->where('expires_at', '>', now())
+            ->first();
+
+        if (!$otpRecord) {
+            return back()->withErrors([
+                'otp' => 'Mã OTP không hợp lệ hoặc đã hết hạn'
+            ])->withInput();
+        }
+
+        session(['otp_verified' => true, 'otp_id' => $otpRecord->id]);
+
+        return redirect()->route('password.reset')
+            ->with('toast', [
+                'type' => 'success',
+                'title' => 'Xác thực thành công!',
+                'message' => 'Vui lòng nhập mật khẩu mới.'
+            ]);
+    }
+
+    /**
+     * Hiển thị form đặt lại mật khẩu (Bước 3)
+     */
+    public function showResetPassword()
+    {
+        if (!session('otp_verified') || !session('email')) {
+            return redirect()->route('password.request');
+        }
+
+        return view('auth.reset-password');
+    }
+
+    /**
+     * Xử lý đặt lại mật khẩu (Bước 3)
+     */
+    public function resetPasswordWithOtp(Request $request)
+    {
+        if (!session('otp_verified') || !session('email') || !session('otp_id')) {
+            return redirect()->route('password.request')
+                ->withErrors(['error' => 'Phiên làm việc đã hết hạn']);
+        }
+
+        $request->validate([
+            'MatKhau' => 'required|string|min:6|confirmed',
+        ], [
+            'MatKhau.required' => 'Vui lòng nhập mật khẩu mới',
+            'MatKhau.min' => 'Mật khẩu phải có ít nhất 6 ký tự',
+            'MatKhau.confirmed' => 'Xác nhận mật khẩu không khớp',
+        ]);
+
+        $email = session('email');
+        $otpId = session('otp_id');
+
+        $user = NguoiDung::where('email', $email)->first();
+
+        if (!$user) {
+            return back()->withErrors(['error' => 'Không tìm thấy người dùng']);
+        }
+
+        $user->update([
+            'matkhau' => Hash::make($request->MatKhau)
+        ]);
+
+        PasswordResetOtp::where('id', $otpId)->update(['is_used' => true]);
+
+        session()->forget(['email', 'otp_verified', 'otp_id']);
+
+        PasswordResetOtp::clearExpired();
 
         return redirect()->route('login')
             ->with('toast', [
                 'type' => 'success',
-                'title' => 'Đăng xuất thành công!',
-                'message' => 'Hẹn gặp lại bạn! Chúc bạn một ngày tốt lành.'
-            ])
-            ->cookie($cookie);
+                'title' => 'Đặt lại mật khẩu thành công!',
+                'message' => 'Bạn có thể đăng nhập bằng mật khẩu mới.'
+            ]);
     }
 
-    // Làm mới token
-    public function refresh()
+    /**
+     * Gửi lại mã OTP
+     */
+    public function resendOtp(Request $request)
     {
-        $token = Auth::guard('api')->refresh();
-        return $this->respondWithToken($token);
+        $email = session('email');
+        
+        if (!$email) {
+            return redirect()->route('password.request');
+        }
+
+        $user = NguoiDung::where('email', $email)->first();
+
+        if (!$user) {
+            return redirect()->route('password.request')
+                ->withErrors(['error' => 'Email không tồn tại']);
+        }
+
+        PasswordResetOtp::where('email', $email)->delete();
+
+        $otp = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+
+        PasswordResetOtp::create([
+            'email' => $email,
+            'otp' => $otp,
+            'created_at' => now(),
+            'expires_at' => now()->addMinutes(5),
+            'is_used' => false
+        ]);
+
+        try {
+            Mail::to($email)->send(new OtpMail($otp, $user->hoten));
+
+            return back()->with('toast', [
+                'type' => 'success',
+                'title' => 'Gửi lại mã OTP thành công!',
+                'message' => 'Vui lòng kiểm tra email của bạn.'
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Resend OTP Error: ' . $e->getMessage());
+            
+            return back()->withErrors([
+                'error' => 'Không thể gửi email. Vui lòng thử lại sau.'
+            ]);
+        }
     }
 
-    // Hiển thị form đổi mật khẩu
+    /**
+     * Parse lỗi email
+     */
+    // private function parseEmailError($errorMessage)
+    // {
+    //     if (str_contains($errorMessage, 'does not match a verified Sender Identity') || 
+    //         str_contains($errorMessage, 'Sender Identity')) {
+    //         return 'Email gửi chưa được xác thực trong hệ thống SendGrid. Vui lòng liên hệ quản trị viên.';
+    //     }
+        
+    //     if (str_contains($errorMessage, 'Authentication failed') || 
+    //         str_contains($errorMessage, 'Invalid credentials') ||
+    //         str_contains($errorMessage, 'Username and Password not accepted')) {
+    //         return 'API Key SendGrid không hợp lệ hoặc đã hết hạn. Vui lòng liên hệ quản trị viên.';
+    //     }
+        
+    //     if (str_contains($errorMessage, 'Connection timeout') || 
+    //         str_contains($errorMessage, 'Connection refused') ||
+    //         str_contains($errorMessage, 'Could not connect to host')) {
+    //         return 'Không thể kết nối đến máy chủ SendGrid. Vui lòng kiểm tra kết nối mạng.';
+    //     }
+        
+    //     if (str_contains($errorMessage, 'Daily sending limit')) {
+    //         return 'Đã đạt giới hạn gửi email trong ngày. Vui lòng thử lại sau.';
+    //     }
+
+    //     if (str_contains($errorMessage, 'SSL') || str_contains($errorMessage, 'TLS')) {
+    //         return 'Lỗi bảo mật kết nối. Vui lòng kiểm tra cấu hình MAIL_ENCRYPTION.';
+    //     }
+
+    //     // Log lỗi chi tiết để debug
+    //     Log::error('Unknown email error: ' . $errorMessage);
+
+    //     return 'Không thể gửi email: ' . $errorMessage;
+    // }
+
+    // ====================================================================
+    // ĐỔI MẬT KHẨU (Khi đã đăng nhập)
+    // ====================================================================
+
+    /**
+     * Hiển thị form đổi mật khẩu
+     */
     public function showChangePassword()
     {
         return view('auth.change-password');
     }
 
-    // Đổi mật khẩu
+    /**
+     * Đổi mật khẩu
+     */
     public function changePassword(Request $request)
     {
         $request->validate([
@@ -345,7 +584,6 @@ class AuthController extends Controller
             ]);
         }
 
-        // ✅ Sử dụng update với tên cột thực
         $user->update([
             'matkhau' => Hash::make($request->MatKhauMoi)
         ]);
@@ -357,7 +595,69 @@ class AuthController extends Controller
         ]);
     }
 
-    // Trả về token
+    // ====================================================================
+    // ĐĂNG XUẤT & TIỆN ÍCH
+    // ====================================================================
+
+    /**
+     * Lấy thông tin người dùng hiện tại
+     */
+    public function me()
+    {
+        $user = Auth::guard('api')->user();
+        
+        if (!$user) {
+            return response()->json(['error' => 'Không tìm thấy người dùng'], 401);
+        }
+
+        $additionalInfo = null;
+        if ($user->vaitro === 'SinhVien') {
+            $additionalInfo = SinhVien::where('manguoidung', $user->manguoidung)->first();
+        } elseif ($user->vaitro === 'GiangVien') {
+            $additionalInfo = GiangVien::where('manguoidung', $user->manguoidung)->first();
+        }
+
+        return response()->json([
+            'user' => $user,
+            'detail' => $additionalInfo
+        ]);
+    }
+
+    /**
+     * Đăng xuất
+     */
+    public function logout(Request $request)
+    {
+        try {
+            Auth::guard('api')->logout();
+            Auth::guard('web')->logout();
+        } catch (\Exception $e) {
+            // Ignore
+        }
+
+        $cookie = cookie()->forget('jwt_token');
+
+        return redirect()->route('login')
+            ->with('toast', [
+                'type' => 'success',
+                'title' => 'Đăng xuất thành công!',
+                'message' => 'Hẹn gặp lại bạn! Chúc bạn một ngày tốt lành.'
+            ])
+            ->cookie($cookie);
+    }
+
+    /**
+     * Làm mới token
+     */
+    public function refresh()
+    {
+        $token = Auth::guard('api')->refresh();
+        return $this->respondWithToken($token);
+    }
+
+    /**
+     * Trả về token
+     */
     protected function respondWithToken($token)
     {
         return response()->json([
@@ -366,84 +666,5 @@ class AuthController extends Controller
             'expires_in' => Auth::guard('api')->factory()->getTTL() * 60,
             'user' => Auth::guard('api')->user()
         ]);
-    }
-
-    // Hiển thị form quên mật khẩu
-    public function showForgotPassword()
-    {
-        return view('auth.forgot-password');
-    }
-
-    // Gửi link reset
-    public function sendResetLink(Request $request)
-    {
-        $request->validate(['Email' => 'required|email']);
-
-        $user = NguoiDung::where('email', $request->Email)->first();
-
-        if (!$user) {
-            return back()->withErrors(['Email' => 'Email không tồn tại trong hệ thống']);
-        }
-
-        $status = Password::broker('users')->sendResetLink(
-            ['email' => $request->Email]
-        );
-
-        return $status === Password::RESET_LINK_SENT
-            ? back()->with('toast', [
-                'type' => 'success',
-                'title' => 'Gửi link thành công!',
-                'message' => 'Link đặt lại mật khẩu đã được gửi đến email của bạn.'
-            ])
-            : back()->withErrors(['Email' => 'Không thể gửi link đặt lại mật khẩu']);
-    }
-
-    // Hiển thị form đặt lại mật khẩu
-    public function showResetPassword($token)
-    {
-        return view('auth.reset-password', ['token' => $token]);
-    }
-
-    // Xử lý đặt lại mật khẩu
-    public function resetPassword(Request $request)
-    {
-        $request->validate([
-            'token' => 'required',
-            'Email' => 'required|email',
-            'MatKhau' => 'required|min:6|confirmed',
-        ], [
-            'Email.required' => 'Vui lòng nhập email',
-            'Email.email' => 'Email không hợp lệ',
-            'MatKhau.required' => 'Vui lòng nhập mật khẩu mới',
-            'MatKhau.min' => 'Mật khẩu phải có ít nhất 6 ký tự',
-            'MatKhau.confirmed' => 'Xác nhận mật khẩu không khớp',
-        ]);
-
-        $status = Password::broker('users')->reset(
-            [
-                'email' => $request->Email,
-                'password' => $request->MatKhau,
-                'password_confirmation' => $request->MatKhau_confirmation,
-                'token' => $request->token
-            ],
-            function ($user, $password) {
-                // ✅ Sử dụng forceFill với tên cột thực
-                $user->forceFill([
-                    'matkhau' => Hash::make($password)
-                ])->setRememberToken(Str::random(60));
-
-                $user->save();
-
-                event(new PasswordReset($user));
-            }
-        );
-
-        return $status === Password::PASSWORD_RESET
-            ? redirect()->route('login')->with('toast', [
-                'type' => 'success',
-                'title' => 'Đặt lại mật khẩu thành công!',
-                'message' => 'Bạn có thể đăng nhập bằng mật khẩu mới.'
-            ])
-            : back()->withErrors(['Email' => 'Không thể đặt lại mật khẩu. Vui lòng thử lại.']);
     }
 }

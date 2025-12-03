@@ -14,7 +14,7 @@
             <div>
                 <h1 class="text-4xl font-black mb-2">
                     Quản lý Kế hoạch Cuộc thi
-                    @if($isTruongBoMon)
+                    @if($isTruongBoMon ?? false)
                         <span class="text-sm font-normal bg-white/20 px-3 py-1 rounded-full ml-2">Trưởng bộ môn</span>
                     @endif
                 </h1>
@@ -151,7 +151,7 @@
             <div>
                 <select name="namhoc" class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition">
                     <option value="">-- Năm học --</option>
-                    @foreach($namhocs as $nh)
+                    @foreach($namhocs ?? [] as $nh)
                         <option value="{{ $nh }}" {{ request('namhoc') == $nh ? 'selected' : '' }}>{{ $nh }}</option>
                     @endforeach
                 </select>
@@ -185,7 +185,7 @@
         </form>
     </div>
 
-    {{-- Table --}}
+    {{-- TABLE - ĐÃ CẬP NHẬT --}}
     @if($kehoachs->count() > 0)
         <div class="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
             <div class="overflow-x-auto">
@@ -193,10 +193,11 @@
                     <thead class="bg-gradient-to-r from-gray-50 to-purple-50">
                         <tr>
                             <th class="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Mã KH</th>
-                            <th class="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Cuộc thi</th>
-                            <th class="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Năm học / HK</th>
+                            <th class="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Tên Cuộc thi</th>
+                            <th class="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Năm học</th>
                             <th class="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Ngày nộp</th>
                             <th class="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Trạng thái</th>
+                            <th class="px-6 py-4 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">Cuộc thi</th>
                             <th class="px-6 py-4 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">Thao tác</th>
                         </tr>
                     </thead>
@@ -230,6 +231,23 @@
                                         <span class="px-3 py-1.5 rounded-full text-sm font-semibold bg-red-100 text-red-700">
                                             <i class="fas fa-times-circle mr-1"></i>Từ chối
                                         </span>
+                                    @endif
+                                </td>
+                                {{-- CỘT MỚI: Trạng thái cuộc thi --}}
+                                <td class="px-6 py-4 text-center">
+                                    @if($kh->macuocthi)
+                                        <a href="{{ route('giangvien.cuocthi.show', $kh->macuocthi) }}" 
+                                           class="inline-flex items-center px-3 py-1.5 bg-blue-100 text-blue-700 rounded-full text-sm font-semibold hover:bg-blue-200 transition">
+                                            <i class="fas fa-check-circle mr-1"></i>
+                                            Đã tạo
+                                        </a>
+                                    @elseif($kh->trangthaiduyet == 'Approved')
+                                        <span class="inline-flex items-center px-3 py-1.5 bg-green-50 text-green-600 rounded-full text-sm font-semibold">
+                                            <i class="fas fa-clock mr-1"></i>
+                                            Chưa tạo
+                                        </span>
+                                    @else
+                                        <span class="text-gray-400 text-sm">-</span>
                                     @endif
                                 </td>
                                 <td class="px-6 py-4">

@@ -29,6 +29,7 @@ class ChiPhi extends Model
         'trangthai',
         'chungtu',
         'ghichu',
+        'magangiai',        // Liên kết với giải thưởng (mới thêm)
     ];
 
     protected $casts = [
@@ -39,7 +40,8 @@ class ChiPhi extends Model
         'ngayduyet' => 'date',
     ];
 
-    // Relationships
+    // === Relationships ===
+    
     public function cuocthi()
     {
         return $this->belongsTo(CuocThi::class, 'macuocthi', 'macuocthi');
@@ -57,7 +59,14 @@ class ChiPhi extends Model
         return $this->belongsTo(GiangVien::class, 'nguoiduyet', 'magiangvien');
     }
 
-    // Scopes
+    // Liên kết với giải thưởng đã gán (mới)
+    public function gangiaithuong()
+    {
+        return $this->belongsTo(GanGiaiThuong::class, 'magangiai', 'magangiai');
+    }
+
+    // === Scopes ===
+    
     public function scopePending($query)
     {
         return $query->where('trangthai', 'Pending');
@@ -83,5 +92,46 @@ class ChiPhi extends Model
     public function scopeByApprover($query, $maGiangVien)
     {
         return $query->where('nguoiduyet', $maGiangVien);
+    }
+
+    // Scope chi phí liên quan đến giải thưởng (mới)
+    public function scopeTienThuong($query)
+    {
+        return $query->whereNotNull('magangiai');
+    }
+
+    // Scope chi phí không phải tiền thưởng (mới)
+    public function scopeKhongPhaiTienThuong($query)
+    {
+        return $query->whereNull('magangiai');
+    }
+
+    // Scope theo giải thưởng cụ thể (mới)
+    public function scopeByGanGiai($query, $maGanGiai)
+    {
+        return $query->where('magangiai', $maGanGiai);
+    }
+
+    // === Accessors ===
+    
+    // Kiểm tra có phải chi phí tiền thưởng không (mới)
+    public function getLaTienThuongAttribute()
+    {
+        return !is_null($this->magangiai);
+    }
+
+    // Lấy thông tin giải thưởng nếu có (mới)
+    public function getThongTinGiaiThuongAttribute()
+    {
+        if (!$this->gangiaithuong) {
+            return null;
+        }
+
+        return [
+            'ten_giai' => $this->gangiaithuong->cocaugiaithuong->tengiai ?? 'N/A',
+            'nguoi_nhan' => $this->gangiaithuong->ten_nguoi_nhan,
+            'loai_dang_ky' => $this->gangiaithuong->loaidangky,
+            'tien_thuong' => $this->gangiaithuong->cocaugiaithuong->tienthuong ?? 0,
+        ];
     }
 }

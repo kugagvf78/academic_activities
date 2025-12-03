@@ -33,14 +33,12 @@ Route::controller(AuthController::class)->group(function () {
 });
 
 // Password Reset Routes
-Route::get('/quen-mat-khau', [AuthController::class, 'showForgotPassword'])
-    ->name('password.request');
-Route::post('/quen-mat-khau', [AuthController::class, 'sendResetLink'])
-    ->name('password.email');
-Route::get('/dat-lai-mat-khau/{token}', [AuthController::class, 'showResetPassword'])
-    ->name('password.reset');
-Route::post('/dat-lai-mat-khau', [AuthController::class, 'resetPassword'])
-    ->name('password.update');
+// Route::get('/quen-mat-khau', [AuthController::class, 'showForgotPassword'])
+//     ->name('password.request');
+// Route::get('/dat-lai-mat-khau/{token}', [AuthController::class, 'showResetPassword'])
+//     ->name('password.reset');
+// Route::post('/dat-lai-mat-khau', [AuthController::class, 'resetPassword'])
+//     ->name('password.update');
 
 /*
 |--------------------------------------------------------------------------
@@ -214,13 +212,25 @@ Route::middleware(['jwt.web', 'role:GiangVien'])
 
         // Quản lý cuộc thi
         Route::prefix('cuoc-thi')->name('cuocthi.')->controller(GiangVienCuocThiController::class)->group(function () {
+            // Danh sách cuộc thi
             Route::get('/', 'index')->name('index');
-            Route::get('/tao-moi', 'create')->name('create');
-            Route::post('/tao-moi', 'store')->name('store');
+            
+            // Chi tiết cuộc thi
             Route::get('/{id}/chi-tiet', 'show')->name('show');
+            
+            // ⚠️ BỎ: Không còn tạo cuộc thi trực tiếp - phải tạo từ kế hoạch đã duyệt
+            // Route::get('/tao-moi', 'create')->name('create');
+            // Route::post('/tao-moi', 'store')->name('store');
+            
+            // Chỉnh sửa cuộc thi (chỉ một số trường không quan trọng)
             Route::get('/{id}/sua', 'edit')->name('edit');
             Route::put('/{id}', 'update')->name('update');
+            
+            // Xóa cuộc thi (chỉ khi chưa có đăng ký)
             Route::delete('/{id}', 'destroy')->name('destroy');
+            
+            // ⭐ MỚI: Cập nhật trạng thái cuộc thi
+            Route::patch('/{id}/cap-nhat-trang-thai', 'updateStatus')->name('update-status');
         });
 
         // Quản lý đề thi
@@ -251,6 +261,10 @@ Route::middleware(['jwt.web', 'role:GiangVien'])
             Route::post('/cuoc-thi/{macuocthi}/import', 'importDiem')->name('import');
             Route::get('/{id}/chi-tiet', 'show')->name('show');
             Route::put('/{id}', 'update')->name('update');
+
+            Route::get('/cuoc-thi/{macuocthi}/auto-gan-giai', 'showAutoGanGiai')->name('show-auto-gan-giai');
+            Route::post('/cuoc-thi/{macuocthi}/auto-gan-giai', 'autoGanGiai')->name('auto-gan-giai');
+            Route::delete('/cuoc-thi/{macuocthi}/xoa-gan-giai-tu-dong', 'xoaGanGiaiTuDong')->name('xoa-gan-giai-tu-dong');
         });
 
         Route::prefix('phan-cong')
@@ -291,6 +305,7 @@ Route::middleware(['jwt.web', 'role:GiangVien'])
 
         // Quản lý Kế hoạch Cuộc thi
         Route::prefix('ke-hoach')->name('kehoach.')->controller(\App\Http\Controllers\Web\GiangVien\GiangVienKeHoachController::class)->group(function () {
+            // Danh sách và CRUD kế hoạch
             Route::get('/', 'index')->name('index');
             Route::get('/tao-moi', 'create')->name('create');
             Route::post('/tao-moi', 'store')->name('store');
@@ -298,11 +313,16 @@ Route::middleware(['jwt.web', 'role:GiangVien'])
             Route::get('/{id}/sua', 'edit')->name('edit');
             Route::put('/{id}', 'update')->name('update');
             Route::delete('/{id}', 'destroy')->name('destroy');
+            
+            // ⭐ MỚI: Tạo cuộc thi từ kế hoạch đã duyệt
+            Route::post('/{id}/tao-cuoc-thi', 'createCuocThi')->name('create-cuocthi');
+            
+            // Gửi lại kế hoạch và export
             Route::post('/{id}/gui-lai', 'resubmit')->name('resubmit');
             Route::get('/{id}/export', 'export')->name('export');
             Route::get('/api/statistics', 'statistics')->name('statistics');
 
-            // THÊM MỚI: Routes duyệt/từ chối kế hoạch (chỉ trưởng bộ môn)
+            // Duyệt/Từ chối kế hoạch (chỉ trưởng bộ môn)
             Route::post('/{id}/duyet', 'approve')->name('approve');
             Route::post('/{id}/tu-choi', 'reject')->name('reject');
         });
@@ -401,6 +421,60 @@ Route::middleware(['jwt.web', 'role:GiangVien'])
             Route::post('/{id}/duyet', 'approve')->name('approve');
             Route::post('/{id}/tu-choi', 'reject')->name('reject');
         });
+
+        // === QUẢN LÝ GIẢI THƯỞNG ===
+        Route::prefix('giai-thuong')->name('giaithuong.')->controller(\App\Http\Controllers\Web\GiangVien\GiangVienGiaiThuongController::class)->group(function () {
+            
+            // Danh sách cuộc thi có cơ cấu giải thưởng (cả giảng viên thường và trưởng bộ môn)
+            Route::get('/', 'index')
+                ->name('index');
+            
+            // Xem chi tiết cơ cấu giải thưởng của cuộc thi (cả giảng viên thường và trưởng bộ môn)
+            Route::get('/cuocthi/{macuocthi}', 'show')
+                ->name('show');
+            
+            // Xem danh sách giải đã gán của một cơ cấu (cả giảng viên thường và trưởng bộ môn)
+            Route::get('/cocau/{macocau}/gangiai', 'showGanGiai')
+                ->name('gangiai');
+            
+            // Thống kê giải thưởng theo cuộc thi (cả giảng viên thường và trưởng bộ môn)
+            Route::get('/cuocthi/{macuocthi}/thongke', 'thongke')
+                ->name('thongke');
+            
+            // === CHỈ TRƯỞNG BỘ MÔN ===
+            
+            // Tạo cơ cấu giải thưởng mới
+            Route::get('/cuocthi/{macuocthi}/create', 'create')
+                ->name('create');
+            
+            Route::post('/cuocthi/{macuocthi}/store', 'store')
+                ->name('store');
+            
+            // Chỉnh sửa cơ cấu giải thưởng
+            Route::get('/cocau/{macocau}/edit', 'edit')
+                ->name('edit');
+            
+            Route::put('/cocau/{macocau}', 'update')
+                ->name('update');
+            
+            // Xóa cơ cấu giải thưởng
+            Route::delete('/cocau/{macocau}', 'destroy')
+                ->name('destroy');
+            
+            // ✅ MỚI: Gán giải thưởng (chỉ trưởng bộ môn)
+            Route::get('/cocau/{macocau}/danh-sach-gan-giai', 'danhSachGanGiai')
+                ->name('danh-sach-gan-giai');
+            
+            Route::post('/cocau/{macocau}/store-gan-giai', 'storeGanGiai')
+                ->name('store-gan-giai');
+            
+            Route::post('/cocau/{macocau}/gan-giai-hang-loat', 'ganGiaiHangLoat')
+                ->name('gan-giai-hang-loat');
+            
+            Route::delete('/huy-gan-giai/{magangiai}', 'huyGanGiai')
+                ->name('huy-gan-giai');
+        });
+        
     });
 
 /*
@@ -433,4 +507,41 @@ Route::prefix('admin')->middleware(['jwt.web', 'admin'])->group(function () {
     
     // // ✅ Route logout cho admin
     // Route::post('/logout', [AuthController::class, 'logout'])->name('admin.logout');
+});
+
+
+// ====================================================================
+// PASSWORD RESET ROUTES - OTP VIA EMAIL
+// ====================================================================
+
+// Bước 1: Nhập email
+Route::get('forgot-password', [AuthController::class, 'showForgotPassword'])
+    ->name('password.request');
+Route::post('forgot-password', [AuthController::class, 'sendOtp'])
+    ->name('password.send-otp');
+
+// Bước 2: Nhập OTP
+Route::get('verify-otp', [AuthController::class, 'showVerifyOtp'])
+    ->name('password.verify-otp');
+Route::post('verify-otp', [AuthController::class, 'verifyOtp'])
+    ->name('password.verify-otp.post');
+
+// Bước 3: Đặt mật khẩu mới
+Route::get('reset-password', [AuthController::class, 'showResetPassword'])
+    ->name('password.reset');
+Route::post('reset-password', [AuthController::class, 'resetPasswordWithOtp'])
+    ->name('password.reset.post');
+
+// Gửi lại OTP
+Route::post('resend-otp', [AuthController::class, 'resendOtp'])
+    ->name('password.resend-otp');
+
+// ====================================================================
+// ĐỔI MẬT KHẨU (cho user đã đăng nhập) - Sử dụng OTP
+// ====================================================================
+Route::middleware('jwt.web')->group(function () {
+    Route::get('change-password', [AuthController::class, 'showChangePassword'])
+        ->name('password.change');
+    Route::post('change-password', [AuthController::class, 'sendOtpForChangePassword'])
+        ->name('password.change.send-otp');
 });

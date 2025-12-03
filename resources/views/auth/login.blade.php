@@ -97,9 +97,9 @@
             {{-- Remember me & Quên mật khẩu --}}
             <div class="flex items-center justify-between text-sm">
                 <label class="flex items-center space-x-2 text-gray-600 cursor-pointer">
-                    <input type="checkbox" id="remember" name="remember" {{ old('remember') ? 'checked' : '' }}
+                    {{-- <input type="checkbox" id="remember" name="remember" {{ old('remember') ? 'checked' : '' }}
                         class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 focus:ring-2 accent-blue-600">
-                    <span>Ghi nhớ đăng nhập</span>
+                    <span>Ghi nhớ đăng nhập</span> --}}
                 </label>
                 <a href="{{ route('password.request') }}" class="text-blue-600 hover:underline font-medium">Quên mật khẩu?</a>
             </div>
@@ -111,10 +111,10 @@
             </button>
 
             {{-- Register link --}}
-            <p class="text-center text-sm text-gray-600 mt-6">
+            {{-- <p class="text-center text-sm text-gray-600 mt-6">
                 Chưa có tài khoản?
                 <a href="{{ route('register') }}" class="text-blue-600 font-semibold hover:underline">Đăng ký ngay</a>
-            </p>
+            </p> --}}
         </form>
     </div>
 </div>

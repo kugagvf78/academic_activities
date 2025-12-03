@@ -53,32 +53,44 @@
             <form action="{{ route('giangvien.kehoach.store') }}" method="POST" class="p-8">
                 @csrf
 
-                {{-- Cuộc thi --}}
+                {{-- Tên cuộc thi --}}
                 <div class="mb-6">
                     <label class="block text-sm font-bold text-gray-700 mb-2">
                         <i class="fas fa-trophy text-purple-600 mr-2"></i>
-                        Chọn cuộc thi <span class="text-red-500">*</span>
+                        Tên cuộc thi <span class="text-red-500">*</span>
                     </label>
-                    <select name="macuocthi" 
+                    <input type="text" 
+                           name="tencuocthi" 
+                           value="{{ old('tencuocthi') }}"
+                           required
+                           maxlength="255"
+                           placeholder="VD: Olympic Tin học sinh viên lần thứ 30"
+                           class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition">
+                </div>
+
+                {{-- Loại cuộc thi --}}
+                <div class="mb-6">
+                    <label class="block text-sm font-bold text-gray-700 mb-2">
+                        <i class="fas fa-tag text-purple-600 mr-2"></i>
+                        Loại cuộc thi <span class="text-red-500">*</span>
+                    </label>
+                    <select name="loaicuocthi" 
                             required
                             class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition">
-                        <option value="">-- Chọn cuộc thi --</option>
-                        @foreach($cuocthis as $ct)
-                            <option value="{{ $ct->macuocthi }}" {{ old('macuocthi') == $ct->macuocthi ? 'selected' : '' }}>
-                                {{ $ct->tencuocthi }} ({{ $ct->loaicuocthi }})
-                            </option>
-                        @endforeach
+                        
+                        <option value="">-- Chọn loại cuộc thi --</option>
+                        
+                        <option value="CuocThi" 
+                                {{ old('loaicuocthi') == 'CuocThi' ? 'selected' : '' }}>
+                            Cuộc thi
+                        </option>
+                        
+                        <option value="HoiThao" 
+                                {{ old('loaicuocthi') == 'HoiThao' ? 'selected' : '' }}>
+                            Hội thảo
+                        </option>
+                        
                     </select>
-                    @if($cuocthis->count() == 0)
-                        <p class="mt-2 text-sm text-red-600">
-                            <i class="fas fa-info-circle mr-1"></i>
-                            Tất cả cuộc thi đã có kế hoạch. Vui lòng tạo cuộc thi mới trước.
-                        </p>
-                    @endif
-                    <p class="mt-2 text-sm text-gray-500">
-                        <i class="fas fa-info-circle mr-1"></i>
-                        Chỉ hiển thị các cuộc thi chưa có kế hoạch
-                    </p>
                 </div>
 
                 {{-- Năm học và Học kỳ --}}
@@ -115,6 +127,142 @@
                     </div>
                 </div>
 
+                {{-- Thời gian --}}
+                <div class="grid md:grid-cols-2 gap-6 mb-6">
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-2">
+                            <i class="fas fa-clock text-purple-600 mr-2"></i>
+                            Thời gian bắt đầu <span class="text-red-500">*</span>
+                        </label>
+                        <input type="datetime-local" 
+                               name="thoigianbatdau" 
+                               value="{{ old('thoigianbatdau') }}"
+                               required
+                               class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-2">
+                            <i class="fas fa-clock text-purple-600 mr-2"></i>
+                            Thời gian kết thúc <span class="text-red-500">*</span>
+                        </label>
+                        <input type="datetime-local" 
+                               name="thoigianketthuc" 
+                               value="{{ old('thoigianketthuc') }}"
+                               required
+                               class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition">
+                    </div>
+                </div>
+
+                {{-- Mô tả --}}
+                <div class="mb-6">
+                    <label class="block text-sm font-bold text-gray-700 mb-2">
+                        <i class="fas fa-align-left text-purple-600 mr-2"></i>
+                        Mô tả cuộc thi
+                    </label>
+                    <textarea name="mota" 
+                              rows="4"
+                              placeholder="Mô tả chi tiết về cuộc thi..."
+                              class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition resize-none">{{ old('mota') }}</textarea>
+                </div>
+
+                {{-- Mục đích --}}
+                <div class="mb-6">
+                    <label class="block text-sm font-bold text-gray-700 mb-2">
+                        <i class="fas fa-bullseye text-purple-600 mr-2"></i>
+                        Mục đích
+                    </label>
+                    <textarea name="mucdich" 
+                              rows="3"
+                              placeholder="Mục đích tổ chức cuộc thi..."
+                              class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition resize-none">{{ old('mucdich') }}</textarea>
+                </div>
+
+                {{-- Thông tin thêm --}}
+                <div class="grid md:grid-cols-2 gap-6 mb-6">
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-2">
+                            <i class="fas fa-map-marker-alt text-purple-600 mr-2"></i>
+                            Địa điểm
+                        </label>
+                        <input type="text" 
+                               name="diadiem" 
+                               value="{{ old('diadiem') }}"
+                               placeholder="VD: Hội trường A"
+                               class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-2">
+                            <i class="fas fa-users text-purple-600 mr-2"></i>
+                            Số lượng thành viên
+                        </label>
+                        <input type="number" 
+                               name="soluongthanhvien" 
+                               value="{{ old('soluongthanhvien') }}"
+                               min="1"
+                               placeholder="VD: 100"
+                               class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition">
+                    </div>
+                </div>
+
+                <div class="grid md:grid-cols-2 gap-6 mb-6">
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-2">
+                            <i class="fas fa-user-friends text-purple-600 mr-2"></i>
+                            Đối tượng tham gia
+                        </label>
+                        <input type="text" 
+                               name="doituongthamgia" 
+                               value="{{ old('doituongthamgia') }}"
+                               placeholder="VD: Sinh viên CNTT"
+                               class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-bold text-gray-700 mb-2">
+                            <i class="fas fa-handshake text-purple-600 mr-2"></i>
+                            Hình thức tham gia
+                        </label>
+                        <select name="hinhthucthamgia" 
+                                class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition">
+                            
+                            <option value="">-- Chọn hình thức tham gia --</option>
+                            
+                            <option value="CaNhan" 
+                                    {{ old('hinhthucthamgia', $kehoach->hinhthucthamgia ?? '') == 'CaNhan' ? 'selected' : '' }}>
+                                Cá nhân
+                            </option>
+                            
+                            <option value="DoiNhom" 
+                                    {{ old('hinhthucthamgia', $kehoach->hinhthucthamgia ?? '') == 'DoiNhom' ? 'selected' : '' }}>
+                                Đội/Nhóm
+                            </option>
+                            
+                            <option value="CaHai" 
+                                    {{ old('hinhthucthamgia', $kehoach->hinhthucthamgia ?? '') == 'CaHai' ? 'selected' : '' }}>
+                                Cả hai (Cá nhân và Đội/Nhóm)
+                            </option>
+                            
+                        </select>
+                    </div>
+                </div>
+
+                {{-- Dự trù kinh phí --}}
+                <div class="mb-6">
+                    <label class="block text-sm font-bold text-gray-700 mb-2">
+                        <i class="fas fa-money-bill-wave text-purple-600 mr-2"></i>
+                        Dự trù kinh phí (VNĐ)
+                    </label>
+                    <input type="number" 
+                           name="dutrukinhphi" 
+                           value="{{ old('dutrukinhphi') }}"
+                           min="0"
+                           step="1000"
+                           placeholder="VD: 10000000"
+                           class="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition">
+                </div>
+
                 {{-- Ghi chú --}}
                 <div class="mb-8">
                     <label class="block text-sm font-bold text-gray-700 mb-2">
@@ -145,11 +293,11 @@
                         </li>
                         <li class="flex items-start gap-2">
                             <i class="fas fa-check-circle mt-0.5"></i>
-                            <span>Mỗi cuộc thi chỉ có thể có <strong>một kế hoạch duy nhất</strong></span>
+                            <span>Trưởng bộ môn sẽ xem xét và phê duyệt kế hoạch của bạn</span>
                         </li>
                         <li class="flex items-start gap-2">
                             <i class="fas fa-check-circle mt-0.5"></i>
-                            <span>Trưởng bộ môn sẽ xem xét và phê duyệt kế hoạch của bạn</span>
+                            <span>Sau khi được duyệt, bạn có thể <strong>tạo cuộc thi</strong> từ kế hoạch này</span>
                         </li>
                     </ul>
                 </div>
@@ -161,8 +309,7 @@
                         <i class="fas fa-times mr-2"></i>Hủy bỏ
                     </a>
                     <button type="submit" 
-                            class="px-8 py-3 bg-gradient-to-r from-purple-600 to-pink-500 text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition transform hover:scale-105"
-                            {{ $cuocthis->count() == 0 ? 'disabled' : '' }}>
+                            class="px-8 py-3 bg-gradient-to-r from-purple-600 to-pink-500 text-white rounded-xl font-bold shadow-lg hover:shadow-xl transition transform hover:scale-105">
                         <i class="fas fa-paper-plane mr-2"></i>Tạo kế hoạch
                     </button>
                 </div>

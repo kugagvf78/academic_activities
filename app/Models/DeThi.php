@@ -50,9 +50,19 @@ class DeThi extends Model
         return $this->hasMany(BaiThi::class, 'madethi', 'madethi');
     }
 
+    public function baithi()
+    {
+        return $this->baithis();
+    }
+
     // Scopes
     public function scopeDraft($query)
     {
         return $query->where('trangthai', 'Draft');
+    }
+    
+    public function scopeActive($query)
+    {
+        return $query->where('trangthai', 'Active');
     }
 }

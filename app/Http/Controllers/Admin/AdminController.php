@@ -162,4 +162,14 @@ class AdminController extends Controller
         
         return view('admin.news.index', compact('user'));
     }
+
+    /**
+     * Trang quản lý cuộc thi
+     */
+    public function competitions()
+    {
+        $user = jwt_user();
+        
+        return view('admin.competitions.index', compact('user'));
+    }
 }

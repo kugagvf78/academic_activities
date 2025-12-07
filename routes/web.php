@@ -589,7 +589,11 @@ Route::prefix('admin')
             ->name('users.index');
 
         Route::get('/news', [App\Http\Controllers\Admin\AdminController::class, 'news'])
-        ->name('news.index');
+            ->name('news.index');
+
+        Route::get('/competitions', [App\Http\Controllers\Admin\AdminController::class, 'competitions'])
+            ->name('competitions.index');
+
     });
 
 /*
@@ -645,6 +649,30 @@ Route::prefix('api/admin')
             Route::post('/bulk-delete', 'bulkDelete')->name('bulk-delete');
             
             // Danh sách tin tức
+            Route::get('/', 'index')->name('index');
+            
+            // Tạo mới - PHẢI ĐẶT TRƯỚC /{id}
+            Route::post('/', 'store')->name('store');
+            
+            // CRUD Routes với {id} - ĐẶT SAU CÙNG
+            Route::get('/{id}', 'show')->name('show');
+            Route::put('/{id}', 'update')->name('update');
+            Route::post('/{id}', 'update')->name('update.post'); // Thêm route này cho form data với _method
+            Route::delete('/{id}', 'destroy')->name('destroy');
+            Route::patch('/{id}/status', 'updateStatus')->name('update-status');
+        });
+
+        Route::prefix('competitions')->name('competitions.')->controller(App\Http\Controllers\Admin\AdminCompetitionController::class)->group(function () {
+            
+            // QUAN TRỌNG: Các route đặc biệt PHẢI ĐẶT TRƯỚC {id}
+            
+            // Thống kê
+            Route::get('/statistics', 'statistics')->name('statistics');
+            
+            // Xóa nhiều
+            Route::post('/bulk-delete', 'bulkDelete')->name('bulk-delete');
+            
+            // Danh sách cuộc thi
             Route::get('/', 'index')->name('index');
             
             // Tạo mới - PHẢI ĐẶT TRƯỚC /{id}

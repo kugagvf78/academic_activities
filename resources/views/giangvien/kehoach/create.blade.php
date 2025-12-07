@@ -238,11 +238,7 @@
                                     {{ old('hinhthucthamgia', $kehoach->hinhthucthamgia ?? '') == 'DoiNhom' ? 'selected' : '' }}>
                                 Đội/Nhóm
                             </option>
-                            
-                            <option value="CaHai" 
-                                    {{ old('hinhthucthamgia', $kehoach->hinhthucthamgia ?? '') == 'CaHai' ? 'selected' : '' }}>
-                                Cả hai (Cá nhân và Đội/Nhóm)
-                            </option>
+                        
                             
                         </select>
                     </div>

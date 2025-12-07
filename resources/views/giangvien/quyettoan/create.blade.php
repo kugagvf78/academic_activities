@@ -136,21 +136,27 @@
                         </button>
                     </div>
 
-                    {{-- Tổng thực tế --}}
+                    {{-- Tổng thực tế (TỰ ĐỘNG TÍNH, KHÔNG CHO NHẬP) --}}
                     <div>
                         <label class="block text-sm font-bold text-gray-700 mb-2">
                             Tổng thực tế <span class="text-red-500">*</span>
+                            <span class="ml-2 text-xs font-normal text-gray-500">(Tự động tính từ chi phí)</span>
                         </label>
                         <div class="relative">
                             <input type="number" name="tongthucte" id="tongthucte" required min="0" step="1000"
                                 value="{{ old('tongthucte') }}"
-                                class="w-full px-4 py-3 pr-12 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                                readonly
+                                class="w-full px-4 py-3 pr-12 border border-gray-300 rounded-xl bg-gray-50 cursor-not-allowed text-gray-600"
                                 placeholder="0">
                             <span class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 font-semibold">₫</span>
                         </div>
                         @error('tongthucte')
                             <p class="mt-2 text-sm text-red-600">{{ $message }}</p>
                         @enderror
+                        <p class="mt-2 text-xs text-gray-500 flex items-center gap-1">
+                            <i class="fas fa-info-circle"></i>
+                            <span>Tổng tự động được tính từ các chi phí đã được duyệt</span>
+                        </p>
                     </div>
 
                     {{-- Chênh lệch (tự động tính) --}}
@@ -254,18 +260,41 @@ document.getElementById('filequyettoan').addEventListener('change', function(e) 
     }
 });
 
-// Tự động điền khi chọn cuộc thi
-document.getElementById('macuocthi').addEventListener('change', function() {
-    const selectedOption = this.options[this.selectedIndex];
-    const dutru = selectedOption.dataset.dutru || 0;
-    const thucte = selectedOption.dataset.thucte || 0;
+// TỰ ĐỘNG TÍNH TỔNG THỰC TẾ khi chọn cuộc thi
+document.getElementById('macuocthi').addEventListener('change', async function() {
+    const macuocthi = this.value;
     
-    document.getElementById('tongdutru').value = dutru;
-    document.getElementById('tongthucte').value = thucte;
-    calculateChenhlech();
+    if (!macuocthi) {
+        document.getElementById('tongdutru').value = '';
+        document.getElementById('tongthucte').value = '';
+        calculateChenhlech();
+        return;
+    }
+    
+    // Gọi API để lấy tổng chi phí thực tế
+    try {
+        const response = await fetch(`{{ route('giangvien.quyettoan.api.auto-calculate', ':macuocthi') }}`.replace(':macuocthi', macuocthi));
+        const data = await response.json();
+        
+        // Cập nhật giá trị
+        document.getElementById('tongdutru').value = data.tongdutru;
+        document.getElementById('tongthucte').value = data.tongthucte;
+        calculateChenhlech();
+        
+        // Hiển thị thông báo nhỏ
+        const thucteInput = document.getElementById('tongthucte');
+        thucteInput.classList.add('ring-2', 'ring-green-500');
+        setTimeout(() => {
+            thucteInput.classList.remove('ring-2', 'ring-green-500');
+        }, 1500);
+        
+    } catch (error) {
+        console.error('Error:', error);
+        alert('Có lỗi xảy ra khi tính toán tự động!');
+    }
 });
 
-// Tính toán tự động từ chi phí
+// Tính toán tự động từ chi phí (nút bấm)
 document.getElementById('btn-auto-calculate').addEventListener('click', async function() {
     const macuocthi = document.getElementById('macuocthi').value;
     

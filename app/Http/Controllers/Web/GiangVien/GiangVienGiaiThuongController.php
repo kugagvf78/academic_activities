@@ -678,8 +678,8 @@ class GiangVienGiaiThuongController extends Controller
             'soluong' => 'required|integer|min:1',
             'tienthuong' => 'nullable|numeric|min:0',
             'giaykhen' => 'required|in:0,1',
-            'chophepdonghang' => 'required|in:0,1',  // Sửa từ chophepdongkang
-            'ghichudonghang' => 'nullable|string|max:500',  // Sửa từ ghichudongkang
+            'chophepdonghang' => 'required|in:0,1',
+            'ghichudonghang' => 'nullable|string|max:500',
             'ghichu' => 'nullable|string|max:500',
         ], [
             'tengiai.required' => 'Vui lòng nhập tên giải thưởng',
@@ -687,40 +687,108 @@ class GiangVienGiaiThuongController extends Controller
             'soluong.min' => 'Số lượng phải lớn hơn 0',
             'tienthuong.min' => 'Tiền thưởng không được âm',
             'giaykhen.required' => 'Vui lòng chọn có giấy khen hay không',
-            'chophepdonghang.required' => 'Vui lòng chọn có cho phép đồng hạng hay không',  // Sửa
+            'chophepdonghang.required' => 'Vui lòng chọn có cho phép đồng hạng hay không',
         ]);
 
         try {
             DB::beginTransaction();
 
+            // 1. Tạo cơ cấu giải thưởng
             $macocau = 'COCAU-' . strtoupper(Str::random(8));
 
-            CoCauGiaiThuong::create([
+            $cocauGiai = CoCauGiaiThuong::create([
                 'macocau' => $macocau,
                 'macuocthi' => $macuocthi,
                 'tengiai' => $validated['tengiai'],
                 'soluong' => $validated['soluong'],
                 'tienthuong' => $validated['tienthuong'] ?? 0,
                 'giaykhen' => (bool)$validated['giaykhen'],
-                'chophepdonghang' => (bool)$validated['chophepdonghang'],  // Sửa từ chophepdongkang
-                'ghichudonghang' => $validated['ghichudonghang'] ?? null,  // Sửa từ ghichudongkang
+                'chophepdonghang' => (bool)$validated['chophepdonghang'],
+                'ghichudonghang' => $validated['ghichudonghang'] ?? null,
                 'ghichu' => $validated['ghichu'] ?? null,
                 'trangthai' => 'Active',
                 'ngaytao' => now(),
             ]);
 
+            // 2. ✅ TỰ ĐỘNG TẠO CHI PHÍ NẾU CÓ TIỀN THƯỞNG (ĐÃ DUYỆT LUÔN)
+            if (!empty($validated['tienthuong']) && $validated['tienthuong'] > 0) {
+                // Tính tổng chi phí = tiền thưởng × số lượng giải
+                $tongChiPhi = $validated['tienthuong'] * $validated['soluong'];
+
+                // Tạo mã chi phí tự động
+                $lastChiPhi = DB::table('chiphi')
+                    ->where('machiphi', '~', '^CP[0-9]+$') // ✅ Chỉ lấy mã đúng format
+                    ->orderByRaw('CAST(SUBSTRING(machiphi FROM 3) AS INTEGER) DESC')
+                    ->lockForUpdate()
+                    ->first();
+                
+                if ($lastChiPhi && preg_match('/^CP(\d+)$/', $lastChiPhi->machiphi, $matches)) {
+                    $newNumber = intval($matches[1]) + 1;
+                } else {
+                    $newNumber = 1;
+                }
+                
+                $machiphi = 'CP' . str_pad($newNumber, 4, '0', STR_PAD_LEFT);
+
+                // Tạo tên khoản chi
+                $tenKhoanChi = "Tiền thưởng: {$validated['tengiai']} ({$validated['soluong']} giải)";
+                
+                // Tạo ghi chú chi tiết
+                $ghichuChiPhi = "Chi phí giải thưởng được tạo và phê duyệt tự động từ cơ cấu giải thưởng.\n";
+                $ghichuChiPhi .= "- Tên giải: {$validated['tengiai']}\n";
+                $ghichuChiPhi .= "- Số lượng: {$validated['soluong']} giải\n";
+                $ghichuChiPhi .= "- Tiền thưởng/giải: " . number_format($validated['tienthuong'], 0, ',', '.') . " VNĐ\n";
+                $ghichuChiPhi .= "- Tổng chi phí: " . number_format($tongChiPhi, 0, ',', '.') . " VNĐ";
+                
+                if ($validated['giaykhen']) {
+                    $ghichuChiPhi .= "\n- Kèm giấy khen";
+                }
+
+                // ✅ Insert chi phí với trạng thái Approved và thực tế chi = dự trù
+                DB::table('chiphi')->insert([
+                    'machiphi' => $machiphi,
+                    'macuocthi' => $macuocthi,
+                    'tenkhoanchi' => $tenKhoanChi,
+                    'dutruchiphi' => $tongChiPhi,
+                    'thuctechi' => $tongChiPhi, // ✅ Thực tế chi = dự trù luôn
+                    'ngaychi' => now(), // ✅ Set ngày chi là hiện tại
+                    'nguoiyeucau' => $giangVien->magiangvien,
+                    'ngayyeucau' => now(),
+                    'nguoiduyet' => $giangVien->magiangvien, // ✅ Trưởng BM tự duyệt
+                    'ngayduyet' => now(), // ✅ Ngày duyệt là hiện tại
+                    'trangthai' => 'Approved', // ✅ Đã duyệt luôn
+                    'chungtu' => null,
+                    'ghichu' => $ghichuChiPhi,
+                ]);
+
+                Log::info("✅ Đã tự động tạo và duyệt chi phí {$machiphi} cho giải thưởng {$macocau}", [
+                    'machiphi' => $machiphi,
+                    'macocau' => $macocau,
+                    'tongchiphi' => $tongChiPhi,
+                    'trangthai' => 'Approved'
+                ]);
+            }
+
             DB::commit();
+
+            $message = 'Đã thêm cơ cấu giải thưởng thành công!';
+            if (!empty($validated['tienthuong']) && $validated['tienthuong'] > 0) {
+                $message .= ' Chi phí giải thưởng đã được tạo và phê duyệt tự động.';
+            }
 
             return redirect()
                 ->route('giangvien.giaithuong.show', $macuocthi)
-                ->with('success', 'Đã thêm cơ cấu giải thưởng thành công!');
+                ->with('success', $message);
 
         } catch (\Exception $e) {
             DB::rollBack();
             
-            // Log lỗi để debug
-            Log::error('Lỗi tạo cơ cấu giải thưởng: ' . $e->getMessage());
-            Log::error('Stack trace: ' . $e->getTraceAsString());
+            Log::error('❌ Lỗi tạo cơ cấu giải thưởng', [
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ]);
             
             return back()
                 ->withInput()
@@ -768,8 +836,8 @@ class GiangVienGiaiThuongController extends Controller
             'soluong' => 'required|integer|min:1',
             'tienthuong' => 'nullable|numeric|min:0',
             'giaykhen' => 'required|in:0,1',
-            'chophepdonghang' => 'required|in:0,1',  // Sửa từ chophepdongkang
-            'ghichudonghang' => 'nullable|string|max:500',  // Sửa từ ghichudongkang
+            'chophepdonghang' => 'required|in:0,1',
+            'ghichudonghang' => 'nullable|string|max:500',
             'ghichu' => 'nullable|string|max:500',
             'trangthai' => 'required|in:Active,Inactive',
         ], [
@@ -783,7 +851,7 @@ class GiangVienGiaiThuongController extends Controller
             DB::beginTransaction();
 
             // Kiểm tra nếu giảm số lượng, có đủ slot không
-            if (!$cocau->chophepdonghang && $validated['soluong'] < $cocau->soluong) {  // Sửa từ chophepdongkang
+            if (!$cocau->chophepdonghang && $validated['soluong'] < $cocau->soluong) {
                 $daGan = $cocau->gangiaithuong()
                     ->whereIn('trangthai', ['Pending', 'Approved'])
                     ->count();
@@ -796,7 +864,119 @@ class GiangVienGiaiThuongController extends Controller
                 }
             }
 
+            // ✅ TÌM CHI PHÍ LIÊN QUAN (tự động tạo từ giải thưởng này)
+            $chiPhiLienQuan = DB::table('chiphi')
+                ->where('macuocthi', $cocau->macuocthi)
+                ->where('nguoiyeucau', $giangVien->magiangvien)
+                ->where('ghichu', 'LIKE', "%Chi phí giải thưởng được tạo tự động%")
+                ->where('ghichu', 'LIKE', "%Tên giải: {$cocau->tengiai}%")
+                ->whereIn('trangthai', ['Pending', 'Approved']) // Chỉ cập nhật nếu chưa hoàn thành
+                ->first();
+
+            // Lưu giá trị cũ để so sánh
+            $tienThuongCu = $cocau->tienthuong;
+            $soLuongCu = $cocau->soluong;
+            $tenGiaiCu = $cocau->tengiai;
+
+            // Cập nhật cơ cấu giải thưởng
             $cocau->update($validated);
+
+            // ✅ XỬ LÝ CHI PHÍ LIÊN QUAN
+            $tienThuongMoi = $validated['tienthuong'] ?? 0;
+            $soLuongMoi = $validated['soluong'];
+
+            if ($chiPhiLienQuan) {
+                // Trường hợp 1: Không còn tiền thưởng -> XÓA chi phí
+                if ($tienThuongMoi <= 0) {
+                    DB::table('chiphi')
+                        ->where('machiphi', $chiPhiLienQuan->machiphi)
+                        ->delete();
+                    
+                    Log::info("Đã xóa chi phí {$chiPhiLienQuan->machiphi} do không còn tiền thưởng");
+                }
+                // Trường hợp 2: Còn tiền thưởng -> CẬP NHẬT chi phí
+                else {
+                    $tongChiPhiMoi = $tienThuongMoi * $soLuongMoi;
+                    
+                    // Tạo tên khoản chi mới
+                    $tenKhoanChiMoi = "Tiền thưởng: {$validated['tengiai']} ({$soLuongMoi} giải)";
+                    
+                    // Tạo ghi chú mới
+                    $ghichuChiPhiMoi = "Chi phí giải thưởng được tạo tự động từ cơ cấu giải thưởng.\n";
+                    $ghichuChiPhiMoi .= "- Tên giải: {$validated['tengiai']}\n";
+                    $ghichuChiPhiMoi .= "- Số lượng: {$soLuongMoi} giải\n";
+                    $ghichuChiPhiMoi .= "- Tiền thưởng/giải: " . number_format($tienThuongMoi, 0, ',', '.') . " VNĐ\n";
+                    $ghichuChiPhiMoi .= "- Tổng dự trù: " . number_format($tongChiPhiMoi, 0, ',', '.') . " VNĐ";
+                    
+                    if ($validated['giaykhen']) {
+                        $ghichuChiPhiMoi .= "\n- Kèm giấy khen";
+                    }
+
+                    // Chỉ cập nhật nếu trạng thái cho phép (Pending hoặc Approved chưa chi)
+                    if (in_array($chiPhiLienQuan->trangthai, ['Pending', 'Approved']) && empty($chiPhiLienQuan->thuctechi)) {
+                        DB::table('chiphi')
+                            ->where('machiphi', $chiPhiLienQuan->machiphi)
+                            ->update([
+                                'tenkhoanchi' => $tenKhoanChiMoi,
+                                'dutruchiphi' => $tongChiPhiMoi,
+                                'ghichu' => $ghichuChiPhiMoi,
+                            ]);
+                        
+                        Log::info("Đã cập nhật chi phí {$chiPhiLienQuan->machiphi} - Dự trù mới: {$tongChiPhiMoi}");
+                    } else {
+                        Log::warning("Không thể cập nhật chi phí {$chiPhiLienQuan->machiphi} vì đã có thực tế chi hoặc trạng thái không cho phép");
+                    }
+                }
+            }
+            // Trường hợp 3: Chưa có chi phí mà bây giờ có tiền thưởng -> TẠO MỚI
+            elseif ($tienThuongMoi > 0) {
+                $tongChiPhi = $tienThuongMoi * $soLuongMoi;
+
+                // Tạo mã chi phí tự động
+                $lastChiPhi = DB::table('chiphi')
+                    ->where('machiphi', 'LIKE', 'CP%')
+                    ->orderByRaw('CAST(SUBSTRING(machiphi FROM 3) AS INTEGER) DESC')
+                    ->lockForUpdate()
+                    ->first();
+                
+                if ($lastChiPhi && preg_match('/CP(\d+)/', $lastChiPhi->machiphi, $matches)) {
+                    $newNumber = intval($matches[1]) + 1;
+                } else {
+                    $newNumber = 1;
+                }
+                
+                $machiphi = 'CP' . str_pad($newNumber, 4, '0', STR_PAD_LEFT);
+
+                $tenKhoanChi = "Tiền thưởng: {$validated['tengiai']} ({$soLuongMoi} giải)";
+                
+                $ghichuChiPhi = "Chi phí giải thưởng được tạo tự động từ cơ cấu giải thưởng.\n";
+                $ghichuChiPhi .= "- Tên giải: {$validated['tengiai']}\n";
+                $ghichuChiPhi .= "- Số lượng: {$soLuongMoi} giải\n";
+                $ghichuChiPhi .= "- Tiền thưởng/giải: " . number_format($tienThuongMoi, 0, ',', '.') . " VNĐ\n";
+                $ghichuChiPhi .= "- Tổng dự trù: " . number_format($tongChiPhi, 0, ',', '.') . " VNĐ";
+                
+                if ($validated['giaykhen']) {
+                    $ghichuChiPhi .= "\n- Kèm giấy khen";
+                }
+
+                DB::table('chiphi')->insert([
+                    'machiphi' => $machiphi,
+                    'macuocthi' => $cocau->macuocthi,
+                    'tenkhoanchi' => $tenKhoanChi,
+                    'dutruchiphi' => $tongChiPhi,
+                    'thuctechi' => null,
+                    'ngaychi' => null,
+                    'nguoiyeucau' => $giangVien->magiangvien,
+                    'ngayyeucau' => now(),
+                    'nguoiduyet' => null,
+                    'ngayduyet' => null,
+                    'trangthai' => 'Pending',
+                    'chungtu' => null,
+                    'ghichu' => $ghichuChiPhi,
+                ]);
+
+                Log::info("Đã tự động tạo chi phí {$machiphi} cho giải thưởng {$macocau} (khi cập nhật)");
+            }
 
             DB::commit();
 
@@ -806,6 +986,7 @@ class GiangVienGiaiThuongController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
+            Log::error('Lỗi cập nhật cơ cấu giải thưởng: ' . $e->getMessage());
             return back()
                 ->withInput()
                 ->with('error', 'Có lỗi xảy ra: ' . $e->getMessage());
@@ -838,6 +1019,34 @@ class GiangVienGiaiThuongController extends Controller
                 return back()->with('error', "Không thể xóa vì đã có {$daGan} giải thưởng được gán.");
             }
 
+            // ✅ TÌM VÀ XÓA CHI PHÍ LIÊN QUAN (nếu có)
+            $chiPhiLienQuan = DB::table('chiphi')
+                ->where('macuocthi', $cocau->macuocthi)
+                ->where('nguoiyeucau', $giangVien->magiangvien)
+                ->where('ghichu', 'LIKE', "%Chi phí giải thưởng được tạo tự động%")
+                ->where('ghichu', 'LIKE', "%Tên giải: {$cocau->tengiai}%")
+                ->whereIn('trangthai', ['Pending', 'Rejected']) // Chỉ xóa nếu chưa được duyệt hoặc bị từ chối
+                ->first();
+
+            if ($chiPhiLienQuan) {
+                // Kiểm tra xem chi phí đã có thực tế chi chưa
+                if (!empty($chiPhiLienQuan->thuctechi)) {
+                    DB::rollBack();
+                    return back()->with('error', 'Không thể xóa giải thưởng vì chi phí liên quan đã có thực tế chi. Vui lòng liên hệ quản trị viên.');
+                }
+
+                // Xóa chi phí
+                DB::table('chiphi')
+                    ->where('machiphi', $chiPhiLienQuan->machiphi)
+                    ->delete();
+                
+                Log::info("Đã xóa chi phí {$chiPhiLienQuan->machiphi} khi xóa giải thưởng {$macocau}");
+            } elseif ($cocau->tienthuong > 0) {
+                // Cảnh báo: có tiền thưởng nhưng không tìm thấy chi phí tự động
+                Log::warning("Giải thưởng {$macocau} có tiền thưởng nhưng không tìm thấy chi phí tự động tương ứng");
+            }
+
+            // Xóa cơ cấu giải thưởng
             $macuocthi = $cocau->macuocthi;
             $cocau->delete();
 
@@ -849,6 +1058,7 @@ class GiangVienGiaiThuongController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
+            Log::error('Lỗi xóa cơ cấu giải thưởng: ' . $e->getMessage());
             return back()->with('error', 'Có lỗi xảy ra: ' . $e->getMessage());
         }
     }

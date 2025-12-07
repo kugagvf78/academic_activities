@@ -27,7 +27,7 @@ class KetQuaThi extends Model
     ];
 
     protected $casts = [
-        'diem' => 'decimal:2',
+        'diem' => 'float',
         'xephang' => 'integer',
         'ngaychamdiem' => 'datetime',
     ];

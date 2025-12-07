@@ -283,7 +283,7 @@ class GiangVienChamDiemController extends Controller
     }
 
     /**
-     * Import điểm từ Excel
+     * Import điểm từ Excel - FIX LỖI INVALID INTEGER
      */
     public function importDiem(Request $request, $macuocthi)
     {
@@ -322,106 +322,228 @@ class GiangVienChamDiemController extends Controller
             $successCount = 0;
             $errorCount = 0;
             $errors = [];
+            $processedData = [];
             
-            // Đọc từ dòng 4 (bỏ qua header)
             $highestRow = $sheet->getHighestRow();
             
+            Log::info("🔵 BẮT ĐẦU IMPORT ĐIỂM", [
+                'macuocthi' => $macuocthi,
+                'total_rows' => $highestRow,
+                'magiangvien' => $giangvien->magiangvien,
+                'file_name' => $file->getClientOriginalName()
+            ]);
+            
+            // ✅ BẮT ĐẦU TRANSACTION
             DB::beginTransaction();
             
-            for ($row = 4; $row <= $highestRow; $row++) {
-                $mabaithi = $sheet->getCell('B' . $row)->getValue();
-                $diem = $sheet->getCell('E' . $row)->getValue();
-                $nhanxet = $sheet->getCell('F' . $row)->getValue();
-                
-                // Skip empty rows
-                if (empty($mabaithi)) {
-                    continue;
-                }
-                
-                // Validate điểm
-                if ($diem !== null && $diem !== '') {
-                    if (!is_numeric($diem) || $diem < 0 || $diem > 10) {
-                        $errors[] = "Dòng $row: Điểm không hợp lệ ($diem)";
+            try {
+                for ($row = 4; $row <= $highestRow; $row++) {
+                    // ✅ ĐỌC DỮ LIỆU TỪ EXCEL
+                    $mabaithi = trim((string)$sheet->getCell('B' . $row)->getValue());
+                    $diemRaw = $sheet->getCell('E' . $row)->getValue();
+                    $nhanxet = trim((string)$sheet->getCell('F' . $row)->getValue());
+                    
+                    // Skip dòng trống hoàn toàn
+                    if (empty($mabaithi) && ($diemRaw === null || $diemRaw === '')) {
+                        continue;
+                    }
+                    
+                    // ✅ KIỂM TRA MÃ BÀI THI
+                    if (empty($mabaithi)) {
+                        $errors[] = "Dòng $row: Thiếu mã bài thi";
                         $errorCount++;
                         continue;
                     }
-                }
-                
-                // Tìm bài thi
-                $baithi = BaiThi::where('mabaithi', $mabaithi)->first();
-                
-                if (!$baithi) {
-                    $errors[] = "Dòng $row: Không tìm thấy bài thi $mabaithi";
-                    $errorCount++;
-                    continue;
-                }
-                
-                // Kiểm tra bài thi thuộc cuộc thi này không
-                $dethi = DB::table('dethi')->where('madethi', $baithi->madethi)->first();
-                if (!$dethi || $dethi->macuocthi != $macuocthi) {
-                    $errors[] = "Dòng $row: Bài thi không thuộc cuộc thi này";
-                    $errorCount++;
-                    continue;
-                }
-                
-                // Update hoặc tạo mới kết quả thi
-                $ketqua = KetQuaThi::where('mabaithi', $mabaithi)->first();
-                
-                if ($ketqua) {
-                    $ketqua->update([
-                        'diem' => $diem,
-                        'nhanxet' => $nhanxet,
-                        'nguoichamdiem' => $giangvien->magiangvien,
-                        'ngaychamdiem' => now(),
-                        // Xóa xếp hạng và giải thưởng cũ (sẽ tính lại sau)
-                        'xephang' => null,
-                        'giaithuong' => null,
-                    ]);
-                } else {
-                    // Tạo mã kết quả mới
-                    $lastKetQua = KetQuaThi::where('maketqua', 'LIKE', 'KQ%')
-                        ->orderByRaw("CAST(SUBSTRING(maketqua FROM 3) AS INTEGER) DESC")
-                        ->first();
                     
-                    $newNumber = 1;
-                    if ($lastKetQua && preg_match('/KQ(\d+)/', $lastKetQua->maketqua, $matches)) {
-                        $newNumber = intval($matches[1]) + 1;
+                    // ✅ KIỂM TRA ĐIỂM (bắt buộc phải có)
+                    if ($diemRaw === null || $diemRaw === '') {
+                        $errors[] = "Dòng $row: Thiếu điểm cho mã bài thi $mabaithi";
+                        $errorCount++;
+                        continue;
                     }
                     
-                    $maketqua = 'KQ' . str_pad($newNumber, 6, '0', STR_PAD_LEFT);
+                    // Chuyển đổi điểm
+                    $diem = is_numeric($diemRaw) ? floatval($diemRaw) : null;
                     
-                    KetQuaThi::create([
-                        'maketqua' => $maketqua,
-                        'mabaithi' => $mabaithi,
-                        'diem' => $diem,
-                        'nhanxet' => $nhanxet,
-                        'nguoichamdiem' => $giangvien->magiangvien,
-                        'ngaychamdiem' => now(),
-                    ]);
+                    if ($diem === null) {
+                        $errors[] = "Dòng $row: Điểm không hợp lệ (phải là số) - Mã bài thi: $mabaithi";
+                        $errorCount++;
+                        continue;
+                    }
+                    
+                    // Validate điểm trong khoảng 0-10
+                    if ($diem < 0 || $diem > 10) {
+                        $errors[] = "Dòng $row: Điểm phải từ 0 đến 10 (nhận được: $diem) - Mã bài thi: $mabaithi";
+                        $errorCount++;
+                        continue;
+                    }
+                    
+                    // ✅ TÌM BÀI THI
+                    $baithi = BaiThi::where('mabaithi', $mabaithi)->first();
+                    
+                    if (!$baithi) {
+                        $errors[] = "Dòng $row: Không tìm thấy bài thi '$mabaithi'";
+                        $errorCount++;
+                        continue;
+                    }
+                    
+                    // ✅ KIỂM TRA BÀI THI THUỘC CUỘC THI
+                    $dethi = DB::table('dethi')->where('madethi', $baithi->madethi)->first();
+                    
+                    if (!$dethi || $dethi->macuocthi != $macuocthi) {
+                        $errors[] = "Dòng $row: Bài thi '$mabaithi' không thuộc cuộc thi này";
+                        $errorCount++;
+                        continue;
+                    }
+                    
+                    // ✅ CẬP NHẬT HOẶC TẠO MỚI KẾT QUẢ
+                    $ketqua = KetQuaThi::where('mabaithi', $mabaithi)->first();
+                    
+                    if ($ketqua) {
+                        // ✅ UPDATE KẾT QUẢ ĐÃ TỒN TẠI
+                        $ketqua->diem = $diem;
+                        $ketqua->nhanxet = $nhanxet ?: null;
+                        $ketqua->nguoichamdiem = $giangvien->magiangvien;
+                        $ketqua->ngaychamdiem = now();
+                        $ketqua->xephang = null;
+                        $ketqua->giaithuong = null;
+                        
+                        $saved = $ketqua->save();
+                        
+                        if ($saved) {
+                            Log::info("✅ UPDATE thành công dòng $row", [
+                                'maketqua' => $ketqua->maketqua,
+                                'mabaithi' => $mabaithi,
+                                'diem' => $diem
+                            ]);
+                            
+                            $processedData[] = [
+                                'row' => $row,
+                                'action' => 'UPDATE',
+                                'maketqua' => $ketqua->maketqua,
+                                'mabaithi' => $mabaithi,
+                                'diem' => $diem
+                            ];
+                            $successCount++;
+                        } else {
+                            $errors[] = "Dòng $row: Không thể cập nhật kết quả - Mã bài thi: $mabaithi";
+                            $errorCount++;
+                        }
+                        
+                    } else {
+                        // ✅ TẠO MỚI KẾT QUẢ
+                        // Lấy mã kết quả cuối cùng (CHỈ LẤY ĐÚNG ĐỊNH DẠNG KQ + SỐ)
+                        $lastKetQua = DB::table('ketquathi')
+                            ->select('maketqua')
+                            ->where('maketqua', '~', '^KQ[0-9]+$') // ✅ Chỉ lấy KQ + số thuần
+                            ->orderByRaw("CAST(SUBSTRING(maketqua FROM 3) AS INTEGER) DESC")
+                            ->lockForUpdate()
+                            ->first();
+                        
+                        $newNumber = 1;
+                        if ($lastKetQua && preg_match('/^KQ(\d+)$/', $lastKetQua->maketqua, $matches)) {
+                            $newNumber = intval($matches[1]) + 1;
+                        }
+                        
+                        $maketqua = 'KQ' . str_pad($newNumber, 6, '0', STR_PAD_LEFT);
+                        
+                        // Tạo object mới
+                        $ketqua = new KetQuaThi();
+                        $ketqua->maketqua = $maketqua;
+                        $ketqua->mabaithi = $mabaithi;
+                        $ketqua->diem = $diem;
+                        $ketqua->nhanxet = $nhanxet ?: null;
+                        $ketqua->nguoichamdiem = $giangvien->magiangvien;
+                        $ketqua->ngaychamdiem = now();
+                        $ketqua->xephang = null;
+                        $ketqua->giaithuong = null;
+                        
+                        $saved = $ketqua->save();
+                        
+                        if ($saved) {
+                            Log::info("✅ CREATE thành công dòng $row", [
+                                'maketqua' => $maketqua,
+                                'mabaithi' => $mabaithi,
+                                'diem' => $diem
+                            ]);
+                            
+                            $processedData[] = [
+                                'row' => $row,
+                                'action' => 'CREATE',
+                                'maketqua' => $maketqua,
+                                'mabaithi' => $mabaithi,
+                                'diem' => $diem
+                            ];
+                            $successCount++;
+                        } else {
+                            $errors[] = "Dòng $row: Không thể tạo kết quả mới - Mã bài thi: $mabaithi";
+                            $errorCount++;
+                        }
+                    }
                 }
                 
-                $successCount++;
+                // ✅ Tự động Xếp Hạng SAU KHI IMPORT XONG
+                if ($successCount > 0) {
+                    Log::info("🏆 Bắt đầu tính xếp hạng cho cuộc thi $macuocthi");
+                    $this->calculateRankingsForContest($macuocthi);
+                }
+                
+                // ✅ COMMIT TRANSACTION
+                DB::commit();
+                
+                Log::info("🎉 HOÀN THÀNH IMPORT", [
+                    'macuocthi' => $macuocthi,
+                    'success' => $successCount,
+                    'errors' => $errorCount,
+                    'processed_data' => $processedData
+                ]);
+                
+            } catch (\Exception $innerException) {
+                // ✅ ROLLBACK NẾU CÓ LỖI TRONG LOOP
+                DB::rollBack();
+                
+                Log::error("❌ LỖI TRONG TRANSACTION", [
+                    'message' => $innerException->getMessage(),
+                    'file' => $innerException->getFile(),
+                    'line' => $innerException->getLine(),
+                    'trace' => $innerException->getTraceAsString()
+                ]);
+                
+                throw $innerException;
             }
             
-            // ✅ TỰ ĐỘNG XẾP HẠNG VÀ GÁN GIẢI THƯỞNG SAU KHI IMPORT XONG
-            $this->calculateRankingsForContest($macuocthi);
-            
-            DB::commit();
-            
-            $message = "Import thành công $successCount bài thi!";
-            if ($errorCount > 0) {
-                $message .= " Có $errorCount lỗi: " . implode('; ', array_slice($errors, 0, 5));
+            // ✅ TẠO MESSAGE CHO USER
+            if ($successCount > 0 && $errorCount == 0) {
+                $message = "✅ Import thành công $successCount bài thi! Đã cập nhật điểm và xếp hạng.";
+                $alertType = 'success';
+            } elseif ($successCount > 0 && $errorCount > 0) {
+                $message = "⚠️ Import thành công $successCount bài thi, có $errorCount lỗi. " . 
+                        "Chi tiết: " . implode('; ', array_slice($errors, 0, 3));
+                $alertType = 'warning';
+            } else {
+                $message = "❌ Import thất bại! Lỗi: " . implode('; ', array_slice($errors, 0, 5));
+                $alertType = 'error';
             }
             
-            return redirect()->route('giangvien.chamdiem.show-cuocthi', $macuocthi)
-                ->with($errorCount > 0 ? 'warning' : 'success', $message);
+            return redirect()
+                ->route('giangvien.chamdiem.show-cuocthi', $macuocthi)
+                ->with($alertType, $message);
             
         } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('Import điểm error: ' . $e->getMessage());
-            return back()->with('error', 'Có lỗi xảy ra khi import: ' . $e->getMessage());
+            Log::error('❌ LỖI IMPORT ĐIỂM', [
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            
+            return back()
+                ->withInput()
+                ->with('error', '❌ Có lỗi xảy ra khi import: ' . $e->getMessage());
         }
     }
+
+
 
     /**
      * Xem/Chấm điểm từng bài (giữ lại cho trường hợp chấm thủ công)
@@ -469,7 +591,7 @@ class GiangVienChamDiemController extends Controller
                 ->with('error', 'Bạn không có quyền chấm bài thi này!');
         }
         
-        return view('giangvien.chamdiem.show', compact('ketqua', 'giangvien'));
+        return view('giangvien.chamdiem.show-cuocthi', compact('ketqua', 'giangvien'));
     }
 
     /**
@@ -552,39 +674,33 @@ class GiangVienChamDiemController extends Controller
             ->join('dethi as dt', 'bt.madethi', '=', 'dt.madethi')
             ->where('dt.macuocthi', $macuocthi)
             ->whereNotNull('kq.diem')
-            ->select('kq.maketqua', 'kq.diem')
+            ->select('kq.maketqua', 'kq.diem', 'kq.ngaychamdiem')
             ->orderBy('kq.diem', 'desc')
-            ->orderBy('kq.ngaychamdiem', 'asc') // Nếu điểm bằng nhau, ai nộp trước thì xếp hạng cao hơn
+            ->orderBy('kq.ngaychamdiem', 'asc') // Nếu điểm bằng nhau, ai nộp trước xếp hạng cao hơn
             ->get();
         
         $currentRank = 1;
         $previousDiem = null;
-        $sameRankCount = 0;
         
         foreach ($ketquaList as $index => $ketqua) {
             // Xử lý xếp hạng
             if ($previousDiem === null || $ketqua->diem < $previousDiem) {
                 $currentRank = $index + 1;
-                $sameRankCount = 1;
-            } else {
-                $sameRankCount++;
             }
+            // Nếu điểm bằng nhau thì giữ nguyên currentRank (đồng hạng)
             
-            // Xác định giải thưởng
-            $giaithuong = $this->determineAward($currentRank, $ketqua->diem);
-            
-            // Cập nhật xếp hạng và giải thưởng
+            // ✅ CHỈ CẬP NHẬT XẾP HẠNG, KHÔNG GÁN GIẢI THƯỞNG
             DB::table('ketquathi')
                 ->where('maketqua', $ketqua->maketqua)
                 ->update([
                     'xephang' => $currentRank,
-                    'giaithuong' => $giaithuong,
+                    'giaithuong' => null, // Để null, Trưởng BM sẽ gán sau
                 ]);
             
             $previousDiem = $ketqua->diem;
         }
         
-        Log::info("Đã cập nhật xếp hạng cho cuộc thi: $macuocthi", [
+        Log::info("✅ Đã cập nhật xếp hạng cho cuộc thi: $macuocthi", [
             'total_results' => $ketquaList->count()
         ]);
     }

@@ -12,6 +12,7 @@ use App\Http\Controllers\Web\Client\CheerRegistrationController;
 use App\Http\Controllers\Web\Client\SupportController;
 use App\Http\Controllers\Web\GiangVien\GiangVienCuocThiController;
 use App\Http\Controllers\Web\GiangVien\GiangVienDeThiController;
+use App\Http\Controllers\Admin\AdminUserController;
 
 /*
 |--------------------------------------------------------------------------
@@ -500,14 +501,6 @@ Route::prefix('hoat-dong')->name('hoatdong.')->group(function () {
 
 
 
-// Admin Routes
-Route::prefix('admin')->middleware(['jwt.web', 'admin'])->group(function () {
-    Route::get('/dashboard', [App\Http\Controllers\Admin\AdminController::class, 'dashboard'])
-        ->name('admin.dashboard');
-    
-    // // ✅ Route logout cho admin
-    // Route::post('/logout', [AuthController::class, 'logout'])->name('admin.logout');
-});
 
 
 // ====================================================================
@@ -545,3 +538,226 @@ Route::middleware('jwt.web')->group(function () {
     Route::post('change-password', [AuthController::class, 'sendOtpForChangePassword'])
         ->name('password.change.send-otp');
 });
+
+
+
+/*
+|--------------------------------------------------------------------------
+| Admin Routes - Quản lý Người dùng
+|--------------------------------------------------------------------------
+*/
+
+// Admin routers
+Route::prefix('api/admin')
+    ->middleware(['jwt.web', 'admin'])
+    ->name('api.admin.')
+    ->group(function () {
+        
+        Route::prefix('users')->name('users.')->controller(App\Http\Controllers\Admin\AdminUserController::class)->group(function () {
+            Route::get('/', 'index')->name('index');
+            Route::get('/statistics', 'statistics')->name('statistics');
+            Route::get('/lops', 'getLops')->name('lops');
+            Route::get('/bomons', 'getBoMons')->name('bomons');
+            Route::get('/{id}', 'show')->name('show');
+            Route::post('/', 'store')->name('store');
+            Route::put('/{id}', 'update')->name('update');
+            Route::delete('/{id}', 'destroy')->name('destroy');
+            Route::post('/{id}/reset-password', 'resetPassword')->name('reset-password');
+            Route::patch('/{id}/toggle-status', 'toggleStatus')->name('toggle-status');
+            Route::post('/import', 'import')->name('import');
+            Route::get('/export/excel', 'exportExcel')->name('export.excel');
+            Route::get('/export/pdf', 'exportPdf')->name('export.pdf');
+            Route::post('/bulk-delete', 'bulkDelete')->name('bulk-delete');
+            Route::post('/bulk-activate', 'bulkActivate')->name('bulk-activate');
+        });
+    });
+
+/*
+|--------------------------------------------------------------------------
+| Admin Routes (Web UI) - CHỈ HIỂN THỊ TRANG
+|--------------------------------------------------------------------------
+*/
+Route::prefix('admin')
+    ->middleware(['jwt.web', 'admin'])
+    ->name('admin.')
+    ->group(function () {
+        
+        Route::get('/dashboard', [App\Http\Controllers\Admin\AdminController::class, 'dashboard'])
+            ->name('dashboard');
+        
+        Route::get('/users', [App\Http\Controllers\Admin\AdminController::class, 'users'])
+            ->name('users.index');
+
+        Route::get('/news', [App\Http\Controllers\Admin\AdminController::class, 'news'])
+        ->name('news.index');
+    });
+
+/*
+|--------------------------------------------------------------------------
+| Admin API Routes - XỬ LÝ DỮ LIỆU
+|--------------------------------------------------------------------------
+*/
+Route::prefix('api/admin')
+    ->middleware(['jwt.web', 'admin'])
+    ->name('api.admin.')
+    ->group(function () {
+        
+        Route::prefix('users')->name('users.')->controller(App\Http\Controllers\Admin\AdminUserController::class)->group(function () {
+            
+            
+            Route::get('/', 'index')->name('index');
+            Route::get('/statistics', 'statistics')->name('statistics');
+            Route::get('/lops', 'getLops')->name('lops');
+            Route::get('/bomons', 'getBoMons')->name('bomons');
+            
+            // ROUTE SINH MÃ - QUAN TRỌNG: ĐẶT TRƯỚC /{id}
+            Route::post('/generate-code', 'generateCode')->name('generate-code');
+            
+            Route::post('/import', 'import')->name('import');
+            Route::get('/export/excel', 'exportExcel')->name('export.excel');
+            Route::get('/export/pdf', 'exportPdf')->name('export.pdf');
+            Route::post('/bulk-delete', 'bulkDelete')->name('bulk-delete');
+            Route::post('/bulk-activate', 'bulkActivate')->name('bulk-activate');
+            
+            // ========================================
+            // ROUTE CÓ {id} - PHẢI ĐẶT SAU CÙNG
+            // ========================================
+            
+            Route::post('/', 'store')->name('store');
+            Route::get('/{id}', 'show')->name('show');
+            Route::put('/{id}', 'update')->name('update');
+            Route::delete('/{id}', 'destroy')->name('destroy');
+            Route::post('/{id}/reset-password', 'resetPassword')->name('reset-password');
+            Route::patch('/{id}/toggle-status', 'toggleStatus')->name('toggle-status');
+        });
+
+        Route::prefix('news')->name('news.')->controller(App\Http\Controllers\Admin\AdminNewsController::class)->group(function () {
+            
+            // QUAN TRỌNG: Các route đặc biệt PHẢI ĐẶT TRƯỚC {id}
+            
+            // Thống kê
+            Route::get('/statistics', 'statistics')->name('statistics');
+            
+            // Lấy danh sách cuộc thi
+            Route::get('/cuocthi', 'getCuocThi')->name('cuocthi');
+            
+            // Xóa nhiều
+            Route::post('/bulk-delete', 'bulkDelete')->name('bulk-delete');
+            
+            // Danh sách tin tức
+            Route::get('/', 'index')->name('index');
+            
+            // Tạo mới - PHẢI ĐẶT TRƯỚC /{id}
+            Route::post('/', 'store')->name('store');
+            
+            // CRUD Routes với {id} - ĐẶT SAU CÙNG
+            Route::get('/{id}', 'show')->name('show');
+            Route::put('/{id}', 'update')->name('update');
+            Route::post('/{id}', 'update')->name('update.post'); // Thêm route này cho form data với _method
+            Route::delete('/{id}', 'destroy')->name('destroy');
+            Route::patch('/{id}/status', 'updateStatus')->name('update-status');
+        });
+    });
+
+
+
+
+
+
+
+
+// TEST: Kiểm tra user hiện tại và quyền admin
+Route::get('/debug-admin', function() {
+    $user = jwt_user();
+    
+    if (!$user) {
+        return response()->json([
+            'error' => 'CHƯA ĐĂNG NHẬP',
+            'has_cookie' => request()->cookie('jwt_token') ? 'YES' : 'NO',
+            'suggestion' => 'Hãy đăng nhập lại'
+        ], 401);
+    }
+    
+    $giangVien = $user->giangVien;
+    
+    return response()->json([
+        '✅ USER INFO' => [
+            'manguoidung' => $user->manguoidung,
+            'hoten' => $user->hoten,
+            'email' => $user->email,
+            'vaitro' => $user->vaitro,
+        ],
+        '✅ GIẢNG VIÊN INFO' => $giangVien ? [
+            'magiangvien' => $giangVien->magiangvien,
+            'is_admin' => $giangVien->is_admin,
+            'is_admin_type' => gettype($giangVien->is_admin),
+            'is_admin_value' => $giangVien->is_admin === true ? 'TRUE' : ($giangVien->is_admin == 1 ? '1 (number)' : 'FALSE'),
+            'chucvu' => $giangVien->chucvu,
+            'mabomon' => $giangVien->mabomon,
+        ] : '❌ KHÔNG CÓ THÔNG TIN GIẢNG VIÊN',
+        '✅ CHECKS' => [
+            'jwt_check()' => jwt_check() ? 'YES' : 'NO',
+            'is_admin()' => is_admin() ? 'YES ✅' : 'NO ❌',
+            'is_giangvien()' => is_giangvien() ? 'YES' : 'NO',
+        ],
+        '✅ MIDDLEWARE LOGIC' => [
+            'vaitro === GiangVien' => $user->vaitro === 'GiangVien' ? 'PASS ✅' : 'FAIL ❌',
+            'giangVien exists' => $giangVien ? 'PASS ✅' : 'FAIL ❌',
+            'is_admin == true' => ($giangVien && $giangVien->is_admin == true) ? 'PASS ✅' : 'FAIL ❌',
+            'CAN ACCESS ADMIN?' => ($user->vaitro === 'GiangVien' && $giangVien && $giangVien->is_admin) ? '✅ YES - SHOULD WORK' : '❌ NO - WILL REDIRECT',
+        ],
+        '📍 ROUTES' => [
+            'admin.dashboard' => route('admin.dashboard'),
+            'admin.users.index' => route('admin.users.index'),
+            'profile_url()' => profile_url(),
+        ],
+    ]);
+})->middleware('jwt.web');
+
+// TEST: Thử truy cập trực tiếp vào admin middleware
+Route::get('/debug-admin-middleware', function() {
+    return response()->json([
+        'success' => true,
+        'message' => '✅✅✅ ADMIN MIDDLEWARE WORKING! ✅✅✅',
+        'user' => jwt_user()->hoten,
+    ]);
+})->middleware(['jwt.web', 'admin']);
+
+// TEST: Route không có middleware để so sánh
+Route::get('/debug-no-middleware', function() {
+    return 'Route này không có middleware gì cả - nên luôn hoạt động';
+});
+
+Route::get('/test-route-url', function() {
+    try {
+        $url = route('admin.users.index');
+        $routeCollection = Route::getRoutes();
+        $route = $routeCollection->getByName('admin.users.index');
+        
+        return response()->json([
+            'route_name' => 'admin.users.index',
+            'generated_url' => $url,
+            'expected_url' => 'http://localhost:8080/admin/users',
+            'match' => $url === 'http://localhost:8080/admin/users' ? '✅ CORRECT' : '❌ WRONG',
+            'route_details' => [
+                'uri' => $route->uri(),
+                'methods' => $route->methods(),
+                'action' => $route->getActionName(),
+                'middleware' => $route->middleware(),
+            ],
+            'all_admin_users_routes' => collect($routeCollection)
+                ->filter(fn($r) => str_contains($r->getName() ?? '', 'admin.users'))
+                ->map(fn($r) => [
+                    'name' => $r->getName(),
+                    'uri' => $r->uri(),
+                    'file' => str_contains($r->uri(), 'api/') ? 'api.php' : 'web.php',
+                ])
+                ->values()
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'error' => $e->getMessage()
+        ], 500);
+    }
+});
+

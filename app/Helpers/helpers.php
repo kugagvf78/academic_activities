@@ -50,24 +50,61 @@ if (!function_exists('is_giangvien')) {
 }
 
 if (!function_exists('is_admin')) {
+    /**
+     * ✅ FIXED: Kiểm tra user có phải Admin không
+     * Admin = Giảng viên có is_admin = true (Trưởng bộ môn)
+     */
     function is_admin()
     {
         $user = jwt_user();
-        return $user && $user->vaitro === 'Admin';
+        
+        // Kiểm tra user và vaitro
+        if (!$user || $user->vaitro !== 'GiangVien') {
+            return false;
+        }
+        
+        // ✅ FIX: Phải load relationship giangVien trước
+        if (!isset($user->giangVien)) {
+            // Nếu chưa load, load ngay
+            $user->load('giangVien');
+        }
+        
+        // Kiểm tra giảng viên có is_admin = true không
+        // Dùng == thay vì === vì có thể là 1 (int) hoặc true (bool)
+        return $user->giangVien && ($user->giangVien->is_admin == true || $user->giangVien->is_admin == 1);
     }
 }
 
 if (!function_exists('profile_url')) {
+    /**
+     * ✅ FIXED: Lấy URL profile phù hợp với vai trò
+     */
     function profile_url()
     {
         $user = jwt_user();
         if (!$user) return route('login');
         
-        return match($user->vaitro) {
-            'Admin' => route('client.home'),
-            'GiangVien' => route('giangvien.profile.index'),
-            'SinhVien' => route('profile.index'),
-            default => route('client.home'),
-        };
+        // ✅ FIX: Kiểm tra Admin (GiangVien với is_admin = true) TRƯỚC
+        if ($user->vaitro === 'GiangVien') {
+            // Load relationship nếu chưa load
+            if (!isset($user->giangVien)) {
+                $user->load('giangVien');
+            }
+            
+            // Kiểm tra is_admin
+            if ($user->giangVien && ($user->giangVien->is_admin == true || $user->giangVien->is_admin == 1)) {
+                return route('admin.dashboard');  // Admin
+            }
+            
+            return route('giangvien.profile.index');  // Giảng viên thường
+        }
+        
+        // Sinh viên
+        if ($user->vaitro === 'SinhVien') {
+            return route('profile.index');
+        }
+        
+        // Mặc định
+        return route('client.home');
     }
 }

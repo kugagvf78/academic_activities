@@ -86,7 +86,6 @@
                     <div class="lg:col-span-2">Đề thi</div>
                     <div class="lg:col-span-1">Điểm</div>
                     <div class="lg:col-span-1">Hạng</div>
-                    <div class="lg:col-span-2">Giải thưởng</div>
                     <div class="lg:col-span-1 text-center">Trạng thái</div>
                 </div>
             </div>
@@ -175,7 +174,7 @@
                             @endif
                         </div>
 
-                        <div class="lg:col-span-2">
+                        {{-- <div class="lg:col-span-2">
                             @if($baithi->giaithuong)
                                 @php
                                     $awardConfig = [
@@ -193,7 +192,7 @@
                             @else
                                 <span class="text-gray-400 text-sm">-</span>
                             @endif
-                        </div>
+                        </div> --}}
 
                         <div class="lg:col-span-1 text-center">
                             @if($baithi->diem !== null)

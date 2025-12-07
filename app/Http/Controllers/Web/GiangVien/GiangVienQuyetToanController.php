@@ -139,7 +139,7 @@ class GiangVienQuyetToanController extends Controller
             
             $validated['maquyettoan'] = 'QT' . str_pad($newNumber, 4, '0', STR_PAD_LEFT);
             $validated['chenhlech'] = $validated['tongdutru'] - $validated['tongthucte'];
-            $validated['trangthai'] = 'Draft';
+            $validated['trangthai'] = 'Pending';
             $validated['nguoilap'] = $giangvien->magiangvien;
             $validated['ngayquyettoan'] = now();
 

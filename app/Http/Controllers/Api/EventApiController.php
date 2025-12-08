@@ -43,13 +43,13 @@ class EventApiController extends Controller
                 ->where('ct.trangthai', '!=', 'Draft');
 
             // ===== CÁC BỘ LỌC =====
-            
+
             // Tìm kiếm theo tên hoặc mô tả
             if ($request->filled('search')) {
                 $search = $request->search;
-                $query->where(function($q) use ($search) {
+                $query->where(function ($q) use ($search) {
                     $q->where('ct.tencuocthi', 'ILIKE', "%{$search}%")
-                      ->orWhere('ct.mota', 'ILIKE', "%{$search}%");
+                        ->orWhere('ct.mota', 'ILIKE', "%{$search}%");
                 });
             }
 
@@ -64,7 +64,7 @@ class EventApiController extends Controller
                         break;
                     case 'ongoing': // Đang diễn ra
                         $query->where('ct.thoigianbatdau', '<=', $now)
-                              ->where('ct.thoigianketthuc', '>=', $now);
+                            ->where('ct.thoigianketthuc', '>=', $now);
                         break;
                     case 'ended': // Đã kết thúc
                         $query->where('ct.thoigianketthuc', '<', $now);
@@ -105,7 +105,7 @@ class EventApiController extends Controller
                         ELSE 3
                     END
                 ")
-                ->orderBy('ct.thoigianbatdau', 'desc');
+                    ->orderBy('ct.thoigianbatdau', 'desc');
             } else {
                 $query->orderBy("ct.{$sortBy}", $sortOrder);
             }
@@ -131,7 +131,7 @@ class EventApiController extends Controller
                     'trangthai' => $event->trangthai,
                     'tenbomon' => $event->tenbomon,
                     'soluongdangky' => $event->soluongdangky,
-                    
+
                     // Thông tin bổ sung
                     'status_label' => $this->getStatusLabel($event),
                     'status_color' => $this->getStatusColor($event),
@@ -156,7 +156,6 @@ class EventApiController extends Controller
                     'to' => $events->lastItem(),
                 ]
             ], 200);
-
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
@@ -185,9 +184,9 @@ class EventApiController extends Controller
                     'bm.mota as motabomon',
                     'nd.hoten as truongbomon',
                     DB::raw('(
-                        (SELECT COUNT(*) FROM dangkycanhan WHERE macuocthi = ct.macuocthi) + 
-                        (SELECT COUNT(*) FROM dangkydoithi WHERE macuocthi = ct.macuocthi)
-                    ) as soluongdangky'),
+                    (SELECT COUNT(*) FROM dangkycanhan WHERE macuocthi = ct.macuocthi) + 
+                    (SELECT COUNT(*) FROM dangkydoithi WHERE macuocthi = ct.macuocthi)
+                ) as soluongdangky'),
                     DB::raw('(SELECT COUNT(*) FROM dangkydoithi WHERE macuocthi = ct.macuocthi) as soluongdoi')
                 )
                 ->first();
@@ -199,20 +198,20 @@ class EventApiController extends Controller
                 ], 404);
             }
 
-            // Lấy danh sách vòng thi
+            // ===== LẤY DANH SÁCH VÒNG THI =====
             $vongthi = DB::table('vongthi')
                 ->where('macuocthi', $macuocthi)
                 ->orderBy('thutu')
                 ->get();
 
-            // Lấy kế hoạch cuộc thi
+            // ===== LẤY KẾ HOẠCH CUỘC THI =====
             $kehoach = DB::table('kehoachcuocthi as kh')
                 ->leftJoin('nguoidung as nd', 'kh.nguoiduyet', '=', 'nd.tendangnhap')
-                ->where('kh.macuocthi', $macuocthi)
+                ->where('kh.makehoach', $event->makehoach)
                 ->select('kh.*', 'nd.hoten as tennguoiduyet')
                 ->first();
 
-            // Lấy ban tổ chức
+            // ===== LẤY BAN TỔ CHỨC =====
             $bantochuc = DB::table('ban as b')
                 ->leftJoin('phanconggiangvien as pc', 'b.maban', '=', 'pc.maban')
                 ->where('b.macuocthi', $macuocthi)
@@ -224,7 +223,23 @@ class EventApiController extends Controller
                 ->groupBy('b.maban', 'b.tenban', 'b.mota')
                 ->get();
 
-            // Transform data
+            $hotro = DB::table('hoatdonghotro')
+                ->where('macuocthi', $macuocthi)
+                ->whereIn('loaihoatdong', ['HoTroKyThuat', 'ToChuc']) // ✔ FIXED
+                ->where('thoigianketthuc', '>', now())
+                ->orderBy('thoigianbatdau', 'asc')
+                ->get();
+
+            // ===== LẤY HOẠT ĐỘNG CỔ VŨ =====
+            $colvu = DB::table('hoatdonghotro')
+                ->where('macuocthi', $macuocthi)
+                ->where('loaihoatdong', 'CoVu')
+                ->where('thoigianketthuc', '>', now())
+                ->orderBy('thoigianbatdau', 'asc')
+                ->get();
+
+
+            // ===== CHUẨN BỊ DATA TRẢ VỀ =====
             $eventData = [
                 'macuocthi' => $event->macuocthi,
                 'tencuocthi' => $event->tencuocthi,
@@ -244,19 +259,21 @@ class EventApiController extends Controller
                 'truongbomon' => $event->truongbomon,
                 'soluongdangky' => $event->soluongdangky,
                 'soluongdoi' => $event->soluongdoi,
-                
-                // Thông tin bổ sung
+
                 'status_label' => $this->getStatusLabel($event),
                 'status_color' => $this->getStatusColor($event),
                 'slug' => $this->generateSlug($event->tencuocthi, $event->macuocthi),
                 'days_remaining' => $this->getDaysRemaining($event),
                 'prize_display' => $this->formatPrize($event->dutrukinhphi),
                 'can_register' => $this->canRegister($event),
-                
-                // Thông tin chi tiết
+
                 'vongthi' => $vongthi,
                 'kehoach' => $kehoach,
                 'bantochuc' => $bantochuc,
+
+                // 🔥 QUAN TRỌNG — THÊM 2 TRƯỜNG MỚI
+                'hotro' => $hotro,
+                'colvu' => $colvu,
             ];
 
             return response()->json([
@@ -264,7 +281,6 @@ class EventApiController extends Controller
                 'message' => 'Lấy chi tiết cuộc thi thành công',
                 'data' => $eventData
             ], 200);
-
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
@@ -273,6 +289,7 @@ class EventApiController extends Controller
             ], 500);
         }
     }
+
 
     /**
      * API: Lấy danh sách loại cuộc thi
@@ -293,7 +310,6 @@ class EventApiController extends Controller
                 'message' => 'Lấy danh sách loại cuộc thi thành công',
                 'data' => $categories
             ], 200);
-
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
@@ -314,7 +330,7 @@ class EventApiController extends Controller
             $totalEvents = DB::table('cuocthi')
                 ->where('trangthai', '!=', 'Draft')
                 ->count();
-            
+
             // Tổng sinh viên tham gia
             try {
                 $totalStudents = DB::table('dangkycanhan')
@@ -334,7 +350,7 @@ class EventApiController extends Controller
             } catch (\Exception $e) {
                 $totalStudents = 0;
             }
-            
+
             // Tổng giải thưởng
             $totalPrizes = DB::table('datgiai')
                 ->join('cuocthi', 'datgiai.macuocthi', '=', 'cuocthi.macuocthi')
@@ -350,7 +366,6 @@ class EventApiController extends Controller
                     'total_prizes' => $totalPrizes,
                 ]
             ], 200);
-
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
@@ -399,33 +414,33 @@ class EventApiController extends Controller
         $slug = preg_replace('/[^a-z0-9\s-]/', '', $slug);
         $slug = preg_replace('/[\s-]+/', '-', $slug);
         $slug = trim($slug, '-');
-        
+
         return $slug . '-' . $macuocthi;
     }
 
     private function removeVietnameseTones($str)
     {
         $unicode = [
-            'a'=>'á|à|ả|ã|ạ|ă|ắ|ằ|ẳ|ẵ|ặ|â|ấ|ầ|ẩ|ẫ|ậ',
-            'd'=>'đ',
-            'e'=>'é|è|ẻ|ẽ|ẹ|ê|ế|ề|ể|ễ|ệ',
-            'i'=>'í|ì|ỉ|ĩ|ị',
-            'o'=>'ó|ò|ỏ|õ|ọ|ô|ố|ồ|ổ|ỗ|ộ|ơ|ớ|ờ|ở|ỡ|ợ',
-            'u'=>'ú|ù|ủ|ũ|ụ|ư|ứ|ừ|ử|ữ|ự',
-            'y'=>'ý|ỳ|ỷ|ỹ|ỵ',
-            'A'=>'Á|À|Ả|Ã|Ạ|Ă|Ắ|Ằ|Ẳ|Ẵ|Ặ|Â|Ấ|Ầ|Ẩ|Ẫ|Ậ',
-            'D'=>'Đ',
-            'E'=>'É|È|Ẻ|Ẽ|Ẹ|Ê|Ế|Ề|Ể|Ễ|Ệ',
-            'I'=>'Í|Ì|Ỉ|Ĩ|Ị',
-            'O'=>'Ó|Ò|Ỏ|Õ|Ọ|Ô|Ố|Ồ|Ổ|Ỗ|Ộ|Ơ|Ớ|Ờ|Ở|Ỡ|Ợ',
-            'U'=>'Ú|Ù|Ủ|Ũ|Ụ|Ư|Ứ|Ừ|Ử|Ữ|Ự',
-            'Y'=>'Ý|Ỳ|Ỷ|Ỹ|Ỵ',
+            'a' => 'á|à|ả|ã|ạ|ă|ắ|ằ|ẳ|ẵ|ặ|â|ấ|ầ|ẩ|ẫ|ậ',
+            'd' => 'đ',
+            'e' => 'é|è|ẻ|ẽ|ẹ|ê|ế|ề|ể|ễ|ệ',
+            'i' => 'í|ì|ỉ|ĩ|ị',
+            'o' => 'ó|ò|ỏ|õ|ọ|ô|ố|ồ|ổ|ỗ|ộ|ơ|ớ|ờ|ở|ỡ|ợ',
+            'u' => 'ú|ù|ủ|ũ|ụ|ư|ứ|ừ|ử|ữ|ự',
+            'y' => 'ý|ỳ|ỷ|ỹ|ỵ',
+            'A' => 'Á|À|Ả|Ã|Ạ|Ă|Ắ|Ằ|Ẳ|Ẵ|Ặ|Â|Ấ|Ầ|Ẩ|Ẫ|Ậ',
+            'D' => 'Đ',
+            'E' => 'É|È|Ẻ|Ẽ|Ẹ|Ê|Ế|Ề|Ể|Ễ|Ệ',
+            'I' => 'Í|Ì|Ỉ|Ĩ|Ị',
+            'O' => 'Ó|Ò|Ỏ|Õ|Ọ|Ô|Ố|Ồ|Ổ|Ỗ|Ộ|Ơ|Ớ|Ờ|Ở|Ỡ|Ợ',
+            'U' => 'Ú|Ù|Ủ|Ũ|Ụ|Ư|Ứ|Ừ|Ử|Ữ|Ự',
+            'Y' => 'Ý|Ỳ|Ỷ|Ỹ|Ỵ',
         ];
-        
-        foreach($unicode as $nonUnicode => $uni) {
+
+        foreach ($unicode as $nonUnicode => $uni) {
             $str = preg_replace("/($uni)/i", $nonUnicode, $str);
         }
-        
+
         return $str;
     }
 
@@ -459,9 +474,185 @@ class EventApiController extends Controller
     {
         $now = Carbon::now();
         $start = Carbon::parse($event->thoigianbatdau);
-        
-        return $now->lt($start) && 
+
+        return $now->lt($start) &&
             in_array($event->trangthai, ['Approved', 'InProgress']) &&
             !empty($event->hinhthucthamgia);
+    }
+
+    /* ============================================================
+|  API ĐĂNG KÝ DỰ THI (CÁ NHÂN / ĐỘI)
+|  POST /api/events/register
+============================================================ */
+    public function register(Request $request)
+    {
+        $request->validate([
+            'macuocthi' => 'required',
+            'loaidangky' => 'required|in:CaNhan,DoiNhom',
+            'masinhvien' => 'required_if:loaidangky,CaNhan',
+            'madoithi' => 'required_if:loaidangky,DoiNhom',
+        ]);
+
+        $event = DB::table('cuocthi')
+            ->where('macuocthi', $request->macuocthi)
+            ->first();
+
+        if (!$event) {
+            return response()->json(['success' => false, 'message' => 'Không tìm thấy cuộc thi'], 404);
+        }
+
+        // Không cho đăng ký khi đã bắt đầu
+        if (!now()->lt($event->thoigianbatdau)) {
+            return response()->json(['success' => false, 'message' => 'Cuộc thi đã bắt đầu, không thể đăng ký'], 400);
+        }
+
+        // ====================== ĐĂNG KÝ CÁ NHÂN ======================
+        if ($request->loaidangky === 'CaNhan') {
+
+            // Kiểm tra trùng đăng ký
+            $exists = DB::table('dangkycanhan')
+                ->where('macuocthi', $request->macuocthi)
+                ->where('masinhvien', $request->masinhvien)
+                ->exists();
+
+            if ($exists) {
+                return response()->json(['success' => false, 'message' => 'Bạn đã đăng ký cuộc thi này'], 400);
+            }
+
+            // Tạo mã
+            $madk = 'DKCN' . strtoupper(uniqid());
+
+            DB::table('dangkycanhan')->insert([
+                'madangkycanhan' => $madk,
+                'macuocthi' => $request->macuocthi,
+                'masinhvien' => $request->masinhvien,
+                'ngaydangky' => now(),
+                'trangthai' => 'Registered'
+            ]);
+
+            return response()->json(['success' => true, 'message' => 'Đăng ký dự thi thành công']);
+        }
+
+        // ====================== ĐĂNG KÝ ĐỘI ======================
+        if ($request->loaidangky === 'DoiNhom') {
+
+            $exists = DB::table('dangkydoithi')
+                ->where('macuocthi', $request->macuocthi)
+                ->where('madoithi', $request->madoithi)
+                ->exists();
+
+            if ($exists) {
+                return response()->json(['success' => false, 'message' => 'Đội đã đăng ký cuộc thi này'], 400);
+            }
+
+            $madk = 'DKDT' . strtoupper(uniqid());
+
+            DB::table('dangkydoithi')->insert([
+                'madangkydoi' => $madk,
+                'macuocthi' => $request->macuocthi,
+                'madoithi' => $request->madoithi,
+                'ngaydangky' => now(),
+                'trangthai' => 'Registered'
+            ]);
+
+            return response()->json(['success' => true, 'message' => 'Đăng ký đội thi thành công']);
+        }
+    }
+
+    /* ============================================================
+|  API: ĐĂNG KÝ HỖ TRỢ
+|  POST /api/events/support
+============================================================ */
+    public function support(Request $request)
+    {
+        $request->validate([
+            'macuocthi' => 'required',
+            'masinhvien' => 'required',
+            'mahoatdong' => 'required'
+        ]);
+
+        // Kiểm tra hoạt động có thật không
+        $hoatdong = DB::table('hoatdonghotro')
+            ->where('mahoatdong', $request->mahoatdong)
+            ->where('macuocthi', $request->macuocthi)
+            ->first();
+
+        if (!$hoatdong) {
+            return response()->json(['success' => false, 'message' => 'Hoạt động không hợp lệ'], 400);
+        }
+
+        // Không cho đăng ký khi hết hạn
+        if (now()->gt($hoatdong->thoigianketthuc)) {
+            return response()->json(['success' => false, 'message' => 'Hoạt động đã kết thúc'], 400);
+        }
+
+        // Kiểm tra trùng đăng ký
+        $exists = DB::table('dangkyhoatdong')
+            ->where('mahoatdong', $request->mahoatdong)
+            ->where('masinhvien', $request->masinhvien)
+            ->exists();
+
+        if ($exists) {
+            return response()->json(['success' => false, 'message' => 'Bạn đã đăng ký hoạt động này'], 400);
+        }
+
+        // 🔥 Tạo mã mới
+        $maDK = 'DKHD' . strtoupper(uniqid());
+
+        DB::table('dangkyhoatdong')->insert([
+            'madangkyhoatdong' => $maDK,   // ✔ Dùng biến đúng
+            'mahoatdong' => $request->mahoatdong,
+            'masinhvien' => $request->masinhvien,
+            'ngaydangky' => now(),
+            'trangthai' => 'Registered',
+        ]);
+
+        return response()->json(['success' => true, 'message' => 'Đăng ký hỗ trợ thành công']);
+    }
+
+    /* ============================================================
+|  API: ĐĂNG KÝ CỔ VŨ
+|  POST /api/events/cheer
+============================================================ */
+    public function cheer(Request $request)
+    {
+        $request->validate([
+            'masinhvien' => 'required',
+            'mahoatdong' => 'required'
+        ]);
+
+        $hoatdong = DB::table('hoatdonghotro')
+            ->where('mahoatdong', $request->mahoatdong)
+            ->where('loaihoatdong', 'CoVu')
+            ->first();
+
+        if (!$hoatdong) {
+            return response()->json(['success' => false, 'message' => 'Hoạt động không hợp lệ'], 400);
+        }
+
+        if (now()->gt($hoatdong->thoigianketthuc)) {
+            return response()->json(['success' => false, 'message' => 'Hoạt động đã kết thúc'], 400);
+        }
+
+        $exists = DB::table('dangkyhoatdong')
+            ->where('mahoatdong', $request->mahoatdong)
+            ->where('masinhvien', $request->masinhvien)
+            ->exists();
+
+        if ($exists) {
+            return response()->json(['success' => false, 'message' => 'Bạn đã đăng ký cổ vũ rồi'], 400);
+        }
+
+        $ma = 'DKCV' . strtoupper(uniqid());
+
+        DB::table('dangkyhoatdong')->insert([
+            'madangkyhoatdong' => $ma,
+            'mahoatdong' => $request->mahoatdong,
+            'masinhvien' => $request->masinhvien,
+            'ngaydangky' => now(),
+            'trangthai' => 'Registered'
+        ]);
+
+        return response()->json(['success' => true, 'message' => 'Đăng ký cổ vũ thành công']);
     }
 }

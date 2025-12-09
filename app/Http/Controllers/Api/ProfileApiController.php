@@ -30,17 +30,8 @@ class ProfileApiController extends Controller
         if ($user->vaitro === 'SinhVien') {
 
             $profile = $user->sinhVien()
-                ->with([
-                    'lop.giangvienchunhiem.nguoiDung'
-                ])
+                ->with(['lop.giangvienchunhiem.nguoiDung'])
                 ->first();
-
-            $danhSachLop = DB::table('lop')
-                ->leftJoin('giangvien', 'lop.magiangvienchunhiem', '=', 'giangvien.magiangvien')
-                ->leftJoin('nguoidung', 'giangvien.manguoidung', '=', 'nguoidung.manguoidung')
-                ->select('lop.*', 'giangvien.magiangvien', 'nguoidung.hoten')
-                ->orderBy('lop.tenlop')
-                ->get();
 
             $activities = $this->getSinhVienActivities($profile);
             $certificates = $this->getSinhVienCertificates($profile);
@@ -122,7 +113,6 @@ class ProfileApiController extends Controller
                     'profile' => $profile,
                     'activities' => $activities,
                     'certificates' => $certificates,
-                    'danhSachLop' => $danhSachLop,
                     'diemRenLuyen' => $diemRenLuyen,
                     'registrations' => $registrations,
                     'competitionRegistrations' => $competitionRegistrations
@@ -143,8 +133,7 @@ class ProfileApiController extends Controller
                     'profile' => $profile,
                     'activities' => [],
                     'certificates' => [],
-                    'danhSachLop' => [],
-                    'diemRenLuyen' => [],
+                    'diemRenLuyen' => null,
                     'registrations' => [],
                     'competitionRegistrations' => []
                 ]
@@ -187,43 +176,55 @@ class ProfileApiController extends Controller
     }
 
     /**
-     * Lấy chứng nhận (đạt giải)
+     * Lấy chứng nhận (đạt giải) - Dùng bảng DatGiai
      */
     private function getSinhVienCertificates($profile)
     {
         if (!$profile) return [];
 
-        return DB::table('datgiai as dg')
-            ->join('cuocthi as ct', 'dg.macuocthi', '=', 'ct.macuocthi')
-            ->join('giai as g', 'dg.magiai', '=', 'g.magiai')
-            ->leftJoin('dangkycanhan as dkcn', function($join) {
-                $join->on('dg.madangky', '=', 'dkcn.madangkycanhan')
-                    ->where('dg.loaidangky', '=', 'CaNhan');
-            })
-            ->leftJoin('dangkydoithi as dkdt', function($join) {
-                $join->on('dg.madangky', '=', 'dkdt.madangkydoi')
-                    ->where('dg.loaidangky', '=', 'DoiNhom');
-            })
-            ->leftJoin('doithi as doi', 'dkdt.madoithi', '=', 'doi.madoithi')
-            ->where(function($query) use ($profile) {
-                $query->where('dkcn.masinhvien', $profile->masinhvien)
-                    ->orWhereExists(function($q) use ($profile) {
-                        $q->select(DB::raw(1))
-                            ->from('thanhviendoithi')
-                            ->whereColumn('thanhviendoithi.madoithi', 'doi.madoithi')
-                            ->where('thanhviendoithi.masinhvien', $profile->masinhvien);
-                    });
-            })
-            ->select(
-                'dg.*',
-                'ct.tencuocthi',
-                'g.tengiai',
-                'g.loaigiai',
-                'dg.loaidangky',
-                DB::raw('CASE WHEN dg.loaidangky = "CaNhan" THEN NULL ELSE doi.tendoithi END as tendoithi')
-            )
-            ->orderBy('dg.ngaydat', 'desc')
-            ->get();
+        try {
+            $results = DB::table('datgiai as dg')
+                ->join('cuocthi as ct', 'dg.macuocthi', '=', 'ct.macuocthi')
+                ->leftJoin('dangkycanhan as dkcn', function($join) {
+                    $join->on('dg.madangkycanhan', '=', 'dkcn.madangkycanhan')
+                        ->where('dg.loaidangky', '=', 'CaNhan');
+                })
+                ->leftJoin('dangkydoithi as dkdt', function($join) {
+                    $join->on('dg.madangkydoi', '=', 'dkdt.madangkydoi')
+                        ->where('dg.loaidangky', '=', 'DoiNhom');
+                })
+                ->leftJoin('doithi as doi', 'dkdt.madoithi', '=', 'doi.madoithi')
+                ->where(function($query) use ($profile) {
+                    $query->where('dkcn.masinhvien', $profile->masinhvien)
+                        ->orWhereExists(function($q) use ($profile) {
+                            $q->select(DB::raw(1))
+                                ->from('thanhviendoithi')
+                                ->whereColumn('thanhviendoithi.madoithi', 'doi.madoithi')
+                                ->where('thanhviendoithi.masinhvien', $profile->masinhvien);
+                        });
+                })
+                ->select(
+                    'dg.madatgiai',
+                    'dg.macuocthi',
+                    'dg.madangkycanhan',
+                    'dg.madangkydoi',
+                    'dg.loaidangky',
+                    'dg.tengiai',
+                    'dg.giaithuong',
+                    'dg.diemrenluyen',
+                    'dg.ngaytrao',
+                    'ct.tencuocthi',
+                    DB::raw('CASE WHEN dg.loaidangky = \'CaNhan\' THEN NULL ELSE doi.tendoithi END as tendoithi')
+                )
+                ->orderBy('dg.ngaytrao', 'desc')
+                ->get();
+
+            return $results;
+
+        } catch (\Exception $e) {
+            Log::error('Error fetching certificates: ' . $e->getMessage());
+            return [];
+        }
     }
 
     /**
@@ -233,11 +234,88 @@ class ProfileApiController extends Controller
     {
         if (!$profile) return null;
 
-        return DB::table('diemrenluyen')
-            ->where('masinhvien', $profile->masinhvien)
-            ->orderBy('namhoc', 'desc')
-            ->orderBy('hocky', 'desc')
-            ->first();
+        try {
+            // ✅ Điểm cơ bản của sinh viên
+            $diemCoban = 70;
+            
+            // Lấy tất cả điểm rèn luyện của sinh viên
+            $diemList = DB::table('diemrenluyen')
+                ->where('masinhvien', $profile->masinhvien)
+                ->orderBy('ngaycong', 'desc')
+                ->get();
+
+            if ($diemList->isEmpty()) {
+                // ✅ Chưa có điểm thưởng nào - vẫn có 70 điểm
+                return [
+                    'details' => [],
+                    'total' => $diemCoban,
+                    'base' => $diemCoban,
+                    'bonus' => 0,
+                    'final' => $diemCoban,
+                ];
+            }
+
+            // ✅ Tính tổng điểm thưởng
+            $tongDiemThuong = $diemList->sum('diem');
+            $tongDiem = $diemCoban + $tongDiemThuong;
+
+            // Format chi tiết
+            $details = $diemList->map(function($item) {
+                return [
+                    'loai' => $item->loaihoatdong ?? 'Khác',
+                    'title' => $this->formatTitleDiemRL($item),
+                    'diem' => $item->diem,
+                    'ngay' => $item->ngaycong ? Carbon::parse($item->ngaycong)->toISOString() : null,
+                    'mota' => $item->mota ?? '',
+                    'color' => $this->getColorByLoai($item->loaihoatdong),
+                    'icon' => $this->getIconByLoai($item->loaihoatdong),
+                ];
+            })->toArray();
+
+            return [
+                'details' => $details,
+                'total' => $tongDiem,        // ✅ 70 + bonus
+                'base' => $diemCoban,        // ✅ 70
+                'bonus' => $tongDiemThuong,  // ✅ Tổng điểm thưởng
+                'final' => $tongDiem,        // ✅ = total
+            ];
+
+        } catch (\Exception $e) {
+            Log::error('Error fetching diem ren luyen: ' . $e->getMessage());
+            return null;
+        }
+    }
+
+    private function formatTitleDiemRL($item)
+    {
+        if ($item->loaihoatdong === 'DatGiai') {
+            return 'Đạt giải';
+        } elseif (in_array($item->loaihoatdong, ['CoVu', 'ToChuc', 'HoTroKyThuat'])) {
+            return 'Hoạt động hỗ trợ';
+        }
+        return $item->mota ?? 'Hoạt động khác';
+    }
+
+    private function getColorByLoai($loai)
+    {
+        switch ($loai) {
+            case 'DatGiai': return 'gold';
+            case 'CoVu': return 'blue';
+            case 'ToChuc': return 'green';
+            case 'HoTroKyThuat': return 'purple';
+            default: return 'gray';
+        }
+    }
+
+    private function getIconByLoai($loai)
+    {
+        switch ($loai) {
+            case 'DatGiai': return 'trophy';
+            case 'CoVu': return 'flag';
+            case 'ToChuc': return 'users';
+            case 'HoTroKyThuat': return 'tools';
+            default: return 'star';
+        }
     }
 
     /**
@@ -248,8 +326,6 @@ class ProfileApiController extends Controller
         if (!$sinhVien) return collect([]);
 
         try {
-            $registrations = collect([]);
-
             // 1. Đăng ký cá nhân
             $caNhan = DB::table('dangkycanhan as dkcn')
                 ->join('cuocthi as ct', 'dkcn.macuocthi', '=', 'ct.macuocthi')
@@ -308,7 +384,6 @@ class ProfileApiController extends Controller
                 $start = Carbon::parse($reg->thoigianbatdau);
                 $end = Carbon::parse($reg->thoigianketthuc);
 
-                // Xác định trạng thái cuộc thi
                 if ($end->lt($now)) {
                     $status = 'ended';
                     $statusLabel = 'Đã kết thúc';
@@ -323,15 +398,12 @@ class ProfileApiController extends Controller
                     $statusColor = 'blue';
                 }
 
-                // Kiểm tra có thể hủy không
                 $canCancel = !$reg->mabaithi && 
                             $start->gt($now) && 
                             $now->diffInHours($start, false) >= 24;
 
-                // Kiểm tra có thể nộp bài không
-                $submitDeadline = $end->copy()->addDay();
-                $canSubmit = $now->gte($end) && 
-                            $now->lte($submitDeadline) && 
+                $canSubmit = $now->gte($start) && 
+                            $now->lte($end) && 
                             !$reg->mabaithi;
 
                 return [

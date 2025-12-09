@@ -95,13 +95,13 @@
                         <span x-show="sidebarOpen">Tin tức</span>
                     </a>
                 </li>
-                <li>
+                {{-- <li>
                     <a href="{{ route('admin.competitions.index') }}" 
                         class="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-700 transition {{ request()->routeIs('admin.competitions.*') ? 'bg-slate-700' : '' }}">
                         <i class="fa-solid fa-trophy text-lg"></i>
                         <span x-show="sidebarOpen">Cuộc thi</span>
                     </a>
-                </li>
+                </li> --}}
                 <li>
                     <a href="#" 
                         class="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-700 transition">

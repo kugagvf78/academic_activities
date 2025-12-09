@@ -263,11 +263,11 @@
                                         :title="user.trangthai === 'Active' ? 'Vô hiệu hóa' : 'Kích hoạt'">
                                         <i class="fa-solid" :class="user.trangthai === 'Active' ? 'fa-ban' : 'fa-check-circle'"></i>
                                     </button>
-                                    <button @click="deleteUser(user)" 
+                                    {{-- <button @click="deleteUser(user)" 
                                         class="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors"
                                         title="Xóa">
                                         <i class="fa-solid fa-trash"></i>
-                                    </button>
+                                    </button> --}}
                                 </div>
                             </td>
                         </tr>

@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Maatwebsite\Excel\Facades\Excel;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Support\Facades\Storage;
 
 class AdminUserController extends Controller
 {
@@ -69,6 +70,18 @@ class AdminUserController extends Controller
             // Phân trang
             $perPage = $request->get('per_page', 15);
             $users = $query->paginate($perPage);
+
+            $users->getCollection()->transform(function ($user) {
+
+                if ($user->anhdaidien && Storage::disk('public')->exists($user->anhdaidien)) {
+                    $user->avatar_url = Storage::url($user->anhdaidien);
+                } else {
+                    $user->avatar_url = asset('images/users/avt.jpg'); // Avatar mặc định
+                }
+
+                return $user;
+            });
+
 
             return response()->json([
                 'success' => true,

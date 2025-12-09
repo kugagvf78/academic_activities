@@ -55,12 +55,12 @@
                             <span>{{ $news->date_full }}</span>
                         </div>
                         
-                        @if($news->tacgia)
+                        {{-- @if($news->tacgia)
                         <div class="flex items-center gap-2">
                             <i class="far fa-user text-blue-500"></i>
                             <span>{{ $news->tacgia }}</span>
                         </div>
-                        @endif
+                        @endif --}}
 
                         <div class="flex items-center gap-2 text-gray-500">
                             <i class="far fa-clock"></i>
@@ -97,7 +97,7 @@
 
                 {{-- Featured Image --}}
                 <div class="relative">
-                    <img src="{{ asset('images/home/banner1.png') }}" 
+                    <img src="{{ $news->hinhanh ? asset('storage/' . $news->hinhanh) : asset('images/home/banner1.png') }}" 
                          alt="{{ $news->tieude }}"
                          class="w-full h-[400px] object-cover">
                     <div class="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
@@ -164,7 +164,7 @@
                     <a href="{{ route('client.news.show', $item->slug) }}" 
                        class="block group">
                         <div class="flex gap-4 p-3 rounded-xl hover:bg-gray-50 transition">
-                            <img src="{{ asset('images/home/banner1.png') }}" 
+                            <img src="{{ $item->hinhanh ? asset('storage/' . $item->hinhanh) : asset('images/home/banner1.png') }}" 
                                  alt="{{ $item->tieude }}"
                                  class="w-20 h-20 object-cover rounded-lg flex-shrink-0 group-hover:scale-105 transition-transform duration-300">
                             <div class="flex-1 min-w-0">

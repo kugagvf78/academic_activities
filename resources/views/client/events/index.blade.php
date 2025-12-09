@@ -157,7 +157,7 @@
                     <div class="absolute top-4 right-4">
                         <div class="bg-white/90 text-blue-700 text-xs font-bold px-3 py-1.5 rounded-full shadow-lg flex items-center gap-1">
                             <i class="fas fa-trophy text-yellow-500"></i>
-                            <span>{{ $event->prize_display }}</span>
+                            {{-- <span>{{ $event->prize_display }}</span> --}}
                         </div>
                     </div>
                     @endif

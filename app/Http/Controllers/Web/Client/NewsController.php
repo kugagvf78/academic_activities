@@ -22,6 +22,7 @@ class NewsController extends Controller
                 'tt.noidung',
                 'tt.macuocthi',
                 'tt.loaitin',
+                'tt.hinhanh',
                 'tt.tacgia',
                 'tt.luotxem',
                 'tt.trangthai',
@@ -84,6 +85,7 @@ class NewsController extends Controller
 
         // Lấy tin tức nổi bật (xem nhiều nhất)
         $featured = DB::table('tintuc')
+            ->select('matintuc', 'tieude', 'hinhanh', 'ngaydang', 'luotxem')  
             ->where('trangthai', 'Published')
             ->orderBy('luotxem', 'desc')
             ->limit(3)
@@ -145,6 +147,7 @@ class NewsController extends Controller
 
         // Tin tức liên quan
         $related = DB::table('tintuc')
+            ->select('matintuc', 'tieude', 'noidung', 'hinhanh', 'ngaydang', 'loaitin', 'macuocthi')
             ->where('matintuc', '!=', $matintuc)
             ->where('trangthai', 'Published')
             ->where(function($query) use ($news) {

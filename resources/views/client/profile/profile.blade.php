@@ -462,10 +462,10 @@
                                 <h3 class="text-3xl font-extrabold text-white mb-1 tracking-tight">Điểm Rèn Luyện</h3>
                                 <p class="text-indigo-200 text-sm">Bảng tổng hợp kết quả đánh giá năm học {{ date('Y') }}</p>
                             </div>
-                            <a href="{{ route('profile.diem.export') }}" 
+                            {{-- <a href="{{ route('profile.diem.export') }}" 
                                 class="flex items-center px-4 py-2 bg-white hover:bg-indigo-50 text-indigo-700 rounded-xl font-semibold transition text-sm shadow-lg border border-white/50 transform hover:scale-105 duration-300">
                                 <i class="fas fa-file-pdf mr-2 text-red-500"></i>Xuất báo cáo PDF
-                            </a>
+                            </a> --}}
                         </div>
                     </div>
 
@@ -741,7 +741,7 @@
                                     <div class="flex items-start gap-3">
                                         <i class="fas fa-lightbulb text-indigo-600 text-xl mt-1 flex-shrink-0"></i>
                                         <div class="text-sm text-indigo-900">
-                                            <p class="font-extrabold text-base mb-2 text-indigo-700">💡 Lưu ý quan trọng về Điểm Rèn Luyện:</p>
+                                            <p class="font-extrabold text-base mb-2 text-indigo-700">Lưu ý quan trọng về Điểm Rèn Luyện:</p>
                                             <ul class="list-disc list-inside space-y-1.5 text-indigo-800">
                                                 <li>**Điểm cơ bản (Base Score)** có thể bị trừ nếu sinh viên vi phạm quy chế hoặc có kết quả học tập không đạt yêu cầu theo quy định của trường.</li>
                                                 <li>**Điểm cộng (Bonus)** là điểm tích lũy từ các hoạt động ngoại khóa, nghiên cứu khoa học, và giải thưởng được cấp có thẩm quyền công nhận.</li>

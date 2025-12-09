@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
 class AdminNewsController extends Controller
 {
@@ -241,16 +242,11 @@ class AdminNewsController extends Controller
                 $file = $request->file('hinhanh');
                 $filename = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
                 
-                // Tạo thư mục nếu chưa tồn tại
-                $uploadPath = public_path('uploads/news');
-                if (!file_exists($uploadPath)) {
-                    mkdir($uploadPath, 0777, true);
-                    Log::info('Created directory: ' . $uploadPath);
-                }
+                // Lưu vào storage/app/public/news
+                $path = $file->storeAs('news', $filename, 'public');
+                $hinhanhPath = 'news/' . $filename;
                 
-                $file->move($uploadPath, $filename);
-                $hinhanhPath = 'uploads/news/' . $filename;
-                Log::info('Image uploaded: ' . $hinhanhPath);
+                Log::info('Image uploaded to storage: ' . $path);
             }
 
             // Insert tin tức
@@ -335,15 +331,17 @@ class AdminNewsController extends Controller
 
             // Upload ảnh mới nếu có
             if ($request->hasFile('hinhanh')) {
-                // Xóa ảnh cũ
-                if ($news->hinhanh && file_exists(public_path($news->hinhanh))) {
-                    unlink(public_path($news->hinhanh));
+                // Xóa ảnh cũ từ storage
+                if ($news->hinhanh && Storage::disk('public')->exists('news/' . $news->hinhanh)) {
+                    Storage::disk('public')->delete('news/' . $news->hinhanh);
                 }
 
                 $file = $request->file('hinhanh');
                 $filename = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
-                $file->move(public_path('uploads/news'), $filename);
-                $updateData['hinhanh'] = 'uploads/news/' . $filename;
+                
+                // Lưu vào storage/app/public/news
+                $file->storeAs('news', $filename, 'public');
+                $updateData['hinhanh'] = 'news/' . $filename;
             }
 
             DB::table('tintuc')->where('matintuc', $id)->update($updateData);
@@ -377,8 +375,8 @@ class AdminNewsController extends Controller
             }
 
             // Xóa ảnh nếu có
-            if ($news->hinhanh && file_exists(public_path($news->hinhanh))) {
-                unlink(public_path($news->hinhanh));
+            if ($news->hinhanh && Storage::disk('public')->exists($news->hinhanh)) {
+                Storage::disk('public')->delete($news->hinhanh);
             }
 
             DB::table('tintuc')->where('matintuc', $id)->delete();
@@ -417,8 +415,8 @@ class AdminNewsController extends Controller
             // Xóa ảnh của các tin tức
             $news = DB::table('tintuc')->whereIn('matintuc', $request->ids)->get();
             foreach ($news as $item) {
-                if ($item->hinhanh && file_exists(public_path($item->hinhanh))) {
-                    unlink(public_path($item->hinhanh));
+                if ($item->hinhanh && Storage::disk('public')->exists($item->hinhanh)) {
+                    Storage::disk('public')->delete($item->hinhanh);
                 }
             }
 

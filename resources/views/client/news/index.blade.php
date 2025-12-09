@@ -109,7 +109,7 @@
         @foreach ($news as $item)
         <article class="bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md hover:-translate-y-1 transition overflow-hidden group">
             <div class="relative overflow-hidden">
-                <img src="{{ asset('images/home/banner1.png') }}" alt="{{ $item->tieude }}"
+                <img src="{{ $item->hinhanh ? asset('storage/' . $item->hinhanh) : asset('images/home/banner1.png') }}" alt="{{ $item->tieude }}"
                     class="w-full h-52 object-cover group-hover:scale-105 transition-transform duration-500">
                 <div class="absolute top-4 left-4 bg-{{ $item->category_color }}-600 text-white text-xs font-semibold px-3 py-1 rounded-full shadow">
                     {{ $item->category }}
@@ -138,12 +138,12 @@
                         <i class="far fa-calendar text-blue-500"></i>
                         <span>{{ $item->date }}</span>
                     </div>
-                    @if($item->tacgia)
+                    {{-- @if($item->tacgia)
                     <div class="flex items-center gap-2">
                         <i class="far fa-user text-gray-400"></i>
                         <span class="line-clamp-1">{{ $item->tacgia }}</span>
                     </div>
-                    @endif
+                    @endif --}}
                 </div>
 
                 {{-- Cuộc thi liên quan --}}

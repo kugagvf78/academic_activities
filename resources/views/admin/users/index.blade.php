@@ -655,27 +655,32 @@
                         <div>
                             {{-- Avatar & Basic Info --}}
                             <div class="flex items-center gap-4 mb-6 p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl">
-                                <div class="w-20 h-20 bg-gradient-to-br from-blue-600 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-3xl shadow-lg">
-                                    <span x-text="(selectedUser.hoten || selectedUser.HoTen || '?').charAt(0).toUpperCase()"></span>
-                                </div>
+
+                                <div class="w-20 h-20 rounded-full overflow-hidden shadow-lg"> <img :src="selectedUser.avatar_url" class="w-full h-full object-cover" alt="Avatar"> </div>
+
+
                                 <div class="flex-1">
-                                    <h4 class="text-2xl font-bold text-slate-800" x-text="selectedUser.hoten || selectedUser.HoTen || 'N/A'"></h4>
-                                    <p class="text-slate-600" x-text="selectedUser.email || selectedUser.Email || 'N/A'"></p>
+                                    <h4 class="text-2xl font-bold text-slate-800"
+                                        x-text="selectedUser.hoten || selectedUser.HoTen || 'N/A'"></h4>
+
+                                    <p class="text-slate-600"
+                                        x-text="selectedUser.email || selectedUser.Email || 'N/A'"></p>
+
                                     <div class="flex items-center gap-2 mt-2">
                                         <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold"
                                             :class="{
                                                 'bg-purple-100 text-purple-700': (selectedUser.vaitro || selectedUser.VaiTro) === 'Admin',
                                                 'bg-blue-100 text-blue-700': (selectedUser.vaitro || selectedUser.VaiTro) === 'GiangVien',
                                                 'bg-green-100 text-green-700': (selectedUser.vaitro || selectedUser.VaiTro) === 'SinhVien'
-                                            }">
-                                            <span x-text="(selectedUser.vaitro || selectedUser.VaiTro) === 'GiangVien' ? 'Giảng viên' : ((selectedUser.vaitro || selectedUser.VaiTro) === 'SinhVien' ? 'Sinh viên' : (selectedUser.vaitro || selectedUser.VaiTro))"></span>
-                                        </span>
+                                            }"
+                                            x-text="(selectedUser.vaitro || selectedUser.VaiTro)"></span>
+
                                         <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold"
-                                            :class="(selectedUser.trangthai || selectedUser.TrangThai) === 'Active' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'">
-                                            <span x-text="(selectedUser.trangthai || selectedUser.TrangThai) === 'Active' ? 'Hoạt động' : 'Không hoạt động'"></span>
-                                        </span>
+                                            :class="(selectedUser.trangthai || selectedUser.TrangThai) === 'Active' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'"
+                                            x-text="(selectedUser.trangthai || selectedUser.TrangThai) === 'Active' ? 'Hoạt động' : 'Không hoạt động'"></span>
                                     </div>
                                 </div>
+
                             </div>
 
                             {{-- User Details --}}
@@ -951,6 +956,7 @@ function userManagement() {
             hoten: '',
             email: '',
             sodienthoai: '',
+            anhdaidien: null,
             vaitro: '',
             trangthai: 'Active',
             // Giảng viên
@@ -1081,6 +1087,12 @@ function userManagement() {
                 const data = await response.json();
                 
                 if (data.success) {
+                    data.data.data = data.data.data.map(u => ({
+                    ...u,
+                    avatar_url: u.avatar_url 
+                        ? u.avatar_url 
+                        : '/images/users/avt.jpg'
+                    }));
                     this.users = data.data;
                 }
             } catch (error) {
@@ -1246,7 +1258,12 @@ function userManagement() {
                 const data = await response.json();
                 
                 if (data.success && data.data) {
-                    this.selectedUser = data.data;
+                    this.selectedUser = {
+                        ...data.data,
+                        avatar_url: data.data.avatar_url 
+                            ? data.data.avatar_url 
+                            : '/images/users/avt.jpg'
+                    };
                 } else {
                     throw new Error(data.message || 'Không thể tải thông tin');
                 }

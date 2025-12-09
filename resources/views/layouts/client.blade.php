@@ -192,12 +192,15 @@
                                 hover:shadow-md transition-all duration-200 group">
                             
                             {{-- Avatar --}}
-                            <div class="user-avatar w-11 h-11 bg-gradient-to-tr from-blue-700 to-cyan-500 
-                                        text-white rounded-full flex items-center justify-center 
-                                        font-semibold uppercase shadow-md ring-2 ring-white">
-                                {{ strtoupper(substr($user->ho_ten ?? $user->ten_dang_nhap, 0, 1)) }}
-                            </div>
-                            
+                            @if($user->anhdaidien && Storage::disk('public')->exists($user->anhdaidien))
+                                <img src="{{ asset('storage/' . $user->anhdaidien) }}"
+                                    class="w-11 h-11 rounded-full object-cover shadow-md ring-2 ring-white">
+                            @else
+                                <img src="{{ asset('images/users/avt.jpg') }}"
+                                    class="w-11 h-11 rounded-full object-cover shadow-md ring-2 ring-white">
+                            @endif
+
+                         
                             {{-- Tên + Icon --}}
                             <div class="flex items-center gap-3">
                                 <div class="text-left">

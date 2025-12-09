@@ -28,6 +28,7 @@ class NguoiDung extends Authenticatable implements JWTSubject
         'hoten',
         'email',
         'sodienthoai',
+        'anhdaidien',
         'vaitro',
         'trangthai',
     ];

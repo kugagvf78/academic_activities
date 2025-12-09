@@ -85,19 +85,24 @@ class GiangVienProfileController extends Controller
         $request->validate([
             'Avatar' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048',
         ]);
-        
+
         $user = jwt_user();
         $nguoidung = NguoiDung::where('manguoidung', $user->manguoidung)->first();
-        
-        if ($nguoidung->avatar && Storage::disk('public')->exists($nguoidung->avatar)) {
-            Storage::disk('public')->delete($nguoidung->avatar);
+
+        // Xóa avatar cũ nếu tồn tại
+        if ($nguoidung->anhdaidien && Storage::disk('public')->exists($nguoidung->anhdaidien)) {
+            Storage::disk('public')->delete($nguoidung->anhdaidien);
         }
-        
+
+        // Lưu avatar mới
         $path = $request->file('Avatar')->store('avatars', 'public');
-        $nguoidung->update(['avatar' => $path]);
-        
+
+        // Cập nhật database
+        $nguoidung->update(['anhdaidien' => $path]);
+
         return back()->with('success', 'Cập nhật avatar thành công!');
     }
+
     
     // public function danhSachKeHoach()
     // {

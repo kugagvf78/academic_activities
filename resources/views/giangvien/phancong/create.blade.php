@@ -146,8 +146,7 @@
                             <option value="Xây dựng đề tài và tiêu chí đánh giá" {{ old('tencongviec') == 'Xây dựng đề tài và tiêu chí đánh giá' ? 'selected' : '' }}>Xây dựng đề tài và tiêu chí đánh giá</option>
                             <option value="Chuẩn bị kế hoạch mac" {{ old('tencongviec') == 'Chuẩn bị kế hoạch mac' ? 'selected' : '' }}>Chuẩn bị kế hoạch mac</option>
                             <option value="Soạn đề thi" {{ old('tencongviec') == 'Soạn đề thi' ? 'selected' : '' }}>Soạn đề thi</option>
-                            <option value="Chấm điểm vòng sơ khảo" {{ old('tencongviec') == 'Chấm điểm vòng sơ khảo' ? 'selected' : '' }}>Chấm điểm vòng sơ khảo</option>
-                            <option value="Chấm điểm vòng chung kết" {{ old('tencongviec') == 'Chấm điểm vòng chung kết' ? 'selected' : '' }}>Chấm điểm vòng chung kết</option>
+                            <option value="Chấm điểm" {{ old('tencongviec') == 'Chấm điểm' ? 'selected' : '' }}>Chấm điểm</option>
                             <option value="Hỗ trợ kỹ thuật" {{ old('tencongviec') == 'Hỗ trợ kỹ thuật' ? 'selected' : '' }}>Hỗ trợ kỹ thuật</option>
                             <option value="Đánh giá dự án" {{ old('tencongviec') == 'Đánh giá dự án' ? 'selected' : '' }}>Đánh giá dự án</option>
                             <option value="Xây dựng nội dung" {{ old('tencongviec') == 'Xây dựng nội dung' ? 'selected' : '' }}>Xây dựng nội dung</option>

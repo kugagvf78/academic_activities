@@ -92,11 +92,11 @@ class ProfileApiController extends Controller
                     'tencuocthi' => $reg->tencuocthi,
                     'tenhoatdong' => $reg->tenhoatdong,
                     'loaihoatdong' => $reg->loaihoatdong,
-                    'thoigianbatdau' => $start->toISOString(),
-                    'thoigianketthuc' => $end->toISOString(),
+                    'thoigianbatdau' => $start->setTimezone('Asia/Ho_Chi_Minh')->format('Y-m-d\TH:i:sP'),
+                    'thoigianketthuc' => $end->setTimezone('Asia/Ho_Chi_Minh')->format('Y-m-d\TH:i:sP'),
                     'diadiem' => $reg->diadiem,
                     'diemrenluyen' => $reg->diemrenluyen,
-                    'ngaydangky' => Carbon::parse($reg->ngaydangky)->toISOString(),
+                    'ngaydangky' => Carbon::parse($reg->ngaydangky)->setTimezone('Asia/Ho_Chi_Minh')->format('Y-m-d\TH:i:sP'),
                     'trangthai' => $reg->trangthai,
                     'diemdanhqr' => $reg->diemdanhqr,
                     'thoigiandiemdanh' => $reg->thoigiandiemdanh ? Carbon::parse($reg->thoigiandiemdanh)->toISOString() : null,
@@ -212,7 +212,7 @@ class ProfileApiController extends Controller
                     'type' => 'Dự thi cá nhân',
                     'title' => $dk->tencuocthi,
                     'subtitle' => null,
-                    'date' => Carbon::parse($dk->ngaydangky)->toISOString(),
+                    'date' => Carbon::parse($dk->ngaydangky)->setTimezone('Asia/Ho_Chi_Minh')->format('Y-m-d\TH:i:sP'),
                     'role' => 'Thí sinh',
                     'status' => $dk->trangthai,
                     'icon' => 'user-graduate',
@@ -252,7 +252,7 @@ class ProfileApiController extends Controller
                     'type' => 'Hoạt động hỗ trợ',
                     'title' => $hd->tencuocthi,
                     'subtitle' => $hd->tenhoatdong,
-                    'date' => Carbon::parse($hd->ngaydangky)->toISOString(),
+                    'date' => Carbon::parse($hd->ngaydangky)->setTimezone('Asia/Ho_Chi_Minh')->format('Y-m-d\TH:i:sP'),
                     'role' => $loaiMap[$hd->loaihoatdong] ?? $hd->loaihoatdong,
                     'status' => $hd->trangthai,
                     'icon' => 'hands-helping',
@@ -521,10 +521,10 @@ class ProfileApiController extends Controller
                     'id' => $reg->id,
                     'idcuocthi' => $reg->macuocthi,
                     'tencuocthi' => $reg->tencuocthi,
-                    'thoigianbatdau' => $start->toISOString(),
-                    'thoigianketthuc' => $end->toISOString(),
+                    'thoigianbatdau' => $start->setTimezone('Asia/Ho_Chi_Minh')->format('Y-m-d\TH:i:sP'),
+                    'thoigianketthuc' => $end->setTimezone('Asia/Ho_Chi_Minh')->format('Y-m-d\TH:i:sP'),
                     'trangthaicuocthi' => $reg->trangthaicuocthi,
-                    'ngaydangky' => Carbon::parse($reg->ngaydangky)->toISOString(),
+                    'ngaydangky' => Carbon::parse($reg->ngaydangky)->setTimezone('Asia/Ho_Chi_Minh')->format('Y-m-d\TH:i:sP'),
                     'trangthai' => $reg->trangthai,
                     'loaidangky' => $reg->loaidangky,
                     'tendoithi' => $reg->tendoithi,
@@ -716,86 +716,115 @@ class ProfileApiController extends Controller
             return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
         }
 
+        $sinhVien = $user->sinhVien;
+        if (!$sinhVien) {
+            return response()->json(['success' => false, 'message' => 'Không tìm thấy thông tin sinh viên'], 404);
+        }
+
         try {
             DB::beginTransaction();
 
-            // Kiểm tra cá nhân
-            $caNhan = DB::table('dangkycanhan as dkcn')
+            // ===== HỦY ĐĂNG KÝ CÁ NHÂN =====
+            $dangKyCaNhan = DB::table('dangkycanhan as dkcn')
                 ->join('cuocthi as ct', 'dkcn.macuocthi', '=', 'ct.macuocthi')
                 ->where('dkcn.madangkycanhan', $id)
-                ->where('dkcn.masinhvien', $user->sinhVien->masinhvien)
-                ->select('dkcn.*', 'ct.thoigianbatdau')
+                ->where('dkcn.masinhvien', $sinhVien->masinhvien)
+                ->select('dkcn.*', 'ct.thoigianbatdau', 'ct.tencuocthi')
                 ->first();
 
-            if ($caNhan) {
-                $start = Carbon::parse($caNhan->thoigianbatdau);
+            if ($dangKyCaNhan) {
 
-                if ($start->lte(now())) {
+                $startTime = Carbon::parse($dangKyCaNhan->thoigianbatdau);
+
+                // Không thể hủy khi cuộc thi đã bắt đầu
+                if ($startTime->lt(now())) {
                     DB::rollBack();
-                    return response()->json(['success' => false, 'message' => 'Cuộc thi đã bắt đầu'], 400);
+                    return response()->json(['success' => false, 'message' => 'Cuộc thi đã bắt đầu, không thể hủy'], 400);
                 }
 
-                if (now()->diffInHours($start, false) < 24) {
-                    DB::rollBack();
-                    return response()->json(['success' => false, 'message' => 'Không thể hủy trong vòng 24h'], 400);
-                }
+                DB::table('dangkycanhan')
+                    ->where('madangkycanhan', $id)
+                    ->delete();
 
-                DB::table('dangkycanhan')->where('madangkycanhan', $id)->delete();
                 DB::commit();
-
-                return response()->json(['success' => true, 'message' => 'Hủy đăng ký thành công']);
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Hủy đăng ký cá nhân thành công'
+                ]);
             }
 
-            // Kiểm tra đội nhóm
-            $doiNhom = DB::table('dangkydoithi as dkdt')
+            // ===== HỦY ĐĂNG KÝ ĐỘI =====
+            $dangKyDoi = DB::table('dangkydoithi as dkdt')
                 ->join('doithi as dt', 'dkdt.madoithi', '=', 'dt.madoithi')
-                ->join('cuocthi as ct', 'dt.macuocthi', '=', 'ct.macuocthi')
-                ->join('thanhviendoithi as tv', 'dt.madoithi', '=', 'tv.madoithi')
+                ->join('cuocthi as ct', 'dkdt.macuocthi', '=', 'ct.macuocthi')
                 ->where('dkdt.madangkydoi', $id)
-                ->where('tv.masinhvien', $user->sinhVien->masinhvien)
-                ->select('dkdt.*', 'ct.thoigianbatdau', 'tv.vaitro', 'dt.madoithi')
+                ->select(
+                    'dkdt.*',
+                    'dt.madoithi',
+                    'dt.tendoithi',
+                    'dt.matruongdoi',
+                    'ct.thoigianbatdau',
+                    'ct.tencuocthi'
+                )
                 ->first();
 
-            if ($doiNhom) {
-                if ($doiNhom->vaitro !== 'TruongNhom') {
+            if ($dangKyDoi) {
+
+                // Chỉ trưởng đội mới được hủy
+                if ($dangKyDoi->matruongdoi !== $sinhVien->masinhvien) {
                     DB::rollBack();
-                    return response()->json(['success' => false, 'message' => 'Chỉ trưởng nhóm mới có thể hủy'], 403);
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Chỉ trưởng đội mới có quyền hủy đăng ký đội thi'
+                    ], 403);
                 }
 
-                $start = Carbon::parse($doiNhom->thoigianbatdau);
+                $startTime = Carbon::parse($dangKyDoi->thoigianbatdau);
 
-                if ($start->lte(now())) {
+                if ($startTime->lt(now())) {
                     DB::rollBack();
-                    return response()->json(['success' => false, 'message' => 'Cuộc thi đã bắt đầu'], 400);
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Cuộc thi đã bắt đầu, không thể hủy'
+                    ], 400);
                 }
 
-                if (now()->diffInHours($start, false) < 24) {
-                    DB::rollBack();
-                    return response()->json(['success' => false, 'message' => 'Không thể hủy trong vòng 24h'], 400);
-                }
+                // Xóa danh sách thành viên
+                DB::table('thanhviendoithi')
+                    ->where('madoithi', $dangKyDoi->madoithi)
+                    ->delete();
 
                 // Xóa đăng ký đội
-                DB::table('dangkydoithi')->where('madangkydoi', $id)->delete();
-
-                // Xóa thành viên
-                DB::table('thanhviendoithi')->where('madoithi', $doiNhom->madoithi)->delete();
+                DB::table('dangkydoithi')
+                    ->where('madangkydoi', $id)
+                    ->delete();
 
                 // Xóa đội
-                DB::table('doithi')->where('madoithi', $doiNhom->madoithi)->delete();
+                DB::table('doithi')
+                    ->where('madoithi', $dangKyDoi->madoithi)
+                    ->delete();
 
                 DB::commit();
 
-                return response()->json(['success' => true, 'message' => 'Hủy đăng ký thành công']);
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Hủy đăng ký đội "' . $dangKyDoi->tendoithi . '" thành công'
+                ]);
             }
 
             DB::rollBack();
-            return response()->json(['success' => false, 'message' => 'Không tìm thấy đăng ký'], 404);
+            return response()->json(['success' => false, 'message' => 'Không tìm thấy đăng ký phù hợp'], 404);
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Cancel competition error: ' . $e->getMessage());
-            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Lỗi server: ' . $e->getMessage()
+            ], 500);
         }
     }
+
 
     /**
      * API: Show form nộp bài thi

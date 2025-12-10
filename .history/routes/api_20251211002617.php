@@ -41,7 +41,7 @@ Route::prefix('events')->group(function () {
     Route::get('/statistics', [EventApiController::class, 'statistics']);
     Route::get('/{macuocthi}', [EventApiController::class, 'show']);
 
-    Route::middleware('auth:api')->group(function () {
+    Route::middleware(['jwt.auth'])->group(function () {
 
         Route::post('/register', [EventApiController::class, 'register']);
         Route::post('/support', [EventApiController::class, 'support']);

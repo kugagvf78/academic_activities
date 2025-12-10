@@ -30,8 +30,17 @@ class ProfileApiController extends Controller
         if ($user->vaitro === 'SinhVien') {
 
             $profile = $user->sinhVien()
-                ->with(['lop.giangvienchunhiem.nguoiDung'])
+                ->with([
+                    'lop.giangvienchunhiem.nguoiDung'
+                ])
                 ->first();
+
+            $danhSachLop = DB::table('lop')
+                ->leftJoin('giangvien', 'lop.magiangvienchunhiem', '=', 'giangvien.magiangvien')
+                ->leftJoin('nguoidung', 'giangvien.manguoidung', '=', 'nguoidung.manguoidung')
+                ->select('lop.*', 'giangvien.magiangvien', 'nguoidung.hoten')
+                ->orderBy('lop.tenlop')
+                ->get();
 
             $activities = $this->getSinhVienActivities($profile);
             $certificates = $this->getSinhVienCertificates($profile);
@@ -88,15 +97,14 @@ class ProfileApiController extends Controller
 
                 return [
                     'madangkyhoatdong' => $reg->madangkyhoatdong,
-                    'macuocthi' => $reg->macuocthi,
                     'tencuocthi' => $reg->tencuocthi,
                     'tenhoatdong' => $reg->tenhoatdong,
                     'loaihoatdong' => $reg->loaihoatdong,
-                    'thoigianbatdau' => $start->setTimezone('Asia/Ho_Chi_Minh')->format('Y-m-d\TH:i:sP'),
-                    'thoigianketthuc' => $end->setTimezone('Asia/Ho_Chi_Minh')->format('Y-m-d\TH:i:sP'),
+                    'thoigianbatdau' => $start->toISOString(),
+                    'thoigianketthuc' => $end->toISOString(),
                     'diadiem' => $reg->diadiem,
                     'diemrenluyen' => $reg->diemrenluyen,
-                    'ngaydangky' => Carbon::parse($reg->ngaydangky)->setTimezone('Asia/Ho_Chi_Minh')->format('Y-m-d\TH:i:sP'),
+                    'ngaydangky' => Carbon::parse($reg->ngaydangky)->toISOString(),
                     'trangthai' => $reg->trangthai,
                     'diemdanhqr' => $reg->diemdanhqr,
                     'thoigiandiemdanh' => $reg->thoigiandiemdanh ? Carbon::parse($reg->thoigiandiemdanh)->toISOString() : null,
@@ -114,6 +122,7 @@ class ProfileApiController extends Controller
                     'profile' => $profile,
                     'activities' => $activities,
                     'certificates' => $certificates,
+                    'danhSachLop' => $danhSachLop,
                     'diemRenLuyen' => $diemRenLuyen,
                     'registrations' => $registrations,
                     'competitionRegistrations' => $competitionRegistrations
@@ -134,7 +143,8 @@ class ProfileApiController extends Controller
                     'profile' => $profile,
                     'activities' => [],
                     'certificates' => [],
-                    'diemRenLuyen' => null,
+                    'danhSachLop' => [],
+                    'diemRenLuyen' => [],
                     'registrations' => [],
                     'competitionRegistrations' => []
                 ]
@@ -154,177 +164,66 @@ class ProfileApiController extends Controller
     /**
      * Lấy hoạt động học thuật của sinh viên
      */
-    private function getSinhVienActivities($sinhVien)
+    private function getSinhVienActivities($profile)
     {
-        if (!$sinhVien) return collect([]);
+        if (!$profile) return [];
 
-        $activities = collect([]);
-
-        try {
-
-            // 1️⃣ Dự thi theo đội
-            $doiThis = DB::table('thanhviendoithi as tv')
-                ->join('doithi as dt', 'tv.madoithi', '=', 'dt.madoithi')
-                ->join('cuocthi as ct', 'dt.macuocthi', '=', 'ct.macuocthi')
-                ->where('tv.masinhvien', $sinhVien->masinhvien)
-                ->select(
-                    'ct.macuocthi',
-                    'ct.tencuocthi',
-                    'ct.thoigianbatdau',
-                    'ct.thoigianketthuc',
-                    'dt.tendoithi',
-                    'tv.vaitro',
-                    'tv.ngaythamgia',
-                    'dt.trangthai'
-                )
-                ->get();
-
-            foreach ($doiThis as $doi) {
-                $activities->push([
-                    'type' => 'Dự thi theo đội',
-                    'title' => $doi->tencuocthi,
-                    'subtitle' => 'Đội: ' . $doi->tendoithi,
-                    'date' => Carbon::parse($doi->ngaythamgia)->toISOString(),
-                    'role' => $doi->vaitro === 'TruongDoi' ? 'Trưởng đội' : 'Thành viên',
-                    'status' => $doi->trangthai,
-                    'icon' => 'users',
-                    'color' => 'blue',
-
-                    // 🔥 THÊM id cuộc thi
-                    'idcuocthi' => $doi->macuocthi,
-                ]);
-            }
-
-            // 2️⃣ Dự thi cá nhân
-            $dangKyCaNhan = DB::table('dangkycanhan as dkcn')
-                ->join('cuocthi as ct', 'dkcn.macuocthi', '=', 'ct.macuocthi')
-                ->where('dkcn.masinhvien', $sinhVien->masinhvien)
-                ->select(
-                    'ct.macuocthi',
-                    'ct.tencuocthi',
-                    'dkcn.ngaydangky',
-                    'dkcn.trangthai'
-                )
-                ->get();
-
-            foreach ($dangKyCaNhan as $dk) {
-                $activities->push([
-                    'type' => 'Dự thi cá nhân',
-                    'title' => $dk->tencuocthi,
-                    'subtitle' => null,
-                    'date' => Carbon::parse($dk->ngaydangky)->setTimezone('Asia/Ho_Chi_Minh')->format('Y-m-d\TH:i:sP'),
-                    'role' => 'Thí sinh',
-                    'status' => $dk->trangthai,
-                    'icon' => 'user-graduate',
-                    'color' => 'green',
-
-                    // 🔥 THÊM id cuộc thi
-                    'idcuocthi' => $dk->macuocthi,
-                ]);
-            }
-
-            // 3️⃣ Hoạt động hỗ trợ / Cổ vũ
-            $hoatDongHoTro = DB::table('dangkyhoatdong as dkhd')
-                ->join('hoatdonghotro as hd', 'dkhd.mahoatdong', '=', 'hd.mahoatdong')
-                ->join('cuocthi as ct', 'hd.macuocthi', '=', 'ct.macuocthi')
-                ->where('dkhd.masinhvien', $sinhVien->masinhvien)
-                ->select(
-                    'ct.macuocthi',
-                    'ct.tencuocthi',
-                    'hd.tenhoatdong',
-                    'hd.loaihoatdong',
-                    'dkhd.ngaydangky',
-                    'dkhd.trangthai',
-                    'dkhd.diemdanhqr',
-                    'dkhd.thoigiandiemdanh'
-                )
-                ->get();
-
-            foreach ($hoatDongHoTro as $hd) {
-
-                $loaiMap = [
-                    'HoTroKyThuat' => 'Hỗ trợ kỹ thuật',
-                    'CoVu' => 'Cổ vũ',
-                    'ToChuc' => 'Tổ chức',
-                ];
-
-                $activities->push([
-                    'type' => 'Hoạt động hỗ trợ',
-                    'title' => $hd->tencuocthi,
-                    'subtitle' => $hd->tenhoatdong,
-                    'date' => Carbon::parse($hd->ngaydangky)->setTimezone('Asia/Ho_Chi_Minh')->format('Y-m-d\TH:i:sP'),
-                    'role' => $loaiMap[$hd->loaihoatdong] ?? $hd->loaihoatdong,
-                    'status' => $hd->trangthai,
-                    'icon' => 'hands-helping',
-                    'color' => 'purple',
-                    'attendance' => $hd->diemdanhqr ? 'Đã điểm danh' : 'Chưa điểm danh',
-                    'attendanceTime' => $hd->thoigiandiemdanh
-                        ? Carbon::parse($hd->thoigiandiemdanh)->toISOString()
-                        : null,
-
-                    // 🔥 THÊM id cuộc thi
-                    'idcuocthi' => $hd->macuocthi,
-                ]);
-            }
-
-            return $activities->sortByDesc('date')->values();
-        } catch (\Exception $e) {
-            Log::error("Error fetching activities: " . $e->getMessage());
-            return collect([]);
-        }
+        return DB::table('dangkyhoatdong as dkhd')
+            ->join('hoatdonghotro as hd', 'dkhd.mahoatdong', '=', 'hd.mahoatdong')
+            ->join('cuocthi as ct', 'hd.macuocthi', '=', 'ct.macuocthi')
+            ->where('dkhd.masinhvien', $profile->masinhvien)
+            ->select(
+                'dkhd.*',
+                'hd.tenhoatdong',
+                'hd.loaihoatdong',
+                'hd.thoigianbatdau',
+                'hd.thoigianketthuc',
+                'hd.diadiem',
+                'hd.diemrenluyen',
+                'ct.tencuocthi'
+            )
+            ->orderBy('hd.thoigianbatdau', 'desc')
+            ->get();
     }
 
-
-
     /**
-     * Lấy chứng nhận (đạt giải) - Dùng bảng DatGiai
+     * Lấy chứng nhận (đạt giải)
      */
     private function getSinhVienCertificates($profile)
     {
         if (!$profile) return [];
 
-        try {
-            $results = DB::table('datgiai as dg')
-                ->join('cuocthi as ct', 'dg.macuocthi', '=', 'ct.macuocthi')
-                ->leftJoin('dangkycanhan as dkcn', function ($join) {
-                    $join->on('dg.madangkycanhan', '=', 'dkcn.madangkycanhan')
-                        ->where('dg.loaidangky', '=', 'CaNhan');
-                })
-                ->leftJoin('dangkydoithi as dkdt', function ($join) {
-                    $join->on('dg.madangkydoi', '=', 'dkdt.madangkydoi')
-                        ->where('dg.loaidangky', '=', 'DoiNhom');
-                })
-                ->leftJoin('doithi as doi', 'dkdt.madoithi', '=', 'doi.madoithi')
-                ->where(function ($query) use ($profile) {
-                    $query->where('dkcn.masinhvien', $profile->masinhvien)
-                        ->orWhereExists(function ($q) use ($profile) {
-                            $q->select(DB::raw(1))
-                                ->from('thanhviendoithi')
-                                ->whereColumn('thanhviendoithi.madoithi', 'doi.madoithi')
-                                ->where('thanhviendoithi.masinhvien', $profile->masinhvien);
-                        });
-                })
-                ->select(
-                    'dg.madatgiai',
-                    'dg.macuocthi',
-                    'dg.madangkycanhan',
-                    'dg.madangkydoi',
-                    'dg.loaidangky',
-                    'dg.tengiai',
-                    'dg.giaithuong',
-                    'dg.diemrenluyen',
-                    'dg.ngaytrao',
-                    'ct.tencuocthi',
-                    DB::raw('CASE WHEN dg.loaidangky = \'CaNhan\' THEN NULL ELSE doi.tendoithi END as tendoithi')
-                )
-                ->orderBy('dg.ngaytrao', 'desc')
-                ->get();
-
-            return $results;
-        } catch (\Exception $e) {
-            Log::error('Error fetching certificates: ' . $e->getMessage());
-            return [];
-        }
+        return DB::table('datgiai as dg')
+            ->join('cuocthi as ct', 'dg.macuocthi', '=', 'ct.macuocthi')
+            ->join('giai as g', 'dg.magiai', '=', 'g.magiai')
+            ->leftJoin('dangkycanhan as dkcn', function ($join) {
+                $join->on('dg.madangky', '=', 'dkcn.madangkycanhan')
+                    ->where('dg.loaidangky', '=', 'CaNhan');
+            })
+            ->leftJoin('dangkydoithi as dkdt', function ($join) {
+                $join->on('dg.madangky', '=', 'dkdt.madangkydoi')
+                    ->where('dg.loaidangky', '=', 'DoiNhom');
+            })
+            ->leftJoin('doithi as doi', 'dkdt.madoithi', '=', 'doi.madoithi')
+            ->where(function ($query) use ($profile) {
+                $query->where('dkcn.masinhvien', $profile->masinhvien)
+                    ->orWhereExists(function ($q) use ($profile) {
+                        $q->select(DB::raw(1))
+                            ->from('thanhviendoithi')
+                            ->whereColumn('thanhviendoithi.madoithi', 'doi.madoithi')
+                            ->where('thanhviendoithi.masinhvien', $profile->masinhvien);
+                    });
+            })
+            ->select(
+                'dg.*',
+                'ct.tencuocthi',
+                'g.tengiai',
+                'g.loaigiai',
+                'dg.loaidangky',
+                DB::raw('CASE WHEN dg.loaidangky = "CaNhan" THEN NULL ELSE doi.tendoithi END as tendoithi')
+            )
+            ->orderBy('dg.ngaydat', 'desc')
+            ->get();
     }
 
     /**
@@ -367,8 +266,6 @@ class ProfileApiController extends Controller
                     'diem' => $item->diem,
                     'ngay' => $item->ngaycong ? Carbon::parse($item->ngaycong)->toISOString() : null,
                     'mota' => $item->mota ?? '',
-                    'color' => $this->getColorByLoai($item->loaihoatdong),
-                    'icon' => $this->getIconByLoai($item->loaihoatdong),
                 ];
             })->toArray();
 
@@ -385,47 +282,6 @@ class ProfileApiController extends Controller
         }
     }
 
-    private function formatTitleDiemRL($item)
-    {
-        if ($item->loaihoatdong === 'DatGiai') {
-            return 'Đạt giải';
-        } elseif (in_array($item->loaihoatdong, ['CoVu', 'ToChuc', 'HoTroKyThuat'])) {
-            return 'Hoạt động hỗ trợ';
-        }
-        return $item->mota ?? 'Hoạt động khác';
-    }
-
-    private function getColorByLoai($loai)
-    {
-        switch ($loai) {
-            case 'DatGiai':
-                return 'gold';
-            case 'CoVu':
-                return 'blue';
-            case 'ToChuc':
-                return 'green';
-            case 'HoTroKyThuat':
-                return 'purple';
-            default:
-                return 'gray';
-        }
-    }
-
-    private function getIconByLoai($loai)
-    {
-        switch ($loai) {
-            case 'DatGiai':
-                return 'trophy';
-            case 'CoVu':
-                return 'flag';
-            case 'ToChuc':
-                return 'users';
-            case 'HoTroKyThuat':
-                return 'tools';
-            default:
-                return 'star';
-        }
-    }
 
     /**
      * Lấy đăng ký dự thi
@@ -435,6 +291,8 @@ class ProfileApiController extends Controller
         if (!$sinhVien) return collect([]);
 
         try {
+            $registrations = collect([]);
+
             // 1. Đăng ký cá nhân
             $caNhan = DB::table('dangkycanhan as dkcn')
                 ->join('cuocthi as ct', 'dkcn.macuocthi', '=', 'ct.macuocthi')
@@ -445,7 +303,6 @@ class ProfileApiController extends Controller
                 ->where('dkcn.masinhvien', $sinhVien->masinhvien)
                 ->select(
                     'dkcn.madangkycanhan as id',
-                    'ct.macuocthi',
                     'ct.tencuocthi',
                     'ct.thoigianbatdau',
                     'ct.thoigianketthuc',
@@ -473,7 +330,6 @@ class ProfileApiController extends Controller
                 ->where('tv.masinhvien', $sinhVien->masinhvien)
                 ->select(
                     'dkdt.madangkydoi as id',
-                    'ct.macuocthi',
                     'ct.tencuocthi',
                     'ct.thoigianbatdau',
                     'ct.thoigianketthuc',
@@ -495,6 +351,7 @@ class ProfileApiController extends Controller
                 $start = Carbon::parse($reg->thoigianbatdau);
                 $end = Carbon::parse($reg->thoigianketthuc);
 
+                // Xác định trạng thái cuộc thi
                 if ($end->lt($now)) {
                     $status = 'ended';
                     $statusLabel = 'Đã kết thúc';
@@ -509,22 +366,24 @@ class ProfileApiController extends Controller
                     $statusColor = 'blue';
                 }
 
+                // Kiểm tra có thể hủy không
                 $canCancel = !$reg->mabaithi &&
                     $start->gt($now) &&
                     $now->diffInHours($start, false) >= 24;
 
-                $canSubmit = $now->gte($start) &&
-                    $now->lte($end) &&
+                // Kiểm tra có thể nộp bài không
+                $submitDeadline = $end->copy()->addDay();
+                $canSubmit = $now->gte($end) &&
+                    $now->lte($submitDeadline) &&
                     !$reg->mabaithi;
 
                 return [
                     'id' => $reg->id,
-                    'idcuocthi' => $reg->macuocthi,
                     'tencuocthi' => $reg->tencuocthi,
-                    'thoigianbatdau' => $start->setTimezone('Asia/Ho_Chi_Minh')->format('Y-m-d\TH:i:sP'),
-                    'thoigianketthuc' => $end->setTimezone('Asia/Ho_Chi_Minh')->format('Y-m-d\TH:i:sP'),
+                    'thoigianbatdau' => $start->toISOString(),
+                    'thoigianketthuc' => $end->toISOString(),
                     'trangthaicuocthi' => $reg->trangthaicuocthi,
-                    'ngaydangky' => Carbon::parse($reg->ngaydangky)->setTimezone('Asia/Ho_Chi_Minh')->format('Y-m-d\TH:i:sP'),
+                    'ngaydangky' => Carbon::parse($reg->ngaydangky)->toISOString(),
                     'trangthai' => $reg->trangthai,
                     'loaidangky' => $reg->loaidangky,
                     'tendoithi' => $reg->tendoithi,
@@ -552,41 +411,41 @@ class ProfileApiController extends Controller
      */
     public function updateAvatar(Request $request)
     {
-        $request->validate([
-            'avatar' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048',
-        ], [
-            'avatar.required' => 'Vui lòng chọn ảnh',
-            'avatar.image' => 'File phải là ảnh',
-            'avatar.mimes' => 'Ảnh phải có định dạng jpeg, png, jpg, hoặc gif',
-            'avatar.max' => 'Kích thước ảnh không được vượt quá 2MB',
-        ]);
-
         $user = Auth::guard('api')->user();
 
-        if ($request->hasFile('avatar')) {
-            // Xóa ảnh cũ nếu có
-            if ($user->anhdaidien && Storage::disk('public')->exists($user->anhdaidien)) {
-                Storage::disk('public')->delete($user->anhdaidien);
-            }
-
-            // Lưu ảnh mới
-            $path = $request->file('avatar')->store('avatars', 'public');
-
-            // Cập nhật đường dẫn ảnh vào cơ sở dữ liệu
-            $user->update(['anhdaidien' => $path]);
-
-            // ✅ TRẢ VỀ JSON CHO API
-            return response()->json([
-                'success' => true,
-                'message' => 'Cập nhật ảnh đại diện thành công!',
-                'avatar_url' => $path  // ✅ Trả về đường dẫn
-            ]);
+        if (!$user || $user->vaitro !== 'SinhVien') {
+            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
         }
 
-        return response()->json([
-            'success' => false,
-            'message' => 'Có lỗi xảy ra khi tải ảnh lên'
-        ], 400);
+        $request->validate([
+            'avatar' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048'
+        ]);
+
+        try {
+            $sinhVien = $user->sinhVien;
+
+            // Xóa ảnh cũ nếu có
+            if ($sinhVien->hinhanh) {
+                Storage::disk('public')->delete($sinhVien->hinhanh);
+            }
+
+            // Upload ảnh mới
+            $path = $request->file('avatar')->store('avatars', 'public');
+
+            // Cập nhật database
+            DB::table('sinhvien')
+                ->where('masinhvien', $sinhVien->masinhvien)
+                ->update(['hinhanh' => $path]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Cập nhật ảnh đại diện thành công',
+                'avatar_url' => Storage::url($path)
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Error updating avatar: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
     }
 
     /**
@@ -716,115 +575,86 @@ class ProfileApiController extends Controller
             return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
         }
 
-        $sinhVien = $user->sinhVien;
-        if (!$sinhVien) {
-            return response()->json(['success' => false, 'message' => 'Không tìm thấy thông tin sinh viên'], 404);
-        }
-
         try {
             DB::beginTransaction();
 
-            // ===== HỦY ĐĂNG KÝ CÁ NHÂN =====
-            $dangKyCaNhan = DB::table('dangkycanhan as dkcn')
+            // Kiểm tra cá nhân
+            $caNhan = DB::table('dangkycanhan as dkcn')
                 ->join('cuocthi as ct', 'dkcn.macuocthi', '=', 'ct.macuocthi')
                 ->where('dkcn.madangkycanhan', $id)
-                ->where('dkcn.masinhvien', $sinhVien->masinhvien)
-                ->select('dkcn.*', 'ct.thoigianbatdau', 'ct.tencuocthi')
+                ->where('dkcn.masinhvien', $user->sinhVien->masinhvien)
+                ->select('dkcn.*', 'ct.thoigianbatdau')
                 ->first();
 
-            if ($dangKyCaNhan) {
+            if ($caNhan) {
+                $start = Carbon::parse($caNhan->thoigianbatdau);
 
-                $startTime = Carbon::parse($dangKyCaNhan->thoigianbatdau);
-
-                // Không thể hủy khi cuộc thi đã bắt đầu
-                if ($startTime->lt(now())) {
+                if ($start->lte(now())) {
                     DB::rollBack();
-                    return response()->json(['success' => false, 'message' => 'Cuộc thi đã bắt đầu, không thể hủy'], 400);
+                    return response()->json(['success' => false, 'message' => 'Cuộc thi đã bắt đầu'], 400);
                 }
 
-                DB::table('dangkycanhan')
-                    ->where('madangkycanhan', $id)
-                    ->delete();
+                if (now()->diffInHours($start, false) < 24) {
+                    DB::rollBack();
+                    return response()->json(['success' => false, 'message' => 'Không thể hủy trong vòng 24h'], 400);
+                }
 
+                DB::table('dangkycanhan')->where('madangkycanhan', $id)->delete();
                 DB::commit();
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Hủy đăng ký cá nhân thành công'
-                ]);
+
+                return response()->json(['success' => true, 'message' => 'Hủy đăng ký thành công']);
             }
 
-            // ===== HỦY ĐĂNG KÝ ĐỘI =====
-            $dangKyDoi = DB::table('dangkydoithi as dkdt')
+            // Kiểm tra đội nhóm
+            $doiNhom = DB::table('dangkydoithi as dkdt')
                 ->join('doithi as dt', 'dkdt.madoithi', '=', 'dt.madoithi')
-                ->join('cuocthi as ct', 'dkdt.macuocthi', '=', 'ct.macuocthi')
+                ->join('cuocthi as ct', 'dt.macuocthi', '=', 'ct.macuocthi')
+                ->join('thanhviendoithi as tv', 'dt.madoithi', '=', 'tv.madoithi')
                 ->where('dkdt.madangkydoi', $id)
-                ->select(
-                    'dkdt.*',
-                    'dt.madoithi',
-                    'dt.tendoithi',
-                    'dt.matruongdoi',
-                    'ct.thoigianbatdau',
-                    'ct.tencuocthi'
-                )
+                ->where('tv.masinhvien', $user->sinhVien->masinhvien)
+                ->select('dkdt.*', 'ct.thoigianbatdau', 'tv.vaitro', 'dt.madoithi')
                 ->first();
 
-            if ($dangKyDoi) {
-
-                // Chỉ trưởng đội mới được hủy
-                if ($dangKyDoi->matruongdoi !== $sinhVien->masinhvien) {
+            if ($doiNhom) {
+                if ($doiNhom->vaitro !== 'TruongNhom') {
                     DB::rollBack();
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Chỉ trưởng đội mới có quyền hủy đăng ký đội thi'
-                    ], 403);
+                    return response()->json(['success' => false, 'message' => 'Chỉ trưởng nhóm mới có thể hủy'], 403);
                 }
 
-                $startTime = Carbon::parse($dangKyDoi->thoigianbatdau);
+                $start = Carbon::parse($doiNhom->thoigianbatdau);
 
-                if ($startTime->lt(now())) {
+                if ($start->lte(now())) {
                     DB::rollBack();
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Cuộc thi đã bắt đầu, không thể hủy'
-                    ], 400);
+                    return response()->json(['success' => false, 'message' => 'Cuộc thi đã bắt đầu'], 400);
                 }
 
-                // Xóa danh sách thành viên
-                DB::table('thanhviendoithi')
-                    ->where('madoithi', $dangKyDoi->madoithi)
-                    ->delete();
+                if (now()->diffInHours($start, false) < 24) {
+                    DB::rollBack();
+                    return response()->json(['success' => false, 'message' => 'Không thể hủy trong vòng 24h'], 400);
+                }
 
                 // Xóa đăng ký đội
-                DB::table('dangkydoithi')
-                    ->where('madangkydoi', $id)
-                    ->delete();
+                DB::table('dangkydoithi')->where('madangkydoi', $id)->delete();
+
+                // Xóa thành viên
+                DB::table('thanhviendoithi')->where('madoithi', $doiNhom->madoithi)->delete();
 
                 // Xóa đội
-                DB::table('doithi')
-                    ->where('madoithi', $dangKyDoi->madoithi)
-                    ->delete();
+                DB::table('doithi')->where('madoithi', $doiNhom->madoithi)->delete();
 
                 DB::commit();
 
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Hủy đăng ký đội "' . $dangKyDoi->tendoithi . '" thành công'
-                ]);
+                return response()->json(['success' => true, 'message' => 'Hủy đăng ký thành công']);
             }
 
             DB::rollBack();
-            return response()->json(['success' => false, 'message' => 'Không tìm thấy đăng ký phù hợp'], 404);
+            return response()->json(['success' => false, 'message' => 'Không tìm thấy đăng ký'], 404);
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('Cancel competition error: ' . $e->getMessage());
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Lỗi server: ' . $e->getMessage()
-            ], 500);
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
     }
-
 
     /**
      * API: Show form nộp bài thi

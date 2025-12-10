@@ -20,7 +20,7 @@ use App\Http\Middleware\CorsMiddleware;
 | Authentication Routes
 |--------------------------------------------------------------------------
 */
-
+Route::middleware([CorsMiddleware::class])->group(function () {
 Route::group(['prefix' => 'auth'], function () {
     Route::post('register', [AuthController::class, 'register']);
     Route::post('login', [AuthController::class, 'login']);

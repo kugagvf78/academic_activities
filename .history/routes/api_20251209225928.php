@@ -13,14 +13,12 @@ use App\Http\Controllers\Api\ProfileApiController;
 use App\Http\Controllers\Api\ResultApiController;
 use App\Http\Controllers\Api\SupportApiController;
 use App\Http\Controllers\Web\Client\EventController;
-use App\Http\Middleware\CorsMiddleware;
 
 /*
 |--------------------------------------------------------------------------
 | Authentication Routes
 |--------------------------------------------------------------------------
 */
-
 Route::group(['prefix' => 'auth'], function () {
     Route::post('register', [AuthController::class, 'register']);
     Route::post('login', [AuthController::class, 'login']);
@@ -114,7 +112,7 @@ Route::prefix('admin')
     ->middleware(['auth:api', 'admin'])
     ->name('api.admin.')
     ->group(function () {
-
+        
         // Quản lý người dùng
         Route::prefix('users')->name('users.')->controller(AdminUserController::class)->group(function () {
             Route::get('/', 'index')->name('index');
@@ -123,7 +121,7 @@ Route::prefix('admin')
             Route::get('/bomons', 'getBoMons')->name('bomons');
 
             Route::post('/generate-code', 'generateCode')->name('generate-code');
-
+            
             Route::get('/{id}', 'show')->name('show');
             Route::post('/', 'store')->name('store');
             Route::put('/{id}', 'update')->name('update');
@@ -150,6 +148,4 @@ Route::prefix('student')
     ->group(function () {
         Route::get('/profile', [ProfileController::class, 'index'])->name('profile');
         Route::post('/profile', [ProfileController::class, 'update'])->name('profile.update');
-
-        Route::post('/avatar', [ProfileApiController::class, 'updateAvatar'])->name('avatar.update');
     });

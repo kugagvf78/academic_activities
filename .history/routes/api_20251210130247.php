@@ -13,7 +13,6 @@ use App\Http\Controllers\Api\ProfileApiController;
 use App\Http\Controllers\Api\ResultApiController;
 use App\Http\Controllers\Api\SupportApiController;
 use App\Http\Controllers\Web\Client\EventController;
-use App\Http\Middleware\CorsMiddleware;
 
 /*
 |--------------------------------------------------------------------------
@@ -151,5 +150,5 @@ Route::prefix('student')
         Route::get('/profile', [ProfileController::class, 'index'])->name('profile');
         Route::post('/profile', [ProfileController::class, 'update'])->name('profile.update');
 
-        Route::post('/avatar', [ProfileApiController::class, 'updateAvatar'])->name('avatar.update');
+        Route::post('/avatar', 'updateAvatar')->name('avatar.update');
     });

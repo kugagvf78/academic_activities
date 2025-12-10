@@ -744,195 +744,195 @@ class AuthController extends Controller
     }
 
     /**
-     * Gửi mã OTP qua email (API cho mobile - không redirect)
-     */
-    public function sendOtpApi(Request $request)
-    {
-        $request->validate([
-            'Email' => 'required|email'
-        ], [
-            'Email.required' => 'Vui lòng nhập email',
-            'Email.email' => 'Email không hợp lệ'
-        ]);
+ * Gửi mã OTP qua email (API cho mobile - không redirect)
+ */
+public function sendOtpApi(Request $request)
+{
+    $request->validate([
+        'Email' => 'required|email'
+    ], [
+        'Email.required' => 'Vui lòng nhập email',
+        'Email.email' => 'Email không hợp lệ'
+    ]);
 
-        $user = NguoiDung::where('email', $request->Email)->first();
+    $user = NguoiDung::where('email', $request->Email)->first();
 
-        if (!$user) {
-            return response()->json([
-                'error' => 'Email không tồn tại trong hệ thống'
-            ], 404);
-        }
-
-        // Xóa các OTP cũ
-        PasswordResetOtp::where('email', $request->Email)->delete();
-
-        // Tạo mã OTP 6 số
-        $otp = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-
-        // Lưu OTP vào database
-        PasswordResetOtp::create([
-            'email' => $request->Email,
-            'otp' => $otp,
-            'created_at' => now(),
-            'expires_at' => now()->addMinutes(5),
-            'is_used' => false
-        ]);
-
-        // Gửi email
-        try {
-            Mail::to($request->Email)->send(new OtpMail($otp, $user->hoten));
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Mã OTP đã được gửi đến email của bạn',
-                'email' => $request->Email
-            ], 200);
-
-        } catch (\Exception $e) {
-            Log::error('Email Sending Error: ' . $e->getMessage());
-            
-            return response()->json([
-                'error' => 'Không thể gửi email. Vui lòng thử lại sau.'
-            ], 500);
-        }
+    if (!$user) {
+        return response()->json([
+            'error' => 'Email không tồn tại trong hệ thống'
+        ], 404);
     }
 
-    /**
-     * Xác thực mã OTP (API cho mobile)
-     */
-    public function verifyOtpApi(Request $request)
-    {
-        $request->validate([
-            'otp' => 'required|digits:6',
-            'email' => 'required|email'
-        ], [
-            'otp.required' => 'Vui lòng nhập mã OTP',
-            'otp.digits' => 'Mã OTP phải có 6 chữ số',
-            'email.required' => 'Email không hợp lệ',
-        ]);
+    // Xóa các OTP cũ
+    PasswordResetOtp::where('email', $request->Email)->delete();
 
-        $otpRecord = PasswordResetOtp::where('email', $request->email)
-            ->where('otp', $request->otp)
-            ->where('is_used', false)
-            ->where('expires_at', '>', now())
-            ->first();
+    // Tạo mã OTP 6 số
+    $otp = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
 
-        if (!$otpRecord) {
-            return response()->json([
-                'error' => 'Mã OTP không hợp lệ hoặc đã hết hạn'
-            ], 400);
-        }
+    // Lưu OTP vào database
+    PasswordResetOtp::create([
+        'email' => $request->Email,
+        'otp' => $otp,
+        'created_at' => now(),
+        'expires_at' => now()->addMinutes(5),
+        'is_used' => false
+    ]);
 
-        // Đánh dấu OTP đã verify nhưng chưa dùng (để dùng cho reset password)
-        $otpRecord->update(['verified_at' => now()]);
+    // Gửi email
+    try {
+        Mail::to($request->Email)->send(new OtpMail($otp, $user->hoten));
 
         return response()->json([
             'success' => true,
-            'message' => 'Xác thực thành công',
-            'otp_id' => $otpRecord->id
+            'message' => 'Mã OTP đã được gửi đến email của bạn',
+            'email' => $request->Email
         ], 200);
+
+    } catch (\Exception $e) {
+        Log::error('Email Sending Error: ' . $e->getMessage());
+        
+        return response()->json([
+            'error' => 'Không thể gửi email. Vui lòng thử lại sau.'
+        ], 500);
+    }
+}
+
+/**
+ * Xác thực mã OTP (API cho mobile)
+ */
+public function verifyOtpApi(Request $request)
+{
+    $request->validate([
+        'otp' => 'required|digits:6',
+        'email' => 'required|email'
+    ], [
+        'otp.required' => 'Vui lòng nhập mã OTP',
+        'otp.digits' => 'Mã OTP phải có 6 chữ số',
+        'email.required' => 'Email không hợp lệ',
+    ]);
+
+    $otpRecord = PasswordResetOtp::where('email', $request->email)
+        ->where('otp', $request->otp)
+        ->where('is_used', false)
+        ->where('expires_at', '>', now())
+        ->first();
+
+    if (!$otpRecord) {
+        return response()->json([
+            'error' => 'Mã OTP không hợp lệ hoặc đã hết hạn'
+        ], 400);
     }
 
-    /**
-     * Đặt lại mật khẩu với OTP (API cho mobile)
-     */
-    public function resetPasswordWithOtpApi(Request $request)
-    {
-        $request->validate([
-            'email' => 'required|email',
-            'otp' => 'required|digits:6',
-            'MatKhau' => 'required|string|min:6|confirmed',
-        ], [
-            'email.required' => 'Email không hợp lệ',
-            'otp.required' => 'Mã OTP không hợp lệ',
-            'MatKhau.required' => 'Vui lòng nhập mật khẩu mới',
-            'MatKhau.min' => 'Mật khẩu phải có ít nhất 6 ký tự',
-            'MatKhau.confirmed' => 'Xác nhận mật khẩu không khớp',
-        ]);
+    // Đánh dấu OTP đã verify nhưng chưa dùng (để dùng cho reset password)
+    $otpRecord->update(['verified_at' => now()]);
 
-        // Kiểm tra OTP đã được verify
-        $otpRecord = PasswordResetOtp::where('email', $request->email)
-            ->where('otp', $request->otp)
-            ->where('is_used', false)
-            ->where('expires_at', '>', now())
-            ->whereNotNull('verified_at')
-            ->first();
+    return response()->json([
+        'success' => true,
+        'message' => 'Xác thực thành công',
+        'otp_id' => $otpRecord->id
+    ], 200);
+}
 
-        if (!$otpRecord) {
-            return response()->json([
-                'error' => 'Mã OTP không hợp lệ hoặc đã hết hạn'
-            ], 400);
-        }
+/**
+ * Đặt lại mật khẩu với OTP (API cho mobile)
+ */
+public function resetPasswordWithOtpApi(Request $request)
+{
+    $request->validate([
+        'email' => 'required|email',
+        'otp' => 'required|digits:6',
+        'MatKhau' => 'required|string|min:6|confirmed',
+    ], [
+        'email.required' => 'Email không hợp lệ',
+        'otp.required' => 'Mã OTP không hợp lệ',
+        'MatKhau.required' => 'Vui lòng nhập mật khẩu mới',
+        'MatKhau.min' => 'Mật khẩu phải có ít nhất 6 ký tự',
+        'MatKhau.confirmed' => 'Xác nhận mật khẩu không khớp',
+    ]);
 
-        $user = NguoiDung::where('email', $request->email)->first();
+    // Kiểm tra OTP đã được verify
+    $otpRecord = PasswordResetOtp::where('email', $request->email)
+        ->where('otp', $request->otp)
+        ->where('is_used', false)
+        ->where('expires_at', '>', now())
+        ->whereNotNull('verified_at')
+        ->first();
 
-        if (!$user) {
-            return response()->json([
-                'error' => 'Không tìm thấy người dùng'
-            ], 404);
-        }
+    if (!$otpRecord) {
+        return response()->json([
+            'error' => 'Mã OTP không hợp lệ hoặc đã hết hạn'
+        ], 400);
+    }
 
-        $user->update([
-            'matkhau' => Hash::make($request->MatKhau)
-        ]);
+    $user = NguoiDung::where('email', $request->email)->first();
 
-        // Đánh dấu OTP đã sử dụng
-        $otpRecord->update(['is_used' => true]);
+    if (!$user) {
+        return response()->json([
+            'error' => 'Không tìm thấy người dùng'
+        ], 404);
+    }
 
-        // Xóa các OTP cũ
-        PasswordResetOtp::clearExpired();
+    $user->update([
+        'matkhau' => Hash::make($request->MatKhau)
+    ]);
+
+    // Đánh dấu OTP đã sử dụng
+    $otpRecord->update(['is_used' => true]);
+
+    // Xóa các OTP cũ
+    PasswordResetOtp::clearExpired();
+
+    return response()->json([
+        'success' => true,
+        'message' => 'Đặt lại mật khẩu thành công'
+    ], 200);
+}
+
+/**
+ * Gửi lại mã OTP (API cho mobile)
+ */
+public function resendOtpApi(Request $request)
+{
+    $request->validate([
+        'Email' => 'required|email'
+    ]);
+
+    $user = NguoiDung::where('email', $request->Email)->first();
+
+    if (!$user) {
+        return response()->json([
+            'error' => 'Email không tồn tại'
+        ], 404);
+    }
+
+    // Xóa OTP cũ
+    PasswordResetOtp::where('email', $request->Email)->delete();
+
+    // Tạo OTP mới
+    $otp = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+
+    PasswordResetOtp::create([
+        'email' => $request->Email,
+        'otp' => $otp,
+        'created_at' => now(),
+        'expires_at' => now()->addMinutes(5),
+        'is_used' => false
+    ]);
+
+    try {
+        Mail::to($request->Email)->send(new OtpMail($otp, $user->hoten));
 
         return response()->json([
             'success' => true,
-            'message' => 'Đặt lại mật khẩu thành công'
+            'message' => 'Đã gửi lại mã OTP'
         ], 200);
+
+    } catch (\Exception $e) {
+        Log::error('Resend OTP Error: ' . $e->getMessage());
+        
+        return response()->json([
+            'error' => 'Không thể gửi email. Vui lòng thử lại sau.'
+        ], 500);
     }
-
-    /**
-     * Gửi lại mã OTP (API cho mobile)
-     */
-    public function resendOtpApi(Request $request)
-    {
-        $request->validate([
-            'Email' => 'required|email'
-        ]);
-
-        $user = NguoiDung::where('email', $request->Email)->first();
-
-        if (!$user) {
-            return response()->json([
-                'error' => 'Email không tồn tại'
-            ], 404);
-        }
-
-        // Xóa OTP cũ
-        PasswordResetOtp::where('email', $request->Email)->delete();
-
-        // Tạo OTP mới
-        $otp = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-
-        PasswordResetOtp::create([
-            'email' => $request->Email,
-            'otp' => $otp,
-            'created_at' => now(),
-            'expires_at' => now()->addMinutes(5),
-            'is_used' => false
-        ]);
-
-        try {
-            Mail::to($request->Email)->send(new OtpMail($otp, $user->hoten));
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Đã gửi lại mã OTP'
-            ], 200);
-
-        } catch (\Exception $e) {
-            Log::error('Resend OTP Error: ' . $e->getMessage());
-            
-            return response()->json([
-                'error' => 'Không thể gửi email. Vui lòng thử lại sau.'
-            ], 500);
-        }
-    }
+}
 }

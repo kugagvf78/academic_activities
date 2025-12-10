@@ -28,19 +28,19 @@ Route::group(['prefix' => 'auth'], function () {
     Route::post('refresh', [AuthController::class, 'refresh'])->middleware('auth:api');
     Route::get('me', [AuthController::class, 'me'])->middleware('auth:api');
 
-    // === ROUTES QUÊN MẬT KHẨU (Không cần authentication) - API cho Mobile ===
+// === ROUTES QUÊN MẬT KHẨU (Không cần authentication) ===
     
     // Bước 1: Gửi OTP qua email
-    Route::post('send-otp', [AuthController::class, 'sendOtpApi']);
+    Route::post('send-otp', [AuthController::class, 'sendOtp']);
     
-    // Bước 2: Xác thực OTP
-    Route::post('verify-otp-forgot', [AuthController::class, 'verifyOtpApi']);
+    // Bước 2: Xác thực OTP (sử dụng lại route verify-otp hiện có)
+    Route::post('verify-otp-forgot', [AuthController::class, 'verifyOtp']);
     
-    // Bước 3: Đặt lại mật khẩu
-    Route::post('reset-password-forgot', [AuthController::class, 'resetPasswordWithOtpApi']);
+    // Bước 3: Đặt lại mật khẩu (sử dụng lại route reset-password hiện có)
+    Route::post('reset-password-forgot', [AuthController::class, 'resetPasswordWithOtp']);
     
     // Gửi lại OTP
-    Route::post('resend-otp-forgot', [AuthController::class, 'resendOtpApi']);
+    Route::post('resend-otp-forgot', [AuthController::class, 'resendOtp']);
     
     // === ROUTES ĐỔI MẬT KHẨU (Cần authentication) ===
     
@@ -49,9 +49,9 @@ Route::group(['prefix' => 'auth'], function () {
     
     // Đổi mật khẩu bằng OTP (từ settings)
     Route::post('send-otp-change-password', [AuthController::class, 'sendOtpForChangePassword'])->middleware('auth:api');
-    Route::post('verify-otp', [AuthController::class, 'verifyOtpApi']); 
-    Route::post('reset-password-otp', [AuthController::class, 'resetPasswordWithOtpApi']);
-    Route::post('resend-otp', [AuthController::class, 'resendOtpApi']);
+    Route::post('verify-otp', [AuthController::class, 'verifyOtp']); // Dùng chung với forgot password
+    Route::post('reset-password-otp', [AuthController::class, 'resetPasswordWithOtp']); // Dùng chung với forgot password
+    Route::post('resend-otp', [AuthController::class, 'resendOtp']); 
 });
 
 /*

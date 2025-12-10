@@ -28,30 +28,16 @@ Route::group(['prefix' => 'auth'], function () {
     Route::post('refresh', [AuthController::class, 'refresh'])->middleware('auth:api');
     Route::get('me', [AuthController::class, 'me'])->middleware('auth:api');
 
-    // === ROUTES QUÊN MẬT KHẨU (Không cần authentication) - API cho Mobile ===
-    
-    // Bước 1: Gửi OTP qua email
-    Route::post('send-otp', [AuthController::class, 'sendOtpApi']);
-    
-    // Bước 2: Xác thực OTP
-    Route::post('verify-otp-forgot', [AuthController::class, 'verifyOtpApi']);
-    
-    // Bước 3: Đặt lại mật khẩu
-    Route::post('reset-password-forgot', [AuthController::class, 'resetPasswordWithOtpApi']);
-    
-    // Gửi lại OTP
-    Route::post('resend-otp-forgot', [AuthController::class, 'resendOtpApi']);
-    
-    // === ROUTES ĐỔI MẬT KHẨU (Cần authentication) ===
+        // === ROUTES MỚI CHO ĐỔI MẬT KHẨU BẰNG OTP ===
     
     // Đổi mật khẩu thông thường (dùng mật khẩu cũ)
     Route::post('change-password', [AuthController::class, 'changePassword'])->middleware('auth:api');
     
-    // Đổi mật khẩu bằng OTP (từ settings)
+    // Đổi mật khẩu bằng OTP
     Route::post('send-otp-change-password', [AuthController::class, 'sendOtpForChangePassword'])->middleware('auth:api');
-    Route::post('verify-otp', [AuthController::class, 'verifyOtpApi']); 
-    Route::post('reset-password-otp', [AuthController::class, 'resetPasswordWithOtpApi']);
-    Route::post('resend-otp', [AuthController::class, 'resendOtpApi']);
+    Route::post('verify-otp', [AuthController::class, 'verifyOtp']);
+    Route::post('reset-password-otp', [AuthController::class, 'resetPasswordWithOtp']);
+    Route::post('resend-otp', [AuthController::class, 'resendOtp']);
 });
 
 /*

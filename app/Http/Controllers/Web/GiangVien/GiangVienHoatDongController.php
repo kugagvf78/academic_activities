@@ -224,12 +224,9 @@ class GiangVienHoatDongController extends Controller
 
         $hoatdong = HoatDongHoTro::findOrFail($id);
         
-        // ✅ LOG: Thông tin hoạt động
-        Log::info('Import điểm danh cho hoạt động', [
+        Log::info('=== BẮT ĐẦU IMPORT ===', [
             'mahoatdong' => $hoatdong->mahoatdong,
             'tenhoatdong' => $hoatdong->tenhoatdong,
-            'diemrenluyen' => $hoatdong->diemrenluyen,
-            'loaihoatdong' => $hoatdong->loaihoatdong,
         ]);
         
         try {
@@ -238,190 +235,247 @@ class GiangVienHoatDongController extends Controller
             $sheet = $spreadsheet->getActiveSheet();
             $rows = $sheet->toArray();
 
-            $headerRow = 0;
-            $masinhvienCol = null;
-            $timestampCol = null;
+            Log::info('File đã load', [
+                'total_rows' => count($rows),
+                'first_3_rows' => array_slice($rows, 0, 3)
+            ]);
 
-            // Tìm cột mã sinh viên và timestamp
-            foreach ($rows as $index => $row) {
-                foreach ($row as $colIndex => $cell) {
-                    $cell = mb_strtolower(trim($cell ?? ''));
+            // ✅ PHÁT HIỆN CẤU TRÚC FILE
+            $hasHeader = false;
+            $headerRow = -1;
+            $masinhvienCol = 1; // Mặc định cột B (index 1)
+            $timestampCol = 0;  // Mặc định cột A (index 0)
+
+            // Kiểm tra dòng đầu có phải header không
+            if (!empty($rows[0])) {
+                $firstCell = mb_strtolower(trim($rows[0][0] ?? ''));
+                $secondCell = mb_strtolower(trim($rows[0][1] ?? ''));
+                
+                // Nếu chứa từ khóa header
+                if (preg_match('/(timestamp|thời|time)/ui', $firstCell) || 
+                    preg_match('/(mã.*sinh|student|mssv)/ui', $secondCell)) {
+                    $hasHeader = true;
+                    $headerRow = 0;
                     
-                    if (str_contains($cell, 'mã sinh viên') || 
-                        str_contains($cell, 'masinhvien') || 
-                        str_contains($cell, 'student')) {
-                        $headerRow = $index;
-                        $masinhvienCol = $colIndex;
-                    }
-                    
-                    if (str_contains($cell, 'timestamp') || 
-                        str_contains($cell, 'thời gian') || 
-                        str_contains($cell, 'time')) {
-                        $timestampCol = $colIndex;
+                    // Tìm chính xác cột nào
+                    foreach ($rows[0] as $colIndex => $cell) {
+                        $cellLower = mb_strtolower(trim($cell ?? ''));
+                        if (preg_match('/(mã.*sinh.*viên|student.*id|masinhvien|mssv)/ui', $cellLower)) {
+                            $masinhvienCol = $colIndex;
+                        }
+                        if (preg_match('/(timestamp|thời.*gian|time)/ui', $cellLower)) {
+                            $timestampCol = $colIndex;
+                        }
                     }
                 }
-                
-                if ($masinhvienCol !== null) break;
             }
 
-            if ($masinhvienCol === null) {
-                return back()->with('error', 'Không tìm thấy cột "Mã sinh viên" trong file!');
-            }
-
-            Log::info('Tìm thấy cột', [
+            Log::info('Cấu trúc file', [
+                'hasHeader' => $hasHeader,
                 'masinhvienCol' => $masinhvienCol,
                 'timestampCol' => $timestampCol,
-                'headerRow' => $headerRow,
+                'startRow' => $headerRow + 1,
+            ]);
+
+            // ✅ KIỂM TRA DANH SÁCH ĐĂNG KÝ TRƯỚC
+            $allDangKy = DangKyHoatDong::where('mahoatdong', $id)
+                ->pluck('diemdanhqr', 'masinhvien')
+                ->toArray();
+            
+            Log::info('Danh sách đăng ký hiện có', [
+                'total' => count($allDangKy),
+                'sample' => array_slice($allDangKy, 0, 5, true)
             ]);
 
             DB::beginTransaction();
             $success = 0;
             $errors = [];
+            $skipped = 0;
             $diemRenLuyenCount = 0;
 
-            // Xử lý từng dòng dữ liệu
-            for ($i = $headerRow + 1; $i < count($rows); $i++) {
+            $startRow = $headerRow + 1;
+            
+            for ($i = $startRow; $i < count($rows); $i++) {
                 $row = $rows[$i];
-                if (empty(array_filter($row))) continue;
+                
+                // Bỏ qua dòng trống
+                if (empty(array_filter($row))) {
+                    Log::info("Dòng [{$i}] trống, bỏ qua");
+                    continue;
+                }
 
-                $masinhvien = trim($row[$masinhvienCol] ?? '');
-                if (empty($masinhvien)) continue;
+                // ✅ LẤY DỮ LIỆU
+                $rawMaSV = $row[$masinhvienCol] ?? '';
+                $rawTimestamp = $row[$timestampCol] ?? '';
+                
+                // Chuẩn hóa mã sinh viên
+                $masinhvien = trim($rawMaSV);
+                $masinhvien = preg_replace('/[^\d]/', '', $masinhvien); // Chỉ giữ số
+                
+                Log::info("═══ DÒNG [{$i}] ═══", [
+                    'raw_masinhvien' => $rawMaSV,
+                    'cleaned_masinhvien' => $masinhvien,
+                    'raw_timestamp' => $rawTimestamp,
+                    'full_row' => $row
+                ]);
 
+                // Validate mã sinh viên
+                if (empty($masinhvien) || !preg_match('/^\d{10}$/', $masinhvien)) {
+                    $errors[] = "Dòng {$i}: Mã SV không hợp lệ ('{$rawMaSV}')";
+                    Log::warning("Mã SV không hợp lệ", [
+                        'row' => $i,
+                        'raw' => $rawMaSV,
+                        'cleaned' => $masinhvien
+                    ]);
+                    continue;
+                }
+
+                // Parse timestamp
                 $thoigian = now();
-                if ($timestampCol !== null && !empty($row[$timestampCol])) {
+                if (!empty($rawTimestamp)) {
                     try {
-                        $thoigian = Carbon::parse($row[$timestampCol]);
+                        $thoigian = Carbon::parse($rawTimestamp);
+                        Log::info("Parse timestamp OK", ['parsed' => $thoigian->toDateTimeString()]);
                     } catch (\Exception $e) {
-                        Log::warning('Không parse được timestamp', [
-                            'masinhvien' => $masinhvien,
-                            'timestamp' => $row[$timestampCol],
+                        Log::warning('Parse timestamp thất bại', [
+                            'raw' => $rawTimestamp,
+                            'error' => $e->getMessage()
                         ]);
                     }
                 }
 
-                // Kiểm tra sinh viên đã đăng ký chưa
+                // ✅ TÌM ĐĂNG KÝ - DEBUG CHI TIẾT
+                Log::info("Tìm kiếm đăng ký", [
+                    'mahoatdong' => $id,
+                    'masinhvien' => $masinhvien,
+                    'query' => "SELECT * FROM dangkyhoatdong WHERE mahoatdong = '{$id}' AND masinhvien = '{$masinhvien}'"
+                ]);
+
                 $dangky = DangKyHoatDong::where('mahoatdong', $id)
                     ->where('masinhvien', $masinhvien)
                     ->first();
 
                 if (!$dangky) {
-                    $errors[] = "SV {$masinhvien}: Chưa đăng ký";
-                    Log::warning('Sinh viên chưa đăng ký', ['masinhvien' => $masinhvien]);
+                    $errors[] = "SV {$masinhvien}: Chưa đăng ký hoặc không tồn tại";
+                    Log::error("❌ KHÔNG TÌM THẤY ĐĂNG KÝ", [
+                        'masinhvien' => $masinhvien,
+                        'mahoatdong' => $id,
+                        'exists_in_list' => isset($allDangKy[$masinhvien]),
+                        'similar_masv' => array_filter(array_keys($allDangKy), function($k) use ($masinhvien) {
+                            return strpos($k, substr($masinhvien, 0, 5)) !== false;
+                        })
+                    ]);
                     continue;
                 }
 
-                // Bỏ qua nếu đã điểm danh
+                Log::info("✅ Tìm thấy đăng ký", [
+                    'madangky' => $dangky->madangky,
+                    'masinhvien' => $dangky->masinhvien,
+                    'diemdanhqr' => $dangky->diemdanhqr,
+                    'thoigiandiemdanh' => $dangky->thoigiandiemdanh
+                ]);
+
+                // Kiểm tra đã điểm danh chưa
                 if ($dangky->diemdanhqr) {
-                    Log::info('Sinh viên đã điểm danh trước đó', ['masinhvien' => $masinhvien]);
+                    $skipped++;
+                    Log::info("⏭️ Đã điểm danh", [
+                        'masinhvien' => $masinhvien,
+                        'thoigian_cu' => $dangky->thoigiandiemdanh
+                    ]);
                     continue;
                 }
 
-                // Cập nhật trạng thái điểm danh
-                $dangky->update([
-                    'diemdanhqr' => true,
-                    'thoigiandiemdanh' => $thoigian,
-                ]);
+                // ✅ CẬP NHẬT ĐIỂM DANH
+                try {
+                    $dangky->diemdanhqr = true;
+                    $dangky->thoigiandiemdanh = $thoigian;
+                    $dangky->save();
+                    
+                    Log::info("✅ Cập nhật điểm danh thành công", [
+                        'madangky' => $dangky->madangky,
+                        'masinhvien' => $masinhvien,
+                        'thoigian' => $thoigian->toDateTimeString()
+                    ]);
+                } catch (\Exception $e) {
+                    Log::error("❌ Lỗi cập nhật điểm danh", [
+                        'masinhvien' => $masinhvien,
+                        'error' => $e->getMessage()
+                    ]);
+                    $errors[] = "SV {$masinhvien}: Lỗi cập nhật - {$e->getMessage()}";
+                    continue;
+                }
 
-                // Tạo bản ghi điểm danh QR
-                DiemDanhQR::create([
-                    'madiemdanh' => 'DD' . Str::upper(Str::random(8)),
-                    'mahoatdong' => $hoatdong->mahoatdong,
-                    'macuocthi' => $hoatdong->macuocthi,
-                    'masinhvien' => $masinhvien,
-                    'maqr' => 'GOOGLE-FORM',
-                    'thoigiandiemdanh' => $thoigian,
-                    'vitri' => 'Import từ Google Form',
-                ]);
-
-                Log::info('Điểm danh thành công', ['masinhvien' => $masinhvien]);
+                // ✅ TẠO BẢNG GHI ĐIỂM DANH QR
+                try {
+                    DiemDanhQR::create([
+                        'madiemdanh' => 'DD' . strtoupper(Str::random(8)),
+                        'mahoatdong' => $hoatdong->mahoatdong,
+                        'macuocthi' => $hoatdong->macuocthi,
+                        'masinhvien' => $masinhvien,
+                        'maqr' => 'GOOGLE-FORM-IMPORT',
+                        'thoigiandiemdanh' => $thoigian,
+                        'vitri' => 'Import từ Google Form',
+                    ]);
+                    
+                    Log::info("✅ Tạo DiemDanhQR thành công");
+                } catch (\Exception $e) {
+                    Log::error("❌ Lỗi tạo DiemDanhQR", [
+                        'masinhvien' => $masinhvien,
+                        'error' => $e->getMessage()
+                    ]);
+                }
 
                 // ✅ CỘNG ĐIỂM RÈN LUYỆN
                 if ($hoatdong->diemrenluyen > 0) {
-                    Log::info('Bắt đầu cộng điểm rèn luyện', [
+                    Log::info("Kiểm tra điểm rèn luyện", [
                         'masinhvien' => $masinhvien,
-                        'diem' => $hoatdong->diemrenluyen,
+                        'diem' => $hoatdong->diemrenluyen
                     ]);
 
-                    // Kiểm tra xem đã cộng điểm cho hoạt động này chưa
                     $daCongDiem = DiemRenLuyen::where('masinhvien', $masinhvien)
                         ->where('mahoatdong', $hoatdong->mahoatdong)
                         ->exists();
-                    
-                    Log::info('Kiểm tra trùng lặp', [
-                        'masinhvien' => $masinhvien,
-                        'daCongDiem' => $daCongDiem,
-                    ]);
 
                     if (!$daCongDiem) {
                         try {
-                            // Tạo mã điểm rèn luyện duy nhất
                             $maDiemRL = 'DRL' . time() . rand(1000, 9999);
                             
-                            // ✅ XÁC ĐỊNH LOẠI HOẠT ĐỘNG - CHỈ CÓ 3 GIÁ TRỊ HỢP LỆ: DuThi, HoTro, DatGiai
-                            // Tất cả các loại hoạt động hỗ trợ đều map sang 'HoTro'
-                            $loaiDiemRL = 'HoTro';
-                            
-                            Log::info('Chuẩn bị insert điểm rèn luyện', [
-                                'madiemrl' => $maDiemRL,
-                                'masinhvien' => $masinhvien,
-                                'macuocthi' => $hoatdong->macuocthi,
-                                'mahoatdong' => $hoatdong->mahoatdong,
-                                'loaihoatdong' => $loaiDiemRL,
-                                'diem' => $hoatdong->diemrenluyen,
-                            ]);
-                            
-                            // Tạo bản ghi điểm rèn luyện
                             DiemRenLuyen::create([
                                 'madiemrl' => $maDiemRL,
                                 'masinhvien' => $masinhvien,
                                 'macuocthi' => $hoatdong->macuocthi,
                                 'mahoatdong' => $hoatdong->mahoatdong,
-                                'loaihoatdong' => $loaiDiemRL,
+                                'loaihoatdong' => 'HoTro',
                                 'diem' => $hoatdong->diemrenluyen,
-                                'mota' => 'Điểm danh hoạt động: ' . $hoatdong->tenhoatdong,
+                                'mota' => 'Điểm danh: ' . $hoatdong->tenhoatdong,
                                 'ngaycong' => now(),
                             ]);
 
-                            Log::info('Insert điểm rèn luyện thành công', [
-                                'masinhvien' => $masinhvien,
-                                'madiemrl' => $maDiemRL,
-                            ]);
-                            
-                            // Cập nhật tổng điểm rèn luyện của sinh viên
                             $sinhVien = SinhVien::where('masinhvien', $masinhvien)->first();
                             if ($sinhVien) {
                                 $diemCu = $sinhVien->diemrenluyen ?? 0;
                                 $sinhVien->diemrenluyen = $diemCu + $hoatdong->diemrenluyen;
                                 $sinhVien->save();
-
-                                Log::info('Cập nhật tổng điểm sinh viên thành công', [
+                                
+                                $diemRenLuyenCount++;
+                                
+                                Log::info("✅ Cộng điểm thành công", [
                                     'masinhvien' => $masinhvien,
                                     'diem_cu' => $diemCu,
                                     'diem_cong' => $hoatdong->diemrenluyen,
-                                    'diem_moi' => $sinhVien->diemrenluyen,
-                                ]);
-
-                                $diemRenLuyenCount++;
-                            } else {
-                                Log::warning('Không tìm thấy sinh viên để cập nhật điểm', [
-                                    'masinhvien' => $masinhvien,
+                                    'diem_moi' => $sinhVien->diemrenluyen
                                 ]);
                             }
                         } catch (\Exception $e) {
-                            Log::error('Lỗi cộng điểm rèn luyện', [
+                            Log::error("❌ Lỗi cộng điểm", [
                                 'masinhvien' => $masinhvien,
                                 'error' => $e->getMessage(),
-                                'trace' => $e->getTraceAsString(),
+                                'trace' => $e->getTraceAsString()
                             ]);
-                            // Không throw exception, tiếp tục xử lý sinh viên khác
                         }
                     } else {
-                        Log::warning('Đã cộng điểm trước đó', ['masinhvien' => $masinhvien]);
+                        Log::info("Đã cộng điểm trước đó", ['masinhvien' => $masinhvien]);
                     }
-                } else {
-                    Log::warning('Hoạt động không có điểm rèn luyện', [
-                        'mahoatdong' => $hoatdong->mahoatdong,
-                    ]);
                 }
 
                 $success++;
@@ -429,30 +483,35 @@ class GiangVienHoatDongController extends Controller
 
             DB::commit();
 
-            // ✅ LOG: Tổng kết
-            Log::info('Hoàn thành import', [
+            Log::info('=== KẾT THÚC IMPORT ===', [
                 'success' => $success,
-                'diemRenLuyenCount' => $diemRenLuyenCount,
+                'skipped' => $skipped,
                 'errors' => count($errors),
+                'diemRenLuyenCount' => $diemRenLuyenCount
             ]);
 
-            $message = "Import thành công {$success} sinh viên điểm danh!";
-            // if ($diemRenLuyenCount > 0) {
-            //     $message .= " ✅ Đã cộng điểm rèn luyện cho <strong>{$diemRenLuyenCount}</strong> sinh viên.";
-            // }
+            $message = "✅ Điểm danh thành công: {$success} sinh viên";
+            if ($skipped > 0) $message .= " | ⏭️ Đã điểm danh trước: {$skipped}";
+            if ($diemRenLuyenCount > 0) $message .= " | 🎯 Cộng điểm: {$diemRenLuyenCount} SV";
             if (count($errors) > 0) {
-                $message .= " ⚠️ Có <strong>" . count($errors) . "</strong> lỗi.";
+                $message .= " | ⚠️ Lỗi: " . count($errors);
+                Log::warning('Chi tiết lỗi', ['errors' => $errors]);
             }
 
-            return redirect()->route('giangvien.hoatdong.show', $id)->with('success', $message);
+            return redirect()
+                ->route('giangvien.hoatdong.show', $id)
+                ->with('success', $message)
+                ->with('import_errors', $errors);
 
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('Lỗi import điểm danh', [
+            Log::error('❌ LỖI NGHIÊM TRỌNG', [
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString()
             ]);
-            return back()->with('error', 'Có lỗi xảy ra: ' . $e->getMessage());
+            return back()->with('error', '❌ Lỗi: ' . $e->getMessage());
         }
     }
 

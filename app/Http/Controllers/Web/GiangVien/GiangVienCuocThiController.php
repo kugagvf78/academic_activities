@@ -124,7 +124,7 @@ class GiangVienCuocThiController extends Controller
         $dangkydoi = DB::table('dangkydoithi as dk')
             ->join('doithi as dt', 'dk.madoithi', '=', 'dt.madoithi')
             ->where('dk.macuocthi', $id)
-            ->select('dk.*', 'dt.tendoithi')
+            ->select('dk.*', 'dt.tendoithi', 'dt.sothanhvien as soluongthanhvien') // Thêm sothanhvien
             ->get();
 
         $cuocthi->status_label = $this->getStatusLabel($cuocthi);

@@ -142,20 +142,19 @@ class CheerRegistrationApiController extends Controller
             }
 
             // 🔍 SINH VIÊN ĐÃ CÓ ĐĂNG KÝ DỰ THI CHƯA?
-            $daDangKyThi =
-                DB::table('dangkycanhan')
-                ->where('macuocthi', $macuocthi)
+            $daDangKyThi = DB::table('dangkycanhan')
+                ->where('macuocthi', $request->macuocthi)
                 ->where('masinhvien', $request->masinhvien)
                 ->exists()
                 ||
                 DB::table('doithi')
-                ->where('macuocthi', $macuocthi)
+                ->where('macuocthi', $request->macuocthi)
                 ->where('matruongdoi', $request->masinhvien)
                 ->exists()
                 ||
                 DB::table('thanhviendoithi')
                 ->join('doithi', 'thanhviendoithi.madoithi', '=', 'doithi.madoithi')
-                ->where('doithi.macuocthi', $macuocthi)
+                ->where('doithi.macuocthi', $request->macuocthi)
                 ->where('thanhviendoithi.masinhvien', $request->masinhvien)
                 ->exists();
 
@@ -163,20 +162,6 @@ class CheerRegistrationApiController extends Controller
                 return response()->json([
                     'success' => false,
                     'message' => 'Bạn đã tham gia cuộc thi này rồi, không thể đăng ký cổ vũ / hỗ trợ.'
-                ], 400);
-            }
-
-            // 🔍 2. KHÔNG CHO SV ĐÃ ĐĂNG KÝ HOẠT ĐỘNG CỔ VŨ / HỖ TRỢ KHÁC
-            $daDangKyHoTro = DB::table('dangkyhoatdong')
-                ->join('hoatdonghotro', 'dangkyhoatdong.mahoatdong', '=', 'hoatdonghotro.mahoatdong')
-                ->where('hoatdonghotro.macuocthi', $macuocthi)
-                ->where('dangkyhoatdong.masinhvien', $request->masinhvien)
-                ->exists();
-
-            if ($daDangKyHoTro) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Bạn đã đăng ký hoạt động cổ vũ / hỗ trợ trong cuộc thi này.'
                 ], 400);
             }
 

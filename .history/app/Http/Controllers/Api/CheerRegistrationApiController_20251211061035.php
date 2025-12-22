@@ -40,7 +40,7 @@ class CheerRegistrationApiController extends Controller
             if ($now->lt($earlyRegister)) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Đăng ký cổ vũ sẽ mở vào: ' . $earlyRegister->format('d/m/Y H:i')
+                    'message' => 'Đăng ký cổ vũ sẽ mở vào: '.$earlyRegister->format('d/m/Y H:i')
                 ], 400);
             }
 
@@ -66,6 +66,7 @@ class CheerRegistrationApiController extends Controller
                 'message' => 'Lấy danh sách hoạt động cổ vũ thành công.',
                 'data' => $hoatdongs
             ]);
+
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
@@ -142,43 +143,28 @@ class CheerRegistrationApiController extends Controller
             }
 
             // 🔍 SINH VIÊN ĐÃ CÓ ĐĂNG KÝ DỰ THI CHƯA?
-            $daDangKyThi =
-                DB::table('dangkycanhan')
-                ->where('macuocthi', $macuocthi)
-                ->where('masinhvien', $request->masinhvien)
-                ->exists()
-                ||
-                DB::table('doithi')
-                ->where('macuocthi', $macuocthi)
-                ->where('matruongdoi', $request->masinhvien)
-                ->exists()
-                ||
-                DB::table('thanhviendoithi')
-                ->join('doithi', 'thanhviendoithi.madoithi', '=', 'doithi.madoithi')
-                ->where('doithi.macuocthi', $macuocthi)
-                ->where('thanhviendoithi.masinhvien', $request->masinhvien)
-                ->exists();
+$daDangKyThi = DB::table('dangkycanhan')
+        ->where('macuocthi', $request->macuocthi)
+        ->where('masinhvien', $request->masinhvien)
+        ->exists()
+    ||
+    DB::table('doithi')
+        ->where('macuocthi', $request->macuocthi)
+        ->where('matruongdoi', $request->masinhvien)
+        ->exists()
+    ||
+    DB::table('thanhviendoithi')
+        ->join('doithi', 'thanhviendoithi.madoithi', '=', 'doithi.madoithi')
+        ->where('doithi.macuocthi', $request->macuocthi)
+        ->where('thanhviendoithi.masinhvien', $request->masinhvien)
+        ->exists();
 
-            if ($daDangKyThi) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Bạn đã tham gia cuộc thi này rồi, không thể đăng ký cổ vũ / hỗ trợ.'
-                ], 400);
-            }
-
-            // 🔍 2. KHÔNG CHO SV ĐÃ ĐĂNG KÝ HOẠT ĐỘNG CỔ VŨ / HỖ TRỢ KHÁC
-            $daDangKyHoTro = DB::table('dangkyhoatdong')
-                ->join('hoatdonghotro', 'dangkyhoatdong.mahoatdong', '=', 'hoatdonghotro.mahoatdong')
-                ->where('hoatdonghotro.macuocthi', $macuocthi)
-                ->where('dangkyhoatdong.masinhvien', $request->masinhvien)
-                ->exists();
-
-            if ($daDangKyHoTro) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Bạn đã đăng ký hoạt động cổ vũ / hỗ trợ trong cuộc thi này.'
-                ], 400);
-            }
+if ($daDangKyThi) {
+    return response()->json([
+        'success' => false,
+        'message' => 'Bạn đã tham gia cuộc thi này rồi, không thể đăng ký cổ vũ / hỗ trợ.'
+    ], 400);
+}
 
 
             // Tạo mã DK
@@ -200,9 +186,10 @@ class CheerRegistrationApiController extends Controller
                 'message' => 'Đăng ký cổ vũ thành công!',
                 'madangky' => $madk
             ], 200);
+
         } catch (\Exception $e) {
             DB::rollBack();
-            Log::error('API Cheer Registration Error: ' . $e->getMessage());
+            Log::error('API Cheer Registration Error: '.$e->getMessage());
 
             return response()->json([
                 'success' => false,

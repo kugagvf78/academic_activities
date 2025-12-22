@@ -16,6 +16,10 @@ use Illuminate\Support\Str;
 
 class ContestRegistrationApiController extends Controller
 {
+    /**
+     * API: Hiển thị form đăng ký cuộc thi
+     * GET /api/events/{slug}/register
+     */
     public function showRegistrationForm($slug)
     {
         try {
@@ -74,6 +78,34 @@ class ContestRegistrationApiController extends Controller
     public function register(Request $request, $slug)
     {
         try {
+            $daDangKy = DB::table('dangkycanhan')
+                ->where('macuocthi', $macuocthi)
+                ->where('masinhvien', $validated['main_student_code'])
+                ->exists()
+                ||
+                DB::table('doithi')
+                ->where('macuocthi', $macuocthi)
+                ->where('matruongdoi', $validated['main_student_code'])
+                ->exists()
+                ||
+                DB::table('thanhviendoithi')
+                ->join('doithi', 'thanhviendoithi.madoithi', '=', 'doithi.madoithi')
+                ->where('doithi.macuocthi', $macuocthi)
+                ->where('thanhviendoithi.masinhvien', $validated['main_student_code'])
+                ->exists()
+                ||
+                DB::table('dangky_hoatdong')
+                ->where('macuocthi', $macuocthi)
+                ->where('masinhvien', $validated['main_student_code'])
+                ->exists();
+
+            if ($daDangKy) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Bạn đã tham gia cuộc thi này rồi nên không thể đăng ký thêm hình thức khác.'
+                ], 400);
+            }
+
             $macuocthi = $this->getMaCuocThiFromSlug($slug);
             $cuocthi = CuocThi::where('macuocthi', $macuocthi)->firstOrFail();
 
@@ -132,47 +164,6 @@ class ContestRegistrationApiController extends Controller
                 ], 400);
             }
 
-            $sv = $sinhvienChinh->masinhvien;
-
-            // ✅ KIỂM TRA ĐÃ ĐĂNG KÝ THI CHƯA
-            $daDangKyThi =
-                DB::table('dangkycanhan')
-                ->where('macuocthi', $macuocthi)
-                ->where('masinhvien', $sv)
-                ->exists()
-                ||
-                DB::table('doithi')
-                ->where('macuocthi', $macuocthi)
-                ->where('matruongdoi', $sv)
-                ->exists()
-                ||
-                DB::table('thanhviendoithi')
-                ->join('doithi', 'thanhviendoithi.madoithi', '=', 'doithi.madoithi')
-                ->where('doithi.macuocthi', $macuocthi)
-                ->where('thanhviendoithi.masinhvien', $sv)
-                ->exists();
-
-            if ($daDangKyThi) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Bạn đã tham gia cuộc thi này rồi nên không thể đăng ký thêm hình thức khác.'
-                ], 400);
-            }
-
-            // ✅ KIỂM TRA ĐÃ ĐĂNG KÝ HỖ TRỢ/CỔ VŨ CHƯA (BỔ SUNG MỚI)
-            $daDangKyHoTro = DB::table('dangkyhoatdong')
-                ->join('hoatdonghotro', 'dangkyhoatdong.mahoatdong', '=', 'hoatdonghotro.mahoatdong')
-                ->where('hoatdonghotro.macuocthi', $macuocthi)
-                ->where('dangkyhoatdong.masinhvien', $sv)
-                ->exists();
-
-            if ($daDangKyHoTro) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Bạn đã đăng ký hoạt động cổ vũ / hỗ trợ trong cuộc thi này, không thể đăng ký thi.'
-                ], 400);
-            }
-
             // Xử lý đăng ký cá nhân
             if ($validated['type'] === 'individual') {
                 $daDangKyCaNhan = DangKyCaNhan::where('macuocthi', $macuocthi)
@@ -218,6 +209,7 @@ class ContestRegistrationApiController extends Controller
 
                 // Tạo đội thi
                 $madoithi = 'DT' . Str::upper(Str::random(8));
+
                 $sothanhvien = 1 + count($validated['members']);
 
                 $doithi = DoiThi::create([
@@ -250,21 +242,6 @@ class ContestRegistrationApiController extends Controller
                         return response()->json([
                             'success' => false,
                             'message' => "Mã sinh viên {$member['student_code']} không tồn tại"
-                        ], 400);
-                    }
-
-                    // ✅ Kiểm tra thành viên đã đăng ký hỗ trợ/cổ vũ chưa (BỔ SUNG MỚI)
-                    $thanhVienDaDangKyHoTro = DB::table('dangkyhoatdong')
-                        ->join('hoatdonghotro', 'dangkyhoatdong.mahoatdong', '=', 'hoatdonghotro.mahoatdong')
-                        ->where('hoatdonghotro.macuocthi', $macuocthi)
-                        ->where('dangkyhoatdong.masinhvien', $sinhvienThanhVien->masinhvien)
-                        ->exists();
-
-                    if ($thanhVienDaDangKyHoTro) {
-                        DB::rollBack();
-                        return response()->json([
-                            'success' => false,
-                            'message' => "Sinh viên {$member['name']} đã đăng ký hoạt động cổ vũ / hỗ trợ trong cuộc thi này"
                         ], 400);
                     }
 
@@ -337,6 +314,7 @@ class ContestRegistrationApiController extends Controller
             ], 500);
         }
     }
+
     /**
      * Lấy mã cuộc thi từ slug
      */
